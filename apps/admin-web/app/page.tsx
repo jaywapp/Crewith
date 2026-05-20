@@ -85,11 +85,20 @@ const fallbackOverview: AdminClubOverview = {
       title: "목요 야간 러닝",
       startsAt: "2026-05-21T20:00:00+09:00",
       locationName: "여의도 한강공원",
+      locationAddress: "서울 영등포구 여의동로 330",
+      responseDeadline: "2026-05-21T18:00:00+09:00",
       attendingCount: 18,
       notAttendingCount: 5,
       presentCount: 16,
       lateCount: 2,
       absentCount: 3,
+      attendanceRate: 86,
+      attendanceConversionRate: 100,
+      participants: [
+        { memberId: "member-01", memberName: "김민준", response: "attending", attendanceStatus: "present", companionCount: 0 },
+        { memberId: "member-02", memberName: "이서연", response: "attending", attendanceStatus: "late", companionCount: 1 },
+        { memberId: "member-03", memberName: "박도윤", response: "not_attending", attendanceStatus: "absent", companionCount: 0 },
+      ],
     },
   ],
   notices: [
@@ -234,6 +243,61 @@ async function updateFeePaymentAction(feeId: string, formData: FormData) {
     body: JSON.stringify({
       memberId: formData.get("memberId"),
       status: formData.get("status"),
+    }),
+  });
+
+  revalidatePath("/");
+}
+
+async function createEventAction(formData: FormData) {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/events`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      title: formData.get("title"),
+      startsAt: formData.get("startsAt"),
+      locationName: formData.get("locationName"),
+      locationAddress: formData.get("locationAddress"),
+      responseDeadline: formData.get("responseDeadline"),
+    }),
+  });
+
+  revalidatePath("/");
+}
+
+async function updateEventResponseAction(eventId: string, formData: FormData) {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/events/${eventId}/responses`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      memberId: formData.get("memberId"),
+      response: formData.get("response"),
+    }),
+  });
+
+  revalidatePath("/");
+}
+
+async function updateAttendanceAction(eventId: string, formData: FormData) {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/events/${eventId}/attendance`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      memberId: formData.get("memberId"),
+      status: formData.get("status"),
+      companionCount: Number(formData.get("companionCount")),
     }),
   });
 
@@ -470,18 +534,81 @@ export default async function AdminHome() {
 
             <article className="panel">
               <div className="panelHeader">
-                <h2>일정</h2>
-                <a href="#">출석부</a>
+                <h2>일정/출석</h2>
+                <a href="#">참석 대비 {overview.dashboard.attendanceConversionRate}%</a>
               </div>
+              <form action={createEventAction} className="eventCreateForm">
+                <label>
+                  일정명
+                  <input name="title" placeholder="주말 정기 모임" required />
+                </label>
+                <label>
+                  일시
+                  <input name="startsAt" required type="datetime-local" />
+                </label>
+                <label>
+                  장소
+                  <input name="locationName" placeholder="서울숲" required />
+                </label>
+                <label>
+                  주소
+                  <input name="locationAddress" placeholder="지도 연동 전 주소 입력" />
+                </label>
+                <label>
+                  응답 마감
+                  <input name="responseDeadline" type="datetime-local" />
+                </label>
+                <button className="primary compact" type="submit">
+                  추가
+                </button>
+              </form>
               {overview.events.map((event) => (
-                <div className="summaryLine" key={event.id}>
-                  <div>
-                    <strong>{event.title}</strong>
-                    <span>
-                      {formatDate(event.startsAt)} · {event.locationName}
-                    </span>
+                <div className="eventBlock" key={event.id}>
+                  <div className="summaryLine">
+                    <div>
+                      <strong>{event.title}</strong>
+                      <span>
+                        {formatDate(event.startsAt)} · {event.locationName}
+                      </span>
+                    </div>
+                    <strong>{event.presentCount + event.lateCount}명</strong>
                   </div>
-                  <strong>{event.presentCount + event.lateCount}명</strong>
+                  <div className="feeMeta">
+                    <span>참석 {event.attendingCount}명</span>
+                    <span>불참 {event.notAttendingCount}명</span>
+                    <span>출석 {event.presentCount}명</span>
+                    <span>지각 {event.lateCount}명</span>
+                    <span>결석 {event.absentCount}명</span>
+                  </div>
+                  <div className="eventParticipantRows">
+                    {event.participants.map((participant) => (
+                      <div className="eventParticipantRow" key={`${event.id}-${participant.memberId}`}>
+                        <strong>{participant.memberName}</strong>
+                        <form action={updateEventResponseAction.bind(null, event.id)}>
+                          <input name="memberId" type="hidden" value={participant.memberId} />
+                          <select name="response" defaultValue={participant.response}>
+                            <option value="attending">참석 예정</option>
+                            <option value="not_attending">불참 예정</option>
+                          </select>
+                          <button className="secondary compact" type="submit">
+                            저장
+                          </button>
+                        </form>
+                        <form action={updateAttendanceAction.bind(null, event.id)}>
+                          <input name="memberId" type="hidden" value={participant.memberId} />
+                          <select name="status" defaultValue={participant.attendanceStatus}>
+                            <option value="present">출석</option>
+                            <option value="late">지각</option>
+                            <option value="absent">결석</option>
+                          </select>
+                          <input min="0" name="companionCount" type="number" defaultValue={participant.companionCount} />
+                          <button className="secondary compact" type="submit">
+                            저장
+                          </button>
+                        </form>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </article>

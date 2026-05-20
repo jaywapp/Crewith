@@ -11,6 +11,7 @@ import {
 
 type FeePaymentStatus = "unpaid" | "paid" | "exempt";
 type FeeType = "recurring" | "one_time";
+type EventResponseValue = "attending" | "not_attending";
 type AttendanceStatus = "present" | "late" | "absent";
 type ClubRole = "owner" | "operator" | "member";
 type MemberStatus = "active" | "dormant" | "left" | "removed";
@@ -81,11 +82,24 @@ interface AdminEventListItem {
   title: string;
   startsAt: string;
   locationName: string;
+  locationAddress?: string;
+  responseDeadline?: string;
   attendingCount: number;
   notAttendingCount: number;
   presentCount: number;
   lateCount: number;
   absentCount: number;
+  attendanceRate: number;
+  attendanceConversionRate: number;
+  participants: AdminEventParticipantListItem[];
+}
+
+interface AdminEventParticipantListItem {
+  memberId: string;
+  memberName: string;
+  response: EventResponseValue;
+  attendanceStatus: AttendanceStatus;
+  companionCount: number;
 }
 
 interface AdminNoticeListItem {
@@ -130,6 +144,25 @@ interface CreateAdminFeeInput {
 interface UpdateAdminFeePaymentInput {
   memberId: string;
   status: FeePaymentStatus;
+}
+
+interface CreateAdminEventInput {
+  title: string;
+  startsAt: string;
+  locationName: string;
+  locationAddress?: string;
+  responseDeadline?: string;
+}
+
+interface UpdateAdminEventResponseInput {
+  memberId: string;
+  response: EventResponseValue;
+}
+
+interface UpdateAdminAttendanceInput {
+  memberId: string;
+  status: AttendanceStatus;
+  companionCount?: number;
 }
 
 const club = {
@@ -246,24 +279,62 @@ const events: AdminEventListItem[] = [
     title: "목요 야간 러닝",
     startsAt: "2026-05-21T20:00:00+09:00",
     locationName: "여의도 한강공원",
+    locationAddress: "서울 영등포구 여의동로 330",
+    responseDeadline: "2026-05-21T18:00:00+09:00",
     attendingCount: 18,
     notAttendingCount: 5,
     presentCount: 16,
     lateCount: 2,
     absentCount: 3,
+    attendanceRate: 86,
+    attendanceConversionRate: 100,
+    participants: [],
   },
   {
     id: "event-02",
     title: "주말 장거리 훈련",
     startsAt: "2026-05-24T07:30:00+09:00",
     locationName: "서울숲",
+    locationAddress: "서울 성동구 뚝섬로 273",
+    responseDeadline: "2026-05-23T22:00:00+09:00",
     attendingCount: 14,
     notAttendingCount: 4,
     presentCount: 0,
     lateCount: 0,
     absentCount: 0,
+    attendanceRate: 0,
+    attendanceConversionRate: 0,
+    participants: [],
   },
 ];
+
+const eventResponses: Record<string, Record<string, EventResponseValue>> = {
+  "event-01": {
+    "member-01": "attending",
+    "member-02": "attending",
+    "member-03": "not_attending",
+    "member-04": "attending",
+    "member-05": "not_attending",
+  },
+  "event-02": {
+    "member-01": "attending",
+    "member-02": "attending",
+    "member-03": "attending",
+    "member-04": "not_attending",
+    "member-05": "not_attending",
+  },
+};
+
+const eventAttendance: Record<string, Record<string, { status: AttendanceStatus; companionCount: number }>> = {
+  "event-01": {
+    "member-01": { status: "present", companionCount: 0 },
+    "member-02": { status: "late", companionCount: 1 },
+    "member-03": { status: "absent", companionCount: 0 },
+    "member-04": { status: "present", companionCount: 0 },
+    "member-05": { status: "absent", companionCount: 0 },
+  },
+  "event-02": {},
+};
 
 const notices: AdminNoticeListItem[] = [
   {
@@ -316,6 +387,16 @@ function findFee(feeId: string) {
   return fee;
 }
 
+function findEvent(eventId: string) {
+  const event = events.find((item) => item.id === eventId);
+
+  if (!event) {
+    throw new NotFoundException("Event not found");
+  }
+
+  return event;
+}
+
 function isClubRole(value: unknown): value is ClubRole {
   return value === "owner" || value === "operator" || value === "member";
 }
@@ -330,6 +411,14 @@ function isFeePaymentStatus(value: unknown): value is FeePaymentStatus {
 
 function isFeeType(value: unknown): value is FeeType {
   return value === "recurring" || value === "one_time";
+}
+
+function isEventResponse(value: unknown): value is EventResponseValue {
+  return value === "attending" || value === "not_attending";
+}
+
+function isAttendanceStatus(value: unknown): value is AttendanceStatus {
+  return value === "present" || value === "late" || value === "absent";
 }
 
 function buildFeeItem(fee: AdminFeeListItem): AdminFeeListItem {
@@ -367,12 +456,59 @@ function ensureFeeTargets(feeId: string) {
   }
 }
 
+function ensureEventTargets(eventId: string) {
+  eventResponses[eventId] ??= {};
+  eventAttendance[eventId] ??= {};
+
+  for (const member of activeMembers()) {
+    eventResponses[eventId][member.id] ??= "not_attending";
+    eventAttendance[eventId][member.id] ??= { status: "absent", companionCount: 0 };
+  }
+}
+
+function buildEventItem(event: AdminEventListItem): AdminEventListItem {
+  ensureEventTargets(event.id);
+
+  const targetMembers = activeMembers();
+  const responses = eventResponses[event.id] ?? {};
+  const attendance = eventAttendance[event.id] ?? {};
+  const attendingCount = targetMembers.filter((member) => responses[member.id] === "attending").length;
+  const notAttendingCount = targetMembers.filter((member) => responses[member.id] !== "attending").length;
+  const presentCount = targetMembers.filter((member) => attendance[member.id]?.status === "present").length;
+  const lateCount = targetMembers.filter((member) => attendance[member.id]?.status === "late").length;
+  const absentCount = targetMembers.filter((member) => attendance[member.id]?.status === "absent").length;
+  const attendedCount = presentCount + lateCount;
+  const checkedCount = attendedCount + absentCount;
+
+  return {
+    ...event,
+    attendingCount,
+    notAttendingCount,
+    presentCount,
+    lateCount,
+    absentCount,
+    attendanceRate: checkedCount === 0 ? 0 : Math.round((attendedCount / checkedCount) * 100),
+    attendanceConversionRate: attendingCount === 0 ? 0 : Math.round((attendedCount / attendingCount) * 100),
+    participants: targetMembers.map((member) => ({
+      memberId: member.id,
+      memberName: member.name,
+      response: responses[member.id] ?? "not_attending",
+      attendanceStatus: attendance[member.id]?.status ?? "absent",
+      companionCount: attendance[member.id]?.companionCount ?? 0,
+    })),
+  };
+}
+
+function buildEvents() {
+  return events.map((event) => buildEventItem(event));
+}
+
 function buildDashboard(): DashboardSummary {
   const totalMemberCount = visibleMembers().length;
   const activeMemberCount = activeMembers().length;
   const monthlyFee = buildFeeItem(fees[0]);
   const overdueMemberCount = monthlyFee.unpaidCount;
-  const latestEvent = events[0];
+  const latestEvent = buildEventItem(events[0]);
   const latestNotice = notices[0];
 
   return {
@@ -380,14 +516,8 @@ function buildDashboard(): DashboardSummary {
     activeMemberCount,
     overdueMemberCount,
     noticeReadRate: Math.round((latestNotice.readCount / (latestNotice.readCount + latestNotice.unreadCount)) * 100),
-    attendanceRate: Math.round(
-      ((latestEvent.presentCount + latestEvent.lateCount) /
-        (latestEvent.presentCount + latestEvent.lateCount + latestEvent.absentCount)) *
-        100,
-    ),
-    attendanceConversionRate: Math.round(
-      ((latestEvent.presentCount + latestEvent.lateCount) / latestEvent.attendingCount) * 100,
-    ),
+    attendanceRate: latestEvent.attendanceRate,
+    attendanceConversionRate: latestEvent.attendanceConversionRate,
     monthlyFeeCollectionRate: monthlyFee.collectionRate,
   };
 }
@@ -400,7 +530,7 @@ function buildOverview(): AdminClubOverview {
     dashboard,
     members: visibleMembers(),
     fees: buildFees(),
-    events,
+    events: buildEvents(),
     notices,
     tasks: [
       {
@@ -475,6 +605,12 @@ export class AppController {
     for (const fee of fees) {
       feePayments[fee.id] ??= {};
       feePayments[fee.id][nextMember.id] = "unpaid";
+    }
+    for (const event of events) {
+      eventResponses[event.id] ??= {};
+      eventAttendance[event.id] ??= {};
+      eventResponses[event.id][nextMember.id] = "not_attending";
+      eventAttendance[event.id][nextMember.id] = { status: "absent", companionCount: 0 };
     }
 
     return {
@@ -598,18 +734,73 @@ export class AppController {
   @Patch("clubs/:clubId/events/:eventId/attendance")
   updateEventAttendance(
     @Param("eventId") eventId: string,
-    @Body("status") status: AttendanceStatus,
+    @Body() input: UpdateAdminAttendanceInput,
   ) {
-    const event = events.find((item) => item.id === eventId);
+    const event = findEvent(eventId);
+    const member = findMember(input.memberId);
 
-    if (event && ["present", "late", "absent"].includes(status)) {
-      event.presentCount = status === "present" ? event.presentCount + 1 : event.presentCount;
-      event.lateCount = status === "late" ? event.lateCount + 1 : event.lateCount;
-      event.absentCount = status === "absent" ? event.absentCount + 1 : event.absentCount;
+    if (isAttendanceStatus(input.status)) {
+      eventAttendance[eventId] ??= {};
+      eventAttendance[eventId][member.id] = {
+        status: input.status,
+        companionCount: Number(input.companionCount) || 0,
+      };
     }
 
     return {
-      data: event,
+      data: buildEventItem(event),
+    };
+  }
+
+  @Get("clubs/:clubId/events")
+  getEvents() {
+    return {
+      data: buildEvents(),
+    };
+  }
+
+  @Post("clubs/:clubId/events")
+  createEvent(@Body() input: CreateAdminEventInput) {
+    const nextEvent: AdminEventListItem = {
+      id: `event-${Date.now()}`,
+      title: input.title.trim(),
+      startsAt: input.startsAt,
+      locationName: input.locationName.trim(),
+      locationAddress: input.locationAddress?.trim(),
+      responseDeadline: input.responseDeadline,
+      attendingCount: 0,
+      notAttendingCount: 0,
+      presentCount: 0,
+      lateCount: 0,
+      absentCount: 0,
+      attendanceRate: 0,
+      attendanceConversionRate: 0,
+      participants: [],
+    };
+
+    events.unshift(nextEvent);
+    ensureEventTargets(nextEvent.id);
+
+    return {
+      data: buildEventItem(nextEvent),
+    };
+  }
+
+  @Patch("clubs/:clubId/events/:eventId/responses")
+  updateEventResponse(
+    @Param("eventId") eventId: string,
+    @Body() input: UpdateAdminEventResponseInput,
+  ) {
+    const event = findEvent(eventId);
+    const member = findMember(input.memberId);
+
+    if (isEventResponse(input.response)) {
+      eventResponses[eventId] ??= {};
+      eventResponses[eventId][member.id] = input.response;
+    }
+
+    return {
+      data: buildEventItem(event),
     };
   }
 

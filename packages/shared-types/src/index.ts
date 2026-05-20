@@ -92,11 +92,24 @@ export interface AdminEventListItem {
   title: string;
   startsAt: string;
   locationName: string;
+  locationAddress?: string;
+  responseDeadline?: string;
   attendingCount: number;
   notAttendingCount: number;
   presentCount: number;
   lateCount: number;
   absentCount: number;
+  attendanceRate: number;
+  attendanceConversionRate: number;
+  participants: AdminEventParticipantListItem[];
+}
+
+export interface AdminEventParticipantListItem {
+  memberId: string;
+  memberName: string;
+  response: EventResponse;
+  attendanceStatus: AttendanceStatus;
+  companionCount: number;
 }
 
 export interface AdminNoticeListItem {
@@ -141,4 +154,23 @@ export interface CreateAdminFeeInput {
 export interface UpdateAdminFeePaymentInput {
   memberId: string;
   status: FeeStatus;
+}
+
+export interface CreateAdminEventInput {
+  title: string;
+  startsAt: string;
+  locationName: string;
+  locationAddress?: string;
+  responseDeadline?: string;
+}
+
+export interface UpdateAdminEventResponseInput {
+  memberId: string;
+  response: EventResponse;
+}
+
+export interface UpdateAdminAttendanceInput {
+  memberId: string;
+  status: AttendanceStatus;
+  companionCount?: number;
 }
