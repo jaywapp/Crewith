@@ -2,14 +2,14 @@
 
 ## 1. 디자인 적용 기준
 
-이 문서는 `DESIGN.md`를 기준 디자인 가이드로 사용한다. 원본 디자인의 방향은 Cohere 스타일의 절제된 엔터프라이즈 UI이며, Crewith에는 다음 방식으로 해석해 적용한다.
+이 문서는 `DESIGN.md`를 기준 디자인 가이드로 사용한다. 현재 기준은 Starbucks에서 영감을 받은 따뜻한 리테일/멤버십 UI이며, Crewith에는 스포츠 동호회 운영 서비스에 맞게 다음 방식으로 해석해 적용한다.
 
-- 기본 화면은 흰 캔버스를 사용한다.
-- 주요 구분은 카드 과잉보다 얇은 구분선, 여백, 타이포그래피 위계로 만든다.
-- 가장 중요한 액션은 near-black pill 버튼으로 표현한다.
+- 기본 화면은 따뜻한 cream canvas를 사용한다.
+- 주요 콘텐츠는 white card 위에 12px radius와 낮은 알파의 layered shadow를 적용한다.
+- 가장 중요한 액션은 Green Accent full-pill 버튼으로 표현한다.
 - 보조 액션은 텍스트 링크, outline pill, 아이콘 버튼으로 처리한다.
-- 운영 대시보드와 리스트 화면은 플랫하고 조밀하되, 행 간격과 구분선으로 스캔이 쉬워야 한다.
-- 스포츠 동호회 서비스지만 지나치게 활동적이거나 장식적인 스포츠 앱처럼 만들지 않는다. 운영 도구답게 조용하고 신뢰감 있게 만든다.
+- 운영 대시보드와 리스트 화면은 따뜻한 표면 위에서 조밀하되, 카드/행 간격과 pill 상태 표시로 스캔이 쉬워야 한다.
+- 스포츠 동호회 서비스지만 지나치게 활동적이거나 장식적인 스포츠 앱처럼 만들지 않는다. 따뜻하고 친근하지만 운영 도구답게 신뢰감 있게 만든다.
 
 ## 2. 디자인 토큰 방향
 
@@ -17,32 +17,33 @@
 
 | 역할 | 값 | 사용 |
 |---|---|---|
-| Canvas | `#ffffff` | 기본 배경 |
-| Ink | `#212121` | 본문, 제목 |
-| Near Black | `#17171c` | 주요 CTA, 상단 바, 강조 UI |
-| Muted Slate | `#93939f` | 보조 텍스트, 메타 정보 |
-| Hairline | `#d9d9dd` | 표, 리스트, 섹션 구분선 |
-| Border Light | `#e5e7eb` | 입력창, 카드 경계 |
-| Soft Stone | `#eeece7` | 요약 카드, 빈 상태 배경 |
-| Deep Green | `#003c33` | 강조 섹션, 운영 상태 패널 |
-| Action Blue | `#1863dc` | 링크, 정보성 보조 액션 |
-| Coral | `#ff7759` | 필터 칩, 상태 강조, 주의가 필요한 운영 마커 |
-| Error Red | `#b30000` | 오류, 미납 위험 상태 |
+| Canvas | `#f2f0eb` | 기본 배경 |
+| Ceramic | `#edebe9` | 구역 분리, 보조 배경 |
+| White | `#ffffff` | 카드, 모달, 입력 표면 |
+| Text Black | `rgba(0,0,0,0.87)` | 본문, 제목 |
+| Text Black Soft | `rgba(0,0,0,0.58)` | 보조 텍스트, 메타 정보 |
+| Starbucks Green | `#006241` | 브랜드 heading, 핵심 브랜드 신호 |
+| Green Accent | `#00754A` | 주요 CTA, 활성 상태 |
+| House Green | `#1E3932` | 운영 상태 패널, 강조 band |
+| Green Light | `#d4e9e2` | 성공/valid tint |
+| Gold | `#cba258` | 무료 체험, 구독, 등급 같은 멤버십 순간 |
+| Red | `#c82014` | 오류, 미납 위험 상태 |
+| Hairline | `rgba(0,0,0,0.12)` | 표, 리스트, 섹션 구분선 |
 
 ### 타이포그래피
 
-- Display: `Space Grotesk`, `Inter`, `system-ui`
-- Body/UI: `Inter`, `Arial`, `system-ui`
+- Primary: `Inter`, `"Helvetica Neue"`, `Helvetica`, `Arial`, `system-ui`
+- Display: `Inter`, `"Helvetica Neue"`, `Helvetica`, `Arial`, `system-ui`
 - Technical label: `ui-monospace`, `SFMono-Regular`, `Consolas`
 
-관리자 웹은 정보 밀도가 높으므로 16px 본문과 14px 메타 텍스트를 기본으로 한다. 앱은 터치 가독성을 위해 본문 16px, 보조 텍스트 14px, 주요 숫자 24px 이상을 기준으로 한다.
+SoDoSans는 proprietary font이므로 실제 구현에서는 Inter를 substitute로 사용한다. 전체 UI는 `-0.01em` 수준의 tight tracking을 기본으로 둔다. 관리자 웹은 정보 밀도가 높으므로 16px 본문과 14px 메타 텍스트를 기본으로 한다. 앱은 터치 가독성을 위해 본문 16px, 보조 텍스트 14px, 주요 숫자 24px 이상을 기준으로 한다.
 
 ### 형태와 간격
 
 - 기본 간격: 8px 배수
-- 주요 카드 radius: 8px 또는 16px
-- 큰 미디어/빈 상태 패널 radius: 22px
-- CTA radius: pill
+- 주요 카드 radius: 12px
+- 입력창 radius: 4px
+- CTA radius: 50px pill
 - 주요 터치 영역: 최소 44px
 - 관리자 웹 컨테이너: 1280px 중심
 - 모바일 앱 가로 여백: 20px
@@ -224,7 +225,7 @@
 - 흰 폼 패널
 - 2열 입력은 데스크톱에서만 사용
 - 모바일/좁은 화면에서는 단일 열
-- 주요 제출 버튼은 near-black pill
+- 주요 제출 버튼은 Green Accent 50px pill
 - 보조 취소/삭제는 텍스트 버튼 또는 outline 버튼
 
 ## 6. 회원 앱 레이아웃
@@ -267,20 +268,20 @@
 
 - 상단 요약: 납부 완료, 미납, 면제
 - 월회비와 일회성 비용을 구분
-- 미납 항목은 Coral/Error Red 계열로 과하지 않게 표시
+- 미납 항목은 Red tint 계열로 과하지 않게 표시
 - 결제 CTA는 제공하지 않는다.
 
 ## 7. 컴포넌트 가이드
 
 | 컴포넌트 | 적용 기준 |
 |---|---|
-| Primary Button | near-black pill, 화면당 1개 중심 |
-| Secondary Button | underline text 또는 outline pill |
+| Primary Button | Green Accent full-pill, 화면당 1개 중심 |
+| Secondary Button | Green Accent outline pill 또는 텍스트 링크 |
 | Status Chip | small pill, 미납/마감/운영진 전용 상태 표시 |
-| Metric Tile | 흰 배경 또는 Soft Stone, 1px border, 큰 숫자 |
-| Data Table | rule-separated row, hover는 아주 연한 배경 |
+| Metric Tile | white card, 12px radius, soft layered shadow, 큰 숫자 |
+| Data Table | white row, hairline divider, hover는 Ceramic 계열 배경 |
 | Member Avatar | 원형 이미지, 이미지 없음은 이니셜 |
-| Empty State | 22px radius Soft Stone 패널, 짧은 안내와 CTA |
+| Empty State | 12px radius Ceramic/Gold Lightest 패널, 짧은 안내와 CTA |
 | Modal/Drawer | 생성/수정 작업, 모바일은 bottom sheet |
 | Segmented Control | 참석/불참, 보기 권한, 상태 필터 |
 | Map Card | 네이버 지도 스냅샷/임베드, 16px radius |

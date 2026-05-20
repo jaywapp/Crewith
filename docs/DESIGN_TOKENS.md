@@ -2,157 +2,181 @@
 
 ## 1. 기준
 
-이 문서는 `DESIGN.md`와 `docs/UI_ARCHITECTURE.md`를 기반으로 관리자 웹 CSS 토큰과 Flutter Theme 토큰의 기준값을 정의한다.
+이 문서는 변경된 `DESIGN.md`와 `docs/UI_ARCHITECTURE.md`를 기반으로 관리자 웹 CSS 토큰과 Flutter Theme 토큰의 기준값을 정의한다.
 
-Crewith는 스포츠 동호회 서비스지만, 운영진이 반복적으로 사용하는 관리 도구이므로 차분하고 명확한 운영 UI를 우선한다.
+현재 디자인 기준은 Starbucks에서 영감을 받은 따뜻한 리테일/멤버십 시스템이다. Crewith에는 이를 스포츠 동호회 운영 서비스에 맞게 해석해 적용한다.
+
+- 차가운 흰색 앱보다 따뜻한 cream canvas를 기본으로 한다.
+- Green Accent는 주요 CTA와 활성 상태에 사용한다.
+- House Green은 운영 요약, 프리미엄/구독, 강조 패널에 사용한다.
+- Gold는 무료 체험/구독/등급 같은 멤버십 성격의 순간에만 제한 사용한다.
+- 모든 주요 버튼은 50px full-pill 형태를 유지한다.
+- 카드와 패널은 12px radius와 낮은 알파의 layered shadow를 사용한다.
 
 ## 2. 색상 토큰
 
-| Token | Hex | 용도 |
+| Token | Hex / Value | 용도 |
 |---|---|---|
-| `color.canvas` | `#ffffff` | 기본 배경 |
-| `color.ink` | `#212121` | 기본 텍스트 |
-| `color.nearBlack` | `#17171c` | CTA, 강한 제목, 상단 강조 |
-| `color.muted` | `#93939f` | 보조 텍스트 |
-| `color.slate` | `#75758a` | 테이블 메타, 흐린 라벨 |
-| `color.hairline` | `#d9d9dd` | 리스트/테이블 구분선 |
-| `color.borderLight` | `#e5e7eb` | 입력창, 카드 경계 |
-| `color.softStone` | `#eeece7` | 요약 카드, 빈 상태 |
-| `color.deepGreen` | `#003c33` | 운영 상태 패널 |
-| `color.actionBlue` | `#1863dc` | 링크, 정보 액션 |
-| `color.coral` | `#ff7759` | 주의 상태, 필터 칩 |
-| `color.softCoral` | `#ffad9b` | 약한 주의 배경/경계 |
-| `color.error` | `#b30000` | 오류, 위험 |
-| `color.success` | `#0f7a4f` | 납부 완료, 참석 |
-| `color.warning` | `#a15c00` | 마감 임박, 지각 |
-| `color.info` | `#1863dc` | 정보 상태 |
+| `color.canvas` | `#f2f0eb` | 기본 페이지 배경, 앱 배경 |
+| `color.ceramic` | `#edebe9` | 구역 분리, 보조 배경 |
+| `color.white` | `#ffffff` | 카드, 모달, 입력 표면 |
+| `color.neutralCool` | `#f9f9f9` | 드롭다운, 조용한 유틸리티 표면 |
+| `color.textBlack` | `rgba(0,0,0,0.87)` | 기본 제목/본문 |
+| `color.textBlackSoft` | `rgba(0,0,0,0.58)` | 보조 텍스트, 메타 |
+| `color.starbucksGreen` | `#006241` | 브랜드 heading, 핵심 브랜드 신호 |
+| `color.greenAccent` | `#00754A` | 주요 CTA, 활성 상태, floating action |
+| `color.houseGreen` | `#1E3932` | 깊은 강조 패널, footer/feature band |
+| `color.greenUplift` | `#2b5148` | 보조 dark green, 장식 강조 |
+| `color.greenLight` | `#d4e9e2` | 성공/valid tint, light green surface |
+| `color.gold` | `#cba258` | 무료 체험, 구독, 멤버십 상태 강조 |
+| `color.goldLight` | `#dfc49d` | 구독/등급 보조 배경 |
+| `color.goldLightest` | `#faf6ee` | 구독 안내, partnership 성격 패널 |
+| `color.red` | `#c82014` | 오류, 위험, destructive |
+| `color.yellow` | `#fbbc05` | 경고 |
+| `color.hairline` | `rgba(0,0,0,0.12)` | 구분선 |
+| `color.shadow` | `rgba(0,0,0,0.14)` | 카드 그림자 |
 
 ## 3. 상태 색상
 
 | 상태 | Text | Background | Border |
 |---|---|---|---|
-| 납부 완료 | `#0f7a4f` | `#edf8f2` | `#b7e2cc` |
-| 미납 | `#b30000` | `#fff1ef` | `#ffad9b` |
-| 면제 | `#75758a` | `#f5f5f5` | `#d9d9dd` |
-| 참석 | `#0f7a4f` | `#edf8f2` | `#b7e2cc` |
-| 지각 | `#a15c00` | `#fff7e8` | `#f1c987` |
-| 결석 | `#b30000` | `#fff1ef` | `#ffad9b` |
-| 운영진 전용 | `#003c33` | `#edfce9` | `#b8dfcc` |
+| 납부 완료 | `#006241` | `#d4e9e2` | `#9bcdbd` |
+| 미납 | `#c82014` | `hsl(4 82% 43% / 5%)` | `rgba(200,32,20,0.24)` |
+| 면제 | `rgba(0,0,0,0.58)` | `#edebe9` | `rgba(0,0,0,0.12)` |
+| 참석 | `#006241` | `#d4e9e2` | `#9bcdbd` |
+| 지각 | `#7a4f00` | `#faf6ee` | `#dfc49d` |
+| 결석 | `#c82014` | `hsl(4 82% 43% / 5%)` | `rgba(200,32,20,0.24)` |
+| 운영진 전용 | `#ffffff` | `#1E3932` | `#2b5148` |
+| 무료 체험/구독 | `#33433d` | `#faf6ee` | `#dfc49d` |
 
 ## 4. 타이포그래피
 
 ### Web
 
-| Token | Size | Weight | Line Height | 용도 |
-|---|---:|---:|---:|---|
-| `text.display` | 48px | 400 | 1.1 | 랜딩/큰 빈 상태 |
-| `text.pageTitle` | 32px | 500 | 1.2 | 관리자 페이지 제목 |
-| `text.sectionTitle` | 24px | 500 | 1.3 | 섹션 제목 |
-| `text.cardTitle` | 18px | 500 | 1.4 | 카드/패널 제목 |
-| `text.body` | 16px | 400 | 1.5 | 기본 본문 |
-| `text.meta` | 14px | 400 | 1.4 | 보조 정보 |
-| `text.button` | 14px | 500 | 1.2 | 버튼 |
-| `text.micro` | 12px | 400 | 1.4 | 작은 라벨 |
-| `text.monoLabel` | 12px | 500 | 1.4 | 상태/시스템 라벨 |
+SoDoSans는 proprietary font이므로 실제 구현에서는 Inter를 기본 substitute로 사용한다. 전체 tracking은 `-0.01em`을 기본값으로 둔다.
+
+| Token | Size | Weight | Line Height | Letter Spacing | 용도 |
+|---|---:|---:|---:|---:|---|
+| `text.display` | 45px | 600 | 1.2 | -0.16px | 랜딩/큰 빈 상태 |
+| `text.pageTitle` | 24px | 600 | 36px | -0.16px | 관리자 페이지 제목 |
+| `text.sectionTitle` | 24px | 400 | 36px | -0.16px | 섹션 제목 |
+| `text.cardTitle` | 19px | 600 | 1.5 | -0.01em | 카드/패널 제목 |
+| `text.body` | 16px | 400 | 1.5 | -0.01em | 기본 본문 |
+| `text.meta` | 14px | 400 | 1.5 | -0.01em | 보조 정보 |
+| `text.button` | 14px | 600 | 1.2 | -0.01em | 버튼 |
+| `text.micro` | 13px | 400 | 1.5 | -0.01em | 작은 라벨 |
 
 ### Flutter
 
 | Token | Size | Weight | 용도 |
 |---|---:|---:|---|
-| `displayLarge` | 32 | 500 | 앱 큰 제목 |
-| `titleLarge` | 24 | 500 | 화면 제목 |
-| `titleMedium` | 18 | 500 | 카드 제목 |
+| `displayLarge` | 32 | 600 | 앱 큰 제목 |
+| `headlineMedium` | 24 | 600 | 화면 제목 |
+| `titleLarge` | 19 | 600 | 카드 제목 |
 | `bodyLarge` | 16 | 400 | 본문 |
 | `bodyMedium` | 14 | 400 | 보조 본문 |
-| `labelLarge` | 14 | 500 | 버튼 |
-| `labelSmall` | 12 | 400 | 메타 |
+| `labelLarge` | 14 | 600 | 버튼 |
+| `labelSmall` | 13 | 400 | 메타 |
 
 ## 5. 간격
+
+DESIGN.md의 rem scale을 px 기준으로 해석한다.
 
 | Token | Value |
 |---|---:|
 | `space.1` | 4px |
 | `space.2` | 8px |
-| `space.3` | 12px |
-| `space.4` | 16px |
-| `space.5` | 20px |
-| `space.6` | 24px |
-| `space.8` | 32px |
-| `space.10` | 40px |
-| `space.14` | 56px |
-| `space.16` | 64px |
-| `space.20` | 80px |
+| `space.3` | 16px |
+| `space.4` | 24px |
+| `space.5` | 32px |
+| `space.6` | 40px |
+| `space.7` | 48px |
+| `space.8` | 56px |
+| `space.9` | 64px |
 
 ## 6. Radius
 
 | Token | Value | 용도 |
 |---|---:|---|
-| `radius.xs` | 4px | 작은 입력/썸네일 |
-| `radius.sm` | 8px | 카드, 칩 |
-| `radius.md` | 16px | 폼 패널, 지도 카드 |
-| `radius.lg` | 22px | 빈 상태, 큰 미디어 |
-| `radius.pill` | 9999px | CTA, 칩 |
+| `radius.card` | 12px | 카드, 모달, 메뉴 타일 |
+| `radius.input` | 4px | 입력창 |
+| `radius.pill` | 50px | 모든 버튼 |
+| `radius.circle` | 50% | 아바타, floating action |
 
-## 7. CSS 변수 초안
+## 7. Shadow
+
+| Token | Value | 용도 |
+|---|---|---|
+| `shadow.card` | `0 0 0.5px rgba(0,0,0,0.14), 0 1px 1px rgba(0,0,0,0.24)` | 기본 카드 |
+| `shadow.nav` | `0 1px 3px rgba(0,0,0,0.1), 0 2px 2px rgba(0,0,0,0.06), 0 0 2px rgba(0,0,0,0.07)` | 상단/사이드 내비게이션 |
+| `shadow.floating` | `0 0 6px rgba(0,0,0,0.24), 0 8px 12px rgba(0,0,0,0.14)` | floating action |
+
+## 8. CSS 변수 초안
 
 ```css
 :root {
-  --color-canvas: #ffffff;
-  --color-ink: #212121;
-  --color-near-black: #17171c;
-  --color-muted: #93939f;
-  --color-slate: #75758a;
-  --color-hairline: #d9d9dd;
-  --color-border-light: #e5e7eb;
-  --color-soft-stone: #eeece7;
-  --color-deep-green: #003c33;
-  --color-action-blue: #1863dc;
-  --color-coral: #ff7759;
-  --color-soft-coral: #ffad9b;
-  --color-error: #b30000;
-  --color-success: #0f7a4f;
-  --color-warning: #a15c00;
+  --color-canvas: #f2f0eb;
+  --color-ceramic: #edebe9;
+  --color-white: #ffffff;
+  --color-neutral-cool: #f9f9f9;
+  --color-text-black: rgba(0, 0, 0, 0.87);
+  --color-text-black-soft: rgba(0, 0, 0, 0.58);
+  --color-starbucks-green: #006241;
+  --color-green-accent: #00754a;
+  --color-house-green: #1e3932;
+  --color-green-uplift: #2b5148;
+  --color-green-light: #d4e9e2;
+  --color-gold: #cba258;
+  --color-gold-light: #dfc49d;
+  --color-gold-lightest: #faf6ee;
+  --color-red: #c82014;
+  --color-yellow: #fbbc05;
+  --color-hairline: rgba(0, 0, 0, 0.12);
 
-  --font-display: "Space Grotesk", Inter, system-ui, sans-serif;
-  --font-body: Inter, Arial, system-ui, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --font-primary: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --letter-spacing-tight: -0.01em;
 
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 16px;
-  --radius-lg: 22px;
-  --radius-pill: 9999px;
+  --radius-card: 12px;
+  --radius-input: 4px;
+  --radius-pill: 50px;
+  --radius-circle: 50%;
+
+  --shadow-card: 0 0 0.5px rgba(0,0,0,0.14), 0 1px 1px rgba(0,0,0,0.24);
+  --shadow-nav: 0 1px 3px rgba(0,0,0,0.1), 0 2px 2px rgba(0,0,0,0.06), 0 0 2px rgba(0,0,0,0.07);
+  --shadow-floating: 0 0 6px rgba(0,0,0,0.24), 0 8px 12px rgba(0,0,0,0.14);
 }
 ```
 
-## 8. Flutter Theme 초안
+## 9. Flutter Theme 초안
 
 ```dart
 final crewithColorScheme = ColorScheme.light(
-  surface: Color(0xFFFFFFFF),
-  primary: Color(0xFF17171C),
+  surface: Color(0xFFF2F0EB),
+  primary: Color(0xFF00754A),
   onPrimary: Color(0xFFFFFFFF),
-  secondary: Color(0xFF1863DC),
-  error: Color(0xFFB30000),
-  onSurface: Color(0xFF212121),
+  secondary: Color(0xFF006241),
+  tertiary: Color(0xFFCBA258),
+  error: Color(0xFFC82014),
+  onSurface: Color(0xDD000000),
 );
 
 final crewithTheme = ThemeData(
   useMaterial3: true,
   colorScheme: crewithColorScheme,
-  scaffoldBackgroundColor: Color(0xFFFFFFFF),
+  scaffoldBackgroundColor: Color(0xFFF2F0EB),
   fontFamily: 'Inter',
 );
 ```
 
-## 9. 컴포넌트 기본값
+## 10. 컴포넌트 기본값
 
 | 컴포넌트 | 기본값 |
 |---|---|
-| Primary Button | near-black 배경, white 텍스트, pill radius |
-| Secondary Button | 투명 배경, 밑줄 또는 outline |
-| Input | 1px border, 8px radius, focus blue/violet |
-| Table Row | 흰 배경, hairline bottom border |
-| Metric Tile | white/soft stone, 1px border, 16px radius |
-| Bottom Sheet | 모바일 생성/수정 작업 |
-| Status Chip | pill, 12~14px label |
+| Primary Button | Green Accent 배경, white 텍스트, 50px pill, active scale 0.95 |
+| Secondary Button | 투명 배경, Green Accent border/text, 50px pill |
+| Dark Panel Button | white 배경, Green Accent 텍스트 |
+| Input | white 배경, 1px hairline border, 4px radius |
+| Table Row | white 배경, hairline bottom border |
+| Metric Tile | white card, 12px radius, layered soft shadow |
+| Status Chip | pill, 13~14px label |
+| Floating Action | 56px circle, Green Accent, layered floating shadow |
