@@ -122,6 +122,25 @@ const fallbackOverview: AdminClubOverview = {
       ],
     },
   ],
+  joinRequests: [
+    {
+      id: "join-01",
+      applicantName: "한지우",
+      applicantPhone: "010-5555-1001",
+      greeting: "러닝을 꾸준히 해보고 싶어 가입 신청합니다.",
+      status: "pending",
+      createdAt: "2026-05-20T19:30:00+09:00",
+    },
+  ],
+  inviteLinks: [
+    {
+      id: "invite-01",
+      token: "CREWITH-RUN-30",
+      expiresAt: "2026-06-19",
+      disabled: false,
+      createdAt: "2026-05-20T20:00:00+09:00",
+    },
+  ],
   tasks: [
     {
       id: "task-join",
@@ -188,6 +207,36 @@ async function createMemberAction(formData: FormData) {
       name: formData.get("name"),
       phoneNumber: formData.get("phoneNumber"),
       role: formData.get("role"),
+    }),
+  });
+
+  revalidatePath("/");
+}
+
+async function reviewJoinRequestAction(requestId: string, status: "approved" | "rejected") {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/join-requests/${requestId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  revalidatePath("/");
+}
+
+async function createInviteLinkAction(formData: FormData) {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/invite-links`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      expiresInDays: Number(formData.get("expiresInDays")),
     }),
   });
 
@@ -535,6 +584,56 @@ export default async function AdminHome() {
                 </form>
               ))}
             </div>
+
+            <section className="joinSection">
+              <div className="panelHeader">
+                <h2>가입/초대</h2>
+                <a href="#">대기 {overview.joinRequests.filter((request) => request.status === "pending").length}건</a>
+              </div>
+              <form action={createInviteLinkAction} className="inviteCreateForm">
+                <label>
+                  초대 만료일
+                  <select name="expiresInDays" defaultValue="30">
+                    <option value="7">7일</option>
+                    <option value="30">30일</option>
+                    <option value="90">90일</option>
+                  </select>
+                </label>
+                <button className="primary compact" type="submit">
+                  초대 링크 생성
+                </button>
+              </form>
+              <div className="inviteRows">
+                {overview.inviteLinks.map((invite) => (
+                  <div className="inviteRow" key={invite.id}>
+                    <strong>{invite.token}</strong>
+                    <span>{invite.expiresAt}까지</span>
+                  </div>
+                ))}
+              </div>
+              <div className="joinRows">
+                {overview.joinRequests.map((request) => (
+                  <div className="joinRow" key={request.id}>
+                    <div>
+                      <strong>{request.applicantName}</strong>
+                      <span>{request.applicantPhone}</span>
+                      <p>{request.greeting}</p>
+                    </div>
+                    <strong className={`joinStatus ${request.status}`}>{request.status}</strong>
+                    <form action={reviewJoinRequestAction.bind(null, request.id, "approved")}>
+                      <button className="secondary compact" type="submit">
+                        승인
+                      </button>
+                    </form>
+                    <form action={reviewJoinRequestAction.bind(null, request.id, "rejected")}>
+                      <button className="danger compact" type="submit">
+                        거절
+                      </button>
+                    </form>
+                  </div>
+                ))}
+              </div>
+            </section>
           </article>
 
           <aside className="memberAside">

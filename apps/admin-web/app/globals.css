@@ -621,6 +621,89 @@ textarea:focus {
   grid-template-columns: 100px minmax(120px, 1fr) auto;
 }
 
+.joinSection {
+  border-top: 1px solid var(--color-hairline);
+  margin-top: 22px;
+  padding-top: 22px;
+}
+
+.inviteCreateForm {
+  align-items: end;
+  background: var(--color-gold-lightest);
+  border: 1px solid rgba(203, 162, 88, 0.28);
+  border-radius: var(--radius-card);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 160px auto;
+  margin-bottom: 14px;
+  padding: 16px;
+}
+
+.inviteCreateForm label {
+  color: var(--color-text-black-soft);
+  display: grid;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.inviteRows,
+.joinRows {
+  display: grid;
+  gap: 10px;
+}
+
+.inviteRow,
+.joinRow {
+  align-items: center;
+  border-top: 1px solid var(--color-hairline);
+  display: grid;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.inviteRow {
+  grid-template-columns: minmax(140px, 1fr) auto;
+}
+
+.joinRow {
+  grid-template-columns: minmax(180px, 1fr) 84px auto auto;
+}
+
+.joinRow p {
+  color: var(--color-text-black-soft);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.joinRow span,
+.inviteRow span {
+  color: var(--color-text-black-soft);
+  font-size: 13px;
+}
+
+.joinStatus {
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  padding: 5px 9px;
+  text-align: center;
+}
+
+.joinStatus.pending {
+  background: var(--color-gold-lightest);
+  color: var(--color-gold);
+}
+
+.joinStatus.approved {
+  background: var(--color-green-light);
+  color: var(--color-house-green);
+}
+
+.joinStatus.rejected {
+  background: var(--color-ceramic);
+  color: var(--color-text-black-soft);
+}
+
 @media (max-width: 1024px) {
   .shell {
     grid-template-columns: 1fr;
@@ -650,7 +733,9 @@ textarea:focus {
   .eventParticipantRow,
   .noticeCreateForm,
   .noticeReaderRow,
-  .noticeCommentForm {
+  .noticeCommentForm,
+  .inviteCreateForm,
+  .joinRow {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -694,7 +779,10 @@ textarea:focus {
 
   .noticeCreateForm,
   .noticeReaderRow,
-  .noticeCommentForm {
+  .noticeCommentForm,
+  .inviteCreateForm,
+  .inviteRow,
+  .joinRow {
     grid-template-columns: 1fr;
   }
 

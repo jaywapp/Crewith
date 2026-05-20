@@ -314,27 +314,113 @@ class _FeesPage extends StatelessWidget {
   }
 }
 
-class _MorePage extends StatelessWidget {
+class _MorePage extends StatefulWidget {
   const _MorePage({required this.overview});
 
   final MemberAppOverview overview;
 
   @override
+  State<_MorePage> createState() => _MorePageState();
+}
+
+class _MorePageState extends State<_MorePage> {
+  final _joinNameController = TextEditingController();
+  final _joinPhoneController = TextEditingController();
+  final _joinGreetingController = TextEditingController();
+  final _inviteNameController = TextEditingController();
+  final _invitePhoneController = TextEditingController();
+  final _inviteCodeController = TextEditingController(text: 'CREWITH-RUN-30');
+  String? _resultMessage;
+
+  @override
+  void dispose() {
+    _joinNameController.dispose();
+    _joinPhoneController.dispose();
+    _joinGreetingController.dispose();
+    _inviteNameController.dispose();
+    _invitePhoneController.dispose();
+    _inviteCodeController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _PageScaffold(
       title: '더보기',
-      subtitle: '내 모임 정보',
+      subtitle: '내 모임 정보와 가입 신청',
       children: [
         _InfoCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _CardHeader(label: overview.sportType, title: overview.clubName),
-              Text('${overview.memberName}님은 현재 일반회원으로 참여 중입니다.'),
+              _CardHeader(label: widget.overview.sportType, title: widget.overview.clubName),
+              Text('${widget.overview.memberName}님은 현재 일반회원으로 참여 중입니다.'),
             ],
           ),
         ),
+        _InfoCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _CardHeader(label: '공개 모임', title: '가입 신청'),
+              _TextInput(controller: _joinNameController, label: '이름'),
+              _TextInput(controller: _joinPhoneController, label: '휴대폰 번호'),
+              _TextInput(controller: _joinGreetingController, label: '가입 인사'),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () {
+                  setState(() {
+                    _resultMessage = '${_joinNameController.text.isEmpty ? '신청자' : _joinNameController.text}님의 가입 신청을 접수했습니다.';
+                  });
+                },
+                child: const Text('가입 신청'),
+              ),
+            ],
+          ),
+        ),
+        _InfoCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _CardHeader(label: '비공개 모임', title: '초대 코드로 가입'),
+              _TextInput(controller: _inviteNameController, label: '이름'),
+              _TextInput(controller: _invitePhoneController, label: '휴대폰 번호'),
+              _TextInput(controller: _inviteCodeController, label: '초대 코드'),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () {
+                  setState(() {
+                    _resultMessage = '${_inviteCodeController.text} 초대 코드를 확인했습니다.';
+                  });
+                },
+                child: const Text('초대 코드 확인'),
+              ),
+            ],
+          ),
+        ),
+        if (_resultMessage != null) _InfoCard(child: Text(_resultMessage!)),
       ],
+    );
+  }
+}
+
+class _TextInput extends StatelessWidget {
+  const _TextInput({required this.controller, required this.label});
+
+  final TextEditingController controller;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          border: const OutlineInputBorder(),
+          labelText: label,
+        ),
+      ),
     );
   }
 }

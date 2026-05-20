@@ -53,7 +53,26 @@ export interface AdminClubOverview {
   fees: AdminFeeListItem[];
   events: AdminEventListItem[];
   notices: AdminNoticeListItem[];
+  joinRequests: AdminJoinRequestListItem[];
+  inviteLinks: AdminInviteLinkListItem[];
   tasks: AdminTaskItem[];
+}
+
+export interface AdminJoinRequestListItem {
+  id: string;
+  applicantName: string;
+  applicantPhone: string;
+  greeting: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+}
+
+export interface AdminInviteLinkListItem {
+  id: string;
+  token: string;
+  expiresAt: string;
+  disabled: boolean;
+  createdAt: string;
 }
 
 export interface AdminMemberListItem {
@@ -208,4 +227,23 @@ export interface CreateAdminNoticeCommentInput {
 
 export interface ToggleAdminNoticeReactionInput {
   memberId: string;
+}
+
+export interface CreateJoinRequestInput {
+  applicantName: string;
+  applicantPhone: string;
+  greeting: string;
+}
+
+export interface ReviewJoinRequestInput {
+  status: "approved" | "rejected";
+}
+
+export interface CreateInviteLinkInput {
+  expiresInDays: number;
+}
+
+export interface AcceptInviteInput {
+  applicantName: string;
+  applicantPhone: string;
 }

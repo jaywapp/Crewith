@@ -43,7 +43,26 @@ interface AdminClubOverview {
   fees: AdminFeeListItem[];
   events: AdminEventListItem[];
   notices: AdminNoticeListItem[];
+  joinRequests: AdminJoinRequestListItem[];
+  inviteLinks: AdminInviteLinkListItem[];
   tasks: AdminTaskItem[];
+}
+
+interface AdminJoinRequestListItem {
+  id: string;
+  applicantName: string;
+  applicantPhone: string;
+  greeting: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+}
+
+interface AdminInviteLinkListItem {
+  id: string;
+  token: string;
+  expiresAt: string;
+  disabled: boolean;
+  createdAt: string;
 }
 
 interface AdminMemberListItem {
@@ -237,6 +256,25 @@ interface CreateAdminNoticeCommentInput {
 
 interface ToggleAdminNoticeReactionInput {
   memberId: string;
+}
+
+interface CreateJoinRequestInput {
+  applicantName: string;
+  applicantPhone: string;
+  greeting: string;
+}
+
+interface ReviewJoinRequestInput {
+  status: "approved" | "rejected";
+}
+
+interface CreateInviteLinkInput {
+  expiresInDays?: number;
+}
+
+interface AcceptInviteInput {
+  applicantName: string;
+  applicantPhone: string;
 }
 
 const club = {
@@ -468,6 +506,35 @@ const noticeComments: Record<string, AdminNoticeCommentListItem[]> = {
   ],
 };
 
+const joinRequests: AdminJoinRequestListItem[] = [
+  {
+    id: "join-01",
+    applicantName: "한지우",
+    applicantPhone: "010-5555-1001",
+    greeting: "러닝을 꾸준히 해보고 싶어 가입 신청합니다.",
+    status: "pending",
+    createdAt: "2026-05-20T19:30:00+09:00",
+  },
+  {
+    id: "join-02",
+    applicantName: "오서준",
+    applicantPhone: "010-5555-1002",
+    greeting: "친구 추천으로 신청합니다.",
+    status: "pending",
+    createdAt: "2026-05-20T21:10:00+09:00",
+  },
+];
+
+const inviteLinks: AdminInviteLinkListItem[] = [
+  {
+    id: "invite-01",
+    token: "CREWITH-RUN-30",
+    expiresAt: "2026-06-19",
+    disabled: false,
+    createdAt: "2026-05-20T20:00:00+09:00",
+  },
+];
+
 function activeMembers() {
   return members.filter((member) => member.memberStatus === "active");
 }
@@ -514,6 +581,26 @@ function findNotice(noticeId: string) {
   }
 
   return notice;
+}
+
+function findJoinRequest(requestId: string) {
+  const request = joinRequests.find((item) => item.id === requestId);
+
+  if (!request) {
+    throw new NotFoundException("Join request not found");
+  }
+
+  return request;
+}
+
+function findInviteByToken(token: string) {
+  const invite = inviteLinks.find((item) => item.token === token && !item.disabled);
+
+  if (!invite) {
+    throw new NotFoundException("Invite link not found");
+  }
+
+  return invite;
 }
 
 function isClubRole(value: unknown): value is ClubRole {
@@ -696,12 +783,14 @@ function buildOverview(): AdminClubOverview {
     fees: buildFees(),
     events: buildEvents(),
     notices: buildNotices(),
+    joinRequests,
+    inviteLinks,
     tasks: [
       {
         id: "task-join",
         label: "가입 신청 대기",
-        value: "2건",
-        severity: "info",
+        value: `${joinRequests.filter((request) => request.status === "pending").length}건`,
+        severity: joinRequests.some((request) => request.status === "pending") ? "warning" : "info",
       },
       {
         id: "task-fee",
@@ -811,6 +900,114 @@ export class AppController {
   getMembers() {
     return {
       data: visibleMembers(),
+    };
+  }
+
+  @Get("clubs/:clubId/join-requests")
+  getJoinRequests() {
+    return {
+      data: joinRequests,
+    };
+  }
+
+  @Post("clubs/:clubId/join-requests")
+  createJoinRequest(@Body() input: CreateJoinRequestInput) {
+    const nextRequest: AdminJoinRequestListItem = {
+      id: `join-${Date.now()}`,
+      applicantName: input.applicantName.trim(),
+      applicantPhone: input.applicantPhone.trim(),
+      greeting: input.greeting.trim(),
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+
+    joinRequests.unshift(nextRequest);
+
+    return {
+      data: nextRequest,
+    };
+  }
+
+  @Patch("clubs/:clubId/join-requests/:requestId")
+  reviewJoinRequest(
+    @Param("requestId") requestId: string,
+    @Body() input: ReviewJoinRequestInput,
+  ) {
+    const request = findJoinRequest(requestId);
+
+    if (input.status === "approved" || input.status === "rejected") {
+      request.status = input.status;
+    }
+
+    if (request.status === "approved") {
+      const exists = members.some((member) => member.phoneNumber === request.applicantPhone);
+      if (!exists) {
+        members.push({
+          id: `member-${Date.now()}`,
+          name: request.applicantName,
+          phoneNumber: request.applicantPhone,
+          role: "member",
+          memberStatus: "active",
+          joinedAt: new Date().toISOString().slice(0, 10),
+          lastFeeStatus: "unpaid",
+          attendanceRate: 0,
+        });
+      }
+    }
+
+    return {
+      data: request,
+    };
+  }
+
+  @Get("clubs/:clubId/invite-links")
+  getInviteLinks() {
+    return {
+      data: inviteLinks,
+    };
+  }
+
+  @Post("clubs/:clubId/invite-links")
+  createInviteLink(@Body() input: CreateInviteLinkInput) {
+    const expiresInDays = Number(input.expiresInDays) || 30;
+    const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const nextInvite: AdminInviteLinkListItem = {
+      id: `invite-${Date.now()}`,
+      token: `CREWITH-${Date.now().toString().slice(-6)}`,
+      expiresAt,
+      disabled: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    inviteLinks.unshift(nextInvite);
+
+    return {
+      data: nextInvite,
+    };
+  }
+
+  @Post("clubs/:clubId/invite-links/:token/accept")
+  acceptInvite(
+    @Param("token") token: string,
+    @Body() input: AcceptInviteInput,
+  ) {
+    findInviteByToken(token);
+
+    const member: AdminMemberListItem = {
+      id: `member-${Date.now()}`,
+      name: input.applicantName.trim(),
+      phoneNumber: input.applicantPhone.trim(),
+      role: "member",
+      memberStatus: "active",
+      joinedAt: new Date().toISOString().slice(0, 10),
+      lastFeeStatus: "unpaid",
+      attendanceRate: 0,
+    };
+
+    members.push(member);
+
+    return {
+      data: member,
     };
   }
 
