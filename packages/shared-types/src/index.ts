@@ -37,3 +37,71 @@ export interface DashboardSummary {
   attendanceConversionRate: number;
   monthlyFeeCollectionRate: number;
 }
+
+export interface AdminClubOverview {
+  club: {
+    id: string;
+    name: string;
+    sportType: string;
+    visibility: ClubVisibility;
+    subscriptionStatus: SubscriptionStatus;
+    trialEndsAt: string;
+  };
+  dashboard: DashboardSummary;
+  members: AdminMemberListItem[];
+  fees: AdminFeeListItem[];
+  events: AdminEventListItem[];
+  notices: AdminNoticeListItem[];
+  tasks: AdminTaskItem[];
+}
+
+export interface AdminMemberListItem {
+  id: string;
+  name: string;
+  phoneNumber: string;
+  role: ClubRole;
+  memberStatus: MemberStatus;
+  joinedAt: string;
+  lastFeeStatus: FeeStatus;
+  attendanceRate: number;
+}
+
+export interface AdminFeeListItem {
+  id: string;
+  title: string;
+  amount: number;
+  dueDate: string;
+  paidCount: number;
+  unpaidCount: number;
+  collectionRate: number;
+}
+
+export interface AdminEventListItem {
+  id: string;
+  title: string;
+  startsAt: string;
+  locationName: string;
+  attendingCount: number;
+  notAttendingCount: number;
+  presentCount: number;
+  lateCount: number;
+  absentCount: number;
+}
+
+export interface AdminNoticeListItem {
+  id: string;
+  title: string;
+  visibility: ResourceVisibility;
+  createdAt: string;
+  readCount: number;
+  unreadCount: number;
+  likeCount: number;
+  commentCount: number;
+}
+
+export interface AdminTaskItem {
+  id: string;
+  label: string;
+  value: string;
+  severity: "info" | "warning" | "danger";
+}

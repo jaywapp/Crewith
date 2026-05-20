@@ -197,6 +197,7 @@ h2 {
   display: grid;
   grid-template-columns: 1.5fr 1fr;
   gap: 24px;
+  margin-bottom: 24px;
 }
 
 .panel {
@@ -242,6 +243,88 @@ h2 {
   padding: 16px 0;
 }
 
+.taskValue.info {
+  color: var(--color-starbucks-green);
+}
+
+.taskValue.warning {
+  color: var(--color-gold);
+}
+
+.taskValue.danger {
+  color: var(--color-red);
+}
+
+.operations {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+}
+
+.table {
+  display: grid;
+}
+
+.tableRow {
+  align-items: center;
+  border-top: 1px solid var(--color-hairline);
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(180px, 1fr) 90px 72px 64px;
+  min-height: 64px;
+  padding: 12px 0;
+}
+
+.tableRow div,
+.summaryLine div {
+  display: grid;
+  gap: 5px;
+}
+
+.tableRow strong,
+.summaryLine strong {
+  color: var(--color-text-black);
+}
+
+.tableRow span,
+.summaryLine span {
+  color: var(--color-text-black-soft);
+  font-size: 13px;
+}
+
+.status {
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  font-weight: 700;
+  justify-content: center;
+  padding: 5px 10px;
+}
+
+.status.paid {
+  background: var(--color-green-light);
+  color: var(--color-house-green);
+}
+
+.status.unpaid {
+  background: var(--color-gold-lightest);
+  color: var(--color-gold);
+}
+
+.status.exempt {
+  background: var(--color-ceramic);
+  color: var(--color-text-black-soft);
+}
+
+.summaryLine {
+  align-items: center;
+  border-top: 1px solid var(--color-hairline);
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 72px;
+  padding: 14px 0;
+}
+
 @media (max-width: 1024px) {
   .shell {
     grid-template-columns: 1fr;
@@ -258,7 +341,8 @@ h2 {
   }
 
   .metrics,
-  .grid {
+  .grid,
+  .operations {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -274,12 +358,22 @@ h2 {
   }
 
   .metrics,
-  .grid {
+  .grid,
+  .operations {
     grid-template-columns: 1fr;
   }
 
   .metric + .metric {
     border-left: 0;
     border-top: 1px solid var(--color-hairline);
+  }
+
+  .tableRow {
+    grid-template-columns: 1fr;
+  }
+
+  .summaryLine {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
