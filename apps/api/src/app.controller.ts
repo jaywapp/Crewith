@@ -105,12 +105,28 @@ interface AdminEventParticipantListItem {
 interface AdminNoticeListItem {
   id: string;
   title: string;
+  body: string;
   visibility: ResourceVisibility;
   createdAt: string;
   readCount: number;
   unreadCount: number;
   likeCount: number;
   commentCount: number;
+  readers: AdminNoticeReaderListItem[];
+  comments: AdminNoticeCommentListItem[];
+}
+
+interface AdminNoticeReaderListItem {
+  memberId: string;
+  memberName: string;
+  read: boolean;
+}
+
+interface AdminNoticeCommentListItem {
+  id: string;
+  memberName: string;
+  body: string;
+  createdAt: string;
 }
 
 interface AdminTaskItem {
@@ -163,6 +179,25 @@ interface UpdateAdminAttendanceInput {
   memberId: string;
   status: AttendanceStatus;
   companionCount?: number;
+}
+
+interface CreateAdminNoticeInput {
+  title: string;
+  body: string;
+  visibility?: ResourceVisibility;
+}
+
+interface UpdateAdminNoticeReadInput {
+  memberId: string;
+}
+
+interface CreateAdminNoticeCommentInput {
+  memberId: string;
+  body: string;
+}
+
+interface ToggleAdminNoticeReactionInput {
+  memberId: string;
 }
 
 const club = {
@@ -340,24 +375,59 @@ const notices: AdminNoticeListItem[] = [
   {
     id: "notice-01",
     title: "5월 회비 납부 안내",
+    body: "5월 월회비 납부일은 5월 25일입니다. 미납자는 운영진에게 입금 확인을 요청해주세요.",
     visibility: "all_members",
     createdAt: "2026-05-18T09:00:00+09:00",
     readCount: 21,
     unreadCount: 4,
     likeCount: 9,
     commentCount: 3,
+    readers: [],
+    comments: [],
   },
   {
     id: "notice-02",
     title: "운영진 회의 안건",
+    body: "신규 회원 승인 기준과 6월 훈련 장소 후보를 논의합니다.",
     visibility: "operators_only",
     createdAt: "2026-05-19T21:30:00+09:00",
     readCount: 2,
     unreadCount: 1,
     likeCount: 1,
     commentCount: 2,
+    readers: [],
+    comments: [],
   },
 ];
+
+const noticeReads: Record<string, Set<string>> = {
+  "notice-01": new Set(["member-01", "member-02", "member-04"]),
+  "notice-02": new Set(["member-01", "member-02"]),
+};
+
+const noticeLikes: Record<string, Set<string>> = {
+  "notice-01": new Set(["member-01", "member-02"]),
+  "notice-02": new Set(["member-01"]),
+};
+
+const noticeComments: Record<string, AdminNoticeCommentListItem[]> = {
+  "notice-01": [
+    {
+      id: "comment-01",
+      memberName: "이서연",
+      body: "입금 확인했습니다.",
+      createdAt: "2026-05-18T10:20:00+09:00",
+    },
+  ],
+  "notice-02": [
+    {
+      id: "comment-02",
+      memberName: "김민준",
+      body: "장소 후보를 두 군데로 좁혀보겠습니다.",
+      createdAt: "2026-05-19T22:00:00+09:00",
+    },
+  ],
+};
 
 function activeMembers() {
   return members.filter((member) => member.memberStatus === "active");
@@ -397,6 +467,16 @@ function findEvent(eventId: string) {
   return event;
 }
 
+function findNotice(noticeId: string) {
+  const notice = notices.find((item) => item.id === noticeId);
+
+  if (!notice) {
+    throw new NotFoundException("Notice not found");
+  }
+
+  return notice;
+}
+
 function isClubRole(value: unknown): value is ClubRole {
   return value === "owner" || value === "operator" || value === "member";
 }
@@ -419,6 +499,10 @@ function isEventResponse(value: unknown): value is EventResponseValue {
 
 function isAttendanceStatus(value: unknown): value is AttendanceStatus {
   return value === "present" || value === "late" || value === "absent";
+}
+
+function isResourceVisibility(value: unknown): value is ResourceVisibility {
+  return value === "all_members" || value === "operators_only";
 }
 
 function buildFeeItem(fee: AdminFeeListItem): AdminFeeListItem {
@@ -503,19 +587,60 @@ function buildEvents() {
   return events.map((event) => buildEventItem(event));
 }
 
+function noticeTargetMembers(notice: AdminNoticeListItem) {
+  const targetMembers = activeMembers();
+
+  if (notice.visibility === "operators_only") {
+    return targetMembers.filter((member) => member.role === "owner" || member.role === "operator");
+  }
+
+  return targetMembers;
+}
+
+function buildNoticeItem(notice: AdminNoticeListItem): AdminNoticeListItem {
+  noticeReads[notice.id] ??= new Set();
+  noticeLikes[notice.id] ??= new Set();
+  noticeComments[notice.id] ??= [];
+
+  const targetMembers = noticeTargetMembers(notice);
+  const readCount = targetMembers.filter((member) => noticeReads[notice.id].has(member.id)).length;
+  const unreadCount = Math.max(targetMembers.length - readCount, 0);
+
+  return {
+    ...notice,
+    readCount,
+    unreadCount,
+    likeCount: noticeLikes[notice.id].size,
+    commentCount: noticeComments[notice.id].length,
+    readers: targetMembers.map((member) => ({
+      memberId: member.id,
+      memberName: member.name,
+      read: noticeReads[notice.id].has(member.id),
+    })),
+    comments: noticeComments[notice.id],
+  };
+}
+
+function buildNotices() {
+  return notices.map((notice) => buildNoticeItem(notice));
+}
+
 function buildDashboard(): DashboardSummary {
   const totalMemberCount = visibleMembers().length;
   const activeMemberCount = activeMembers().length;
   const monthlyFee = buildFeeItem(fees[0]);
   const overdueMemberCount = monthlyFee.unpaidCount;
   const latestEvent = buildEventItem(events[0]);
-  const latestNotice = notices[0];
+  const latestNotice = buildNoticeItem(notices[0]);
 
   return {
     totalMemberCount,
     activeMemberCount,
     overdueMemberCount,
-    noticeReadRate: Math.round((latestNotice.readCount / (latestNotice.readCount + latestNotice.unreadCount)) * 100),
+    noticeReadRate:
+      latestNotice.readCount + latestNotice.unreadCount === 0
+        ? 100
+        : Math.round((latestNotice.readCount / (latestNotice.readCount + latestNotice.unreadCount)) * 100),
     attendanceRate: latestEvent.attendanceRate,
     attendanceConversionRate: latestEvent.attendanceConversionRate,
     monthlyFeeCollectionRate: monthlyFee.collectionRate,
@@ -531,7 +656,7 @@ function buildOverview(): AdminClubOverview {
     members: visibleMembers(),
     fees: buildFees(),
     events: buildEvents(),
-    notices,
+    notices: buildNotices(),
     tasks: [
       {
         id: "task-join",
@@ -611,6 +736,11 @@ export class AppController {
       eventAttendance[event.id] ??= {};
       eventResponses[event.id][nextMember.id] = "not_attending";
       eventAttendance[event.id][nextMember.id] = { status: "absent", companionCount: 0 };
+    }
+    for (const notice of notices) {
+      if (notice.visibility === "all_members") {
+        noticeReads[notice.id] ??= new Set();
+      }
     }
 
     return {
@@ -804,17 +934,93 @@ export class AppController {
     };
   }
 
-  @Patch("clubs/:clubId/notices/:noticeId/read")
-  markNoticeRead(@Param("noticeId") noticeId: string) {
-    const notice = notices.find((item) => item.id === noticeId);
+  @Get("clubs/:clubId/notices")
+  getNotices() {
+    return {
+      data: buildNotices(),
+    };
+  }
 
-    if (notice && notice.unreadCount > 0) {
-      notice.readCount += 1;
-      notice.unreadCount -= 1;
+  @Post("clubs/:clubId/notices")
+  createNotice(@Body() input: CreateAdminNoticeInput) {
+    const nextNotice: AdminNoticeListItem = {
+      id: `notice-${Date.now()}`,
+      title: input.title.trim(),
+      body: input.body.trim(),
+      visibility: isResourceVisibility(input.visibility) ? input.visibility : "all_members",
+      createdAt: new Date().toISOString(),
+      readCount: 0,
+      unreadCount: 0,
+      likeCount: 0,
+      commentCount: 0,
+      readers: [],
+      comments: [],
+    };
+
+    notices.unshift(nextNotice);
+    noticeReads[nextNotice.id] = new Set();
+    noticeLikes[nextNotice.id] = new Set();
+    noticeComments[nextNotice.id] = [];
+
+    return {
+      data: buildNoticeItem(nextNotice),
+    };
+  }
+
+  @Patch("clubs/:clubId/notices/:noticeId/read")
+  markNoticeRead(
+    @Param("noticeId") noticeId: string,
+    @Body() input: UpdateAdminNoticeReadInput,
+  ) {
+    const notice = findNotice(noticeId);
+    const member = findMember(input.memberId);
+    noticeReads[noticeId] ??= new Set();
+    noticeReads[noticeId].add(member.id);
+
+    return {
+      data: buildNoticeItem(notice),
+    };
+  }
+
+  @Patch("clubs/:clubId/notices/:noticeId/reactions")
+  toggleNoticeReaction(
+    @Param("noticeId") noticeId: string,
+    @Body() input: ToggleAdminNoticeReactionInput,
+  ) {
+    const notice = findNotice(noticeId);
+    const member = findMember(input.memberId);
+    noticeLikes[noticeId] ??= new Set();
+
+    if (noticeLikes[noticeId].has(member.id)) {
+      noticeLikes[noticeId].delete(member.id);
+    } else {
+      noticeLikes[noticeId].add(member.id);
     }
 
     return {
-      data: notice,
+      data: buildNoticeItem(notice),
+    };
+  }
+
+  @Post("clubs/:clubId/notices/:noticeId/comments")
+  createNoticeComment(
+    @Param("noticeId") noticeId: string,
+    @Body() input: CreateAdminNoticeCommentInput,
+  ) {
+    const notice = findNotice(noticeId);
+    const member = findMember(input.memberId);
+    const comment: AdminNoticeCommentListItem = {
+      id: `comment-${Date.now()}`,
+      memberName: member.name,
+      body: input.body.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    noticeComments[noticeId] ??= [];
+    noticeComments[noticeId].push(comment);
+
+    return {
+      data: buildNoticeItem(notice),
     };
   }
 }

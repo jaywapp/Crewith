@@ -115,12 +115,28 @@ export interface AdminEventParticipantListItem {
 export interface AdminNoticeListItem {
   id: string;
   title: string;
+  body: string;
   visibility: ResourceVisibility;
   createdAt: string;
   readCount: number;
   unreadCount: number;
   likeCount: number;
   commentCount: number;
+  readers: AdminNoticeReaderListItem[];
+  comments: AdminNoticeCommentListItem[];
+}
+
+export interface AdminNoticeReaderListItem {
+  memberId: string;
+  memberName: string;
+  read: boolean;
+}
+
+export interface AdminNoticeCommentListItem {
+  id: string;
+  memberName: string;
+  body: string;
+  createdAt: string;
 }
 
 export interface AdminTaskItem {
@@ -173,4 +189,23 @@ export interface UpdateAdminAttendanceInput {
   memberId: string;
   status: AttendanceStatus;
   companionCount?: number;
+}
+
+export interface CreateAdminNoticeInput {
+  title: string;
+  body: string;
+  visibility: ResourceVisibility;
+}
+
+export interface UpdateAdminNoticeReadInput {
+  memberId: string;
+}
+
+export interface CreateAdminNoticeCommentInput {
+  memberId: string;
+  body: string;
+}
+
+export interface ToggleAdminNoticeReactionInput {
+  memberId: string;
 }

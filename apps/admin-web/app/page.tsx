@@ -105,12 +105,21 @@ const fallbackOverview: AdminClubOverview = {
     {
       id: "notice-01",
       title: "5월 회비 납부 안내",
+      body: "5월 월회비 납부일은 5월 25일입니다.",
       visibility: "all_members",
       createdAt: "2026-05-18T09:00:00+09:00",
       readCount: 21,
       unreadCount: 4,
       likeCount: 9,
       commentCount: 3,
+      readers: [
+        { memberId: "member-01", memberName: "김민준", read: true },
+        { memberId: "member-02", memberName: "이서연", read: true },
+        { memberId: "member-03", memberName: "박도윤", read: false },
+      ],
+      comments: [
+        { id: "comment-01", memberName: "이서연", body: "입금 확인했습니다.", createdAt: "2026-05-18T10:20:00+09:00" },
+      ],
     },
   ],
   tasks: [
@@ -298,6 +307,73 @@ async function updateAttendanceAction(eventId: string, formData: FormData) {
       memberId: formData.get("memberId"),
       status: formData.get("status"),
       companionCount: Number(formData.get("companionCount")),
+    }),
+  });
+
+  revalidatePath("/");
+}
+
+async function createNoticeAction(formData: FormData) {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/notices`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      title: formData.get("title"),
+      body: formData.get("body"),
+      visibility: formData.get("visibility"),
+    }),
+  });
+
+  revalidatePath("/");
+}
+
+async function markNoticeReadAction(noticeId: string, formData: FormData) {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/notices/${noticeId}/read`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      memberId: formData.get("memberId"),
+    }),
+  });
+
+  revalidatePath("/");
+}
+
+async function toggleNoticeReactionAction(noticeId: string, formData: FormData) {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/notices/${noticeId}/reactions`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      memberId: formData.get("memberId"),
+    }),
+  });
+
+  revalidatePath("/");
+}
+
+async function createNoticeCommentAction(noticeId: string, formData: FormData) {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/notices/${noticeId}/comments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      memberId: formData.get("memberId"),
+      body: formData.get("body"),
     }),
   });
 
@@ -615,18 +691,85 @@ export default async function AdminHome() {
 
             <article className="panel">
               <div className="panelHeader">
-                <h2>공지</h2>
-                <a href="#">공지 관리</a>
+                <h2>공지 관리</h2>
+                <a href="#">확인률 {overview.dashboard.noticeReadRate}%</a>
               </div>
+              <form action={createNoticeAction} className="noticeCreateForm">
+                <label>
+                  제목
+                  <input name="title" placeholder="공지 제목" required />
+                </label>
+                <label>
+                  권한
+                  <select name="visibility" defaultValue="all_members">
+                    <option value="all_members">전체 회원</option>
+                    <option value="operators_only">운영진만</option>
+                  </select>
+                </label>
+                <label className="wideField">
+                  내용
+                  <textarea name="body" placeholder="공지 내용을 입력하세요." required />
+                </label>
+                <button className="primary compact" type="submit">
+                  작성
+                </button>
+              </form>
               {overview.notices.map((notice) => (
-                <div className="summaryLine" key={notice.id}>
-                  <div>
-                    <strong>{notice.title}</strong>
-                    <span>
-                      확인 {notice.readCount}명 · 미확인 {notice.unreadCount}명 · 댓글 {notice.commentCount}개
-                    </span>
+                <div className="noticeBlock" key={notice.id}>
+                  <div className="summaryLine">
+                    <div>
+                      <strong>{notice.title}</strong>
+                      <span>
+                        {notice.visibility === "operators_only" ? "운영진만" : "전체 회원"} · 확인 {notice.readCount}명 · 미확인{" "}
+                        {notice.unreadCount}명
+                      </span>
+                    </div>
+                    <strong>{notice.likeCount}</strong>
                   </div>
-                  <strong>{notice.likeCount}</strong>
+                  <p className="noticeBody">{notice.body}</p>
+                  <div className="noticeReaderRows">
+                    {notice.readers.map((reader) => (
+                      <div className="noticeReaderRow" key={`${notice.id}-${reader.memberId}`}>
+                        <span>{reader.memberName}</span>
+                        <strong className={reader.read ? "readState read" : "readState unread"}>
+                          {reader.read ? "확인" : "미확인"}
+                        </strong>
+                        <form action={markNoticeReadAction.bind(null, notice.id)}>
+                          <input name="memberId" type="hidden" value={reader.memberId} />
+                          <button className="secondary compact" type="submit">
+                            확인 처리
+                          </button>
+                        </form>
+                        <form action={toggleNoticeReactionAction.bind(null, notice.id)}>
+                          <input name="memberId" type="hidden" value={reader.memberId} />
+                          <button className="secondary compact" type="submit">
+                            좋아요
+                          </button>
+                        </form>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="noticeComments">
+                    {notice.comments.map((comment) => (
+                      <div className="noticeComment" key={comment.id}>
+                        <strong>{comment.memberName}</strong>
+                        <span>{comment.body}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <form action={createNoticeCommentAction.bind(null, notice.id)} className="noticeCommentForm">
+                    <select name="memberId" defaultValue={overview.members[0]?.id}>
+                      {overview.members.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.name}
+                        </option>
+                      ))}
+                    </select>
+                    <input name="body" placeholder="댓글 입력" required />
+                    <button className="secondary compact" type="submit">
+                      댓글
+                    </button>
+                  </form>
                 </div>
               ))}
             </article>
