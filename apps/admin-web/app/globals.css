@@ -156,8 +156,26 @@ h2 {
   color: var(--color-green-accent);
 }
 
+.danger {
+  background: transparent;
+  border: 1px solid var(--color-red);
+  border-radius: var(--radius-pill);
+  color: var(--color-red);
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 44px;
+  padding: 7px 20px;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.compact {
+  min-height: 38px;
+  padding: 5px 14px;
+}
+
 .primary:active,
-.secondary:active {
+.secondary:active,
+.danger:active {
   transform: scale(0.95);
 }
 
@@ -255,10 +273,85 @@ h2 {
   color: var(--color-red);
 }
 
-.operations {
+.operations,
+.memberWorkspace {
   display: grid;
   gap: 24px;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+}
+
+.memberWorkspace {
+  align-items: start;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.8fr);
+}
+
+.memberAside {
+  display: grid;
+  gap: 24px;
+}
+
+.memberCreateForm {
+  align-items: end;
+  background: var(--color-gold-lightest);
+  border: 1px solid rgba(203, 162, 88, 0.28);
+  border-radius: var(--radius-card);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.2fr) 130px auto;
+  margin-bottom: 20px;
+  padding: 16px;
+}
+
+.memberCreateForm label,
+.memberRow label {
+  color: var(--color-text-black-soft);
+  display: grid;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+}
+
+input,
+select {
+  background: var(--color-white);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-input);
+  color: var(--color-text-black);
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--color-green-accent);
+  outline: 2px solid rgba(0, 117, 74, 0.14);
+}
+
+.memberRows {
+  display: grid;
+}
+
+.memberRow {
+  align-items: end;
+  border-top: 1px solid var(--color-hairline);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(180px, 1.2fr) 112px 112px 112px 72px auto auto;
+  padding: 14px 0;
+}
+
+.memberIdentity {
+  display: grid;
+  gap: 5px;
+}
+
+.memberIdentity strong {
+  color: var(--color-text-black);
+}
+
+.memberIdentity span {
+  color: var(--color-text-black-soft);
+  font-size: 13px;
 }
 
 .table {
@@ -342,7 +435,13 @@ h2 {
 
   .metrics,
   .grid,
-  .operations {
+  .operations,
+  .memberWorkspace {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .memberCreateForm,
+  .memberRow {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -359,7 +458,8 @@ h2 {
 
   .metrics,
   .grid,
-  .operations {
+  .operations,
+  .memberWorkspace {
     grid-template-columns: 1fr;
   }
 
@@ -369,6 +469,11 @@ h2 {
   }
 
   .tableRow {
+    grid-template-columns: 1fr;
+  }
+
+  .memberCreateForm,
+  .memberRow {
     grid-template-columns: 1fr;
   }
 

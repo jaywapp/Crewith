@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  NotFoundException,
+  Param,
+  Patch,
+  Post,
+} from "@nestjs/common";
 
 type FeePaymentStatus = "unpaid" | "paid" | "exempt";
 type AttendanceStatus = "present" | "late" | "absent";
@@ -84,6 +93,20 @@ interface AdminTaskItem {
   label: string;
   value: string;
   severity: "info" | "warning" | "danger";
+}
+
+interface CreateAdminMemberInput {
+  name: string;
+  phoneNumber: string;
+  role?: ClubRole;
+}
+
+interface UpdateAdminMemberInput {
+  name?: string;
+  phoneNumber?: string;
+  role?: ClubRole;
+  memberStatus?: MemberStatus;
+  lastFeeStatus?: FeePaymentStatus;
 }
 
 const club = {
@@ -217,10 +240,40 @@ const notices: AdminNoticeListItem[] = [
   },
 ];
 
+function activeMembers() {
+  return members.filter((member) => member.memberStatus === "active");
+}
+
+function visibleMembers() {
+  return members.filter((member) => member.memberStatus !== "removed");
+}
+
+function findMember(memberId: string) {
+  const member = members.find((item) => item.id === memberId);
+
+  if (!member) {
+    throw new NotFoundException("Member not found");
+  }
+
+  return member;
+}
+
+function isClubRole(value: unknown): value is ClubRole {
+  return value === "owner" || value === "operator" || value === "member";
+}
+
+function isMemberStatus(value: unknown): value is MemberStatus {
+  return value === "active" || value === "dormant" || value === "left" || value === "removed";
+}
+
+function isFeePaymentStatus(value: unknown): value is FeePaymentStatus {
+  return value === "unpaid" || value === "paid" || value === "exempt";
+}
+
 function buildDashboard(): DashboardSummary {
-  const totalMemberCount = 28;
-  const activeMemberCount = 25;
-  const overdueMemberCount = members.filter((member) => member.lastFeeStatus === "unpaid").length;
+  const totalMemberCount = visibleMembers().length;
+  const activeMemberCount = activeMembers().length;
+  const overdueMemberCount = visibleMembers().filter((member) => member.lastFeeStatus === "unpaid").length;
   const latestEvent = events[0];
   const latestNotice = notices[0];
 
@@ -247,7 +300,7 @@ function buildOverview(): AdminClubOverview {
   return {
     club,
     dashboard,
-    members,
+    members: visibleMembers(),
     fees,
     events,
     notices,
@@ -300,16 +353,85 @@ export class AppController {
     };
   }
 
+  @Get("clubs/:clubId/members")
+  getMembers() {
+    return {
+      data: visibleMembers(),
+    };
+  }
+
+  @Post("clubs/:clubId/members")
+  createMember(@Body() input: CreateAdminMemberInput) {
+    const nextMember: AdminMemberListItem = {
+      id: `member-${Date.now()}`,
+      name: input.name.trim(),
+      phoneNumber: input.phoneNumber.trim(),
+      role: isClubRole(input.role) ? input.role : "member",
+      memberStatus: "active",
+      joinedAt: new Date().toISOString().slice(0, 10),
+      lastFeeStatus: "unpaid",
+      attendanceRate: 0,
+    };
+
+    members.push(nextMember);
+
+    return {
+      data: nextMember,
+    };
+  }
+
+  @Patch("clubs/:clubId/members/:memberId")
+  updateMember(
+    @Param("memberId") memberId: string,
+    @Body() input: UpdateAdminMemberInput,
+  ) {
+    const member = findMember(memberId);
+
+    if (typeof input.name === "string" && input.name.trim()) {
+      member.name = input.name.trim();
+    }
+
+    if (typeof input.phoneNumber === "string" && input.phoneNumber.trim()) {
+      member.phoneNumber = input.phoneNumber.trim();
+    }
+
+    if (isClubRole(input.role)) {
+      member.role = input.role;
+    }
+
+    if (isMemberStatus(input.memberStatus)) {
+      member.memberStatus = input.memberStatus;
+    }
+
+    if (isFeePaymentStatus(input.lastFeeStatus)) {
+      member.lastFeeStatus = input.lastFeeStatus;
+    }
+
+    return {
+      data: member,
+    };
+  }
+
   @Patch("clubs/:clubId/members/:memberId/fee-status")
   updateMemberFeeStatus(
     @Param("memberId") memberId: string,
     @Body("status") status: FeePaymentStatus,
   ) {
-    const member = members.find((item) => item.id === memberId);
+    const member = findMember(memberId);
 
-    if (member && ["unpaid", "paid", "exempt"].includes(status)) {
+    if (isFeePaymentStatus(status)) {
       member.lastFeeStatus = status;
     }
+
+    return {
+      data: member,
+    };
+  }
+
+  @Delete("clubs/:clubId/members/:memberId")
+  removeMember(@Param("memberId") memberId: string) {
+    const member = findMember(memberId);
+    member.memberStatus = "removed";
 
     return {
       data: member,

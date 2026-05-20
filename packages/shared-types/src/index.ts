@@ -105,3 +105,17 @@ export interface AdminTaskItem {
   value: string;
   severity: "info" | "warning" | "danger";
 }
+
+export interface CreateAdminMemberInput {
+  name: string;
+  phoneNumber: string;
+  role: ClubRole;
+}
+
+export interface UpdateAdminMemberInput {
+  name?: string;
+  phoneNumber?: string;
+  role?: ClubRole;
+  memberStatus?: MemberStatus;
+  lastFeeStatus?: FeeStatus;
+}

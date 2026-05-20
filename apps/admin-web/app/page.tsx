@@ -1,4 +1,11 @@
-import type { AdminClubOverview, ApiEnvelope } from "@crewith/shared-types";
+import type {
+  AdminClubOverview,
+  ApiEnvelope,
+  ClubRole,
+  FeeStatus,
+  MemberStatus,
+} from "@crewith/shared-types";
+import { revalidatePath } from "next/cache";
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://127.0.0.1:4000/api/v1";
 const clubId = "club-seoul-runners";
@@ -13,9 +20,9 @@ const fallbackOverview: AdminClubOverview = {
     trialEndsAt: "2026-06-20",
   },
   dashboard: {
-    totalMemberCount: 28,
-    activeMemberCount: 25,
-    overdueMemberCount: 3,
+    totalMemberCount: 5,
+    activeMemberCount: 4,
+    overdueMemberCount: 2,
     noticeReadRate: 84,
     attendanceRate: 86,
     attendanceConversionRate: 100,
@@ -99,13 +106,32 @@ const fallbackOverview: AdminClubOverview = {
     {
       id: "task-fee",
       label: "회비 미납자",
-      value: "3명",
+      value: "2명",
       severity: "warning",
     },
   ],
 };
 
 const navItems = ["대시보드", "구성원", "회비", "일정", "공지", "가입/초대", "통계", "설정"];
+
+const roleLabels: Record<ClubRole, string> = {
+  owner: "모임장",
+  operator: "운영진",
+  member: "일반회원",
+};
+
+const memberStatusLabels: Record<MemberStatus, string> = {
+  active: "활성",
+  dormant: "휴면",
+  left: "탈퇴",
+  removed: "삭제",
+};
+
+const feeStatusLabels: Record<FeeStatus, string> = {
+  paid: "납부",
+  unpaid: "미납",
+  exempt: "면제",
+};
 
 async function getOverview() {
   try {
@@ -124,6 +150,52 @@ async function getOverview() {
   }
 }
 
+async function createMemberAction(formData: FormData) {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/members`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: formData.get("name"),
+      phoneNumber: formData.get("phoneNumber"),
+      role: formData.get("role"),
+    }),
+  });
+
+  revalidatePath("/");
+}
+
+async function updateMemberAction(memberId: string, formData: FormData) {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/members/${memberId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      role: formData.get("role"),
+      memberStatus: formData.get("memberStatus"),
+      lastFeeStatus: formData.get("lastFeeStatus"),
+    }),
+  });
+
+  revalidatePath("/");
+}
+
+async function removeMemberAction(memberId: string) {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/members/${memberId}`, {
+    method: "DELETE",
+  });
+
+  revalidatePath("/");
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("ko-KR", {
     month: "short",
@@ -135,22 +207,6 @@ function formatDate(value: string) {
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("ko-KR").format(value);
-}
-
-function roleLabel(role: string) {
-  return {
-    owner: "모임장",
-    operator: "운영진",
-    member: "일반회원",
-  }[role];
-}
-
-function feeStatusLabel(status: string) {
-  return {
-    paid: "납부",
-    unpaid: "미납",
-    exempt: "면제",
-  }[status];
 }
 
 export default async function AdminHome() {
@@ -223,80 +279,135 @@ export default async function AdminHome() {
           </article>
         </section>
 
-        <section className="operations">
-          <article className="panel">
+        <section className="memberWorkspace">
+          <article className="panel memberEditor">
             <div className="panelHeader">
-              <h2>구성원</h2>
-              <a href="#">회원 관리</a>
+              <h2>구성원 관리</h2>
+              <a href="#">회원 {overview.members.length}명</a>
             </div>
-            <div className="table">
+
+            <form action={createMemberAction} className="memberCreateForm">
+              <label>
+                이름
+                <input name="name" placeholder="홍길동" required />
+              </label>
+              <label>
+                휴대폰 번호
+                <input name="phoneNumber" placeholder="010-0000-0000" required />
+              </label>
+              <label>
+                역할
+                <select name="role" defaultValue="member">
+                  <option value="member">일반회원</option>
+                  <option value="operator">운영진</option>
+                  <option value="owner">모임장</option>
+                </select>
+              </label>
+              <button className="primary" type="submit">
+                회원 추가
+              </button>
+            </form>
+
+            <div className="memberRows">
               {overview.members.map((member) => (
-                <div className="tableRow" key={member.id}>
-                  <div>
+                <form action={updateMemberAction.bind(null, member.id)} className="memberRow" key={member.id}>
+                  <div className="memberIdentity">
                     <strong>{member.name}</strong>
-                    <span>{member.phoneNumber}</span>
+                    <span>
+                      {member.phoneNumber} · 가입 {member.joinedAt}
+                    </span>
                   </div>
-                  <span>{roleLabel(member.role)}</span>
-                  <span className={`status ${member.lastFeeStatus}`}>{feeStatusLabel(member.lastFeeStatus)}</span>
-                  <span>{member.attendanceRate}%</span>
-                </div>
+                  <label>
+                    역할
+                    <select name="role" defaultValue={member.role}>
+                      <option value="owner">모임장</option>
+                      <option value="operator">운영진</option>
+                      <option value="member">일반회원</option>
+                    </select>
+                  </label>
+                  <label>
+                    상태
+                    <select name="memberStatus" defaultValue={member.memberStatus}>
+                      <option value="active">활성</option>
+                      <option value="dormant">휴면</option>
+                      <option value="left">탈퇴</option>
+                    </select>
+                  </label>
+                  <label>
+                    회비
+                    <select name="lastFeeStatus" defaultValue={member.lastFeeStatus}>
+                      <option value="paid">납부</option>
+                      <option value="unpaid">미납</option>
+                      <option value="exempt">면제</option>
+                    </select>
+                  </label>
+                  <span className={`status ${member.lastFeeStatus}`}>{feeStatusLabels[member.lastFeeStatus]}</span>
+                  <button className="secondary compact" type="submit">
+                    저장
+                  </button>
+                  <button className="danger compact" formAction={removeMemberAction.bind(null, member.id)}>
+                    삭제
+                  </button>
+                </form>
               ))}
             </div>
           </article>
 
-          <article className="panel">
-            <div className="panelHeader">
-              <h2>회비</h2>
-              <a href="#">납부 관리</a>
-            </div>
-            {overview.fees.map((fee) => (
-              <div className="summaryLine" key={fee.id}>
-                <div>
-                  <strong>{fee.title}</strong>
-                  <span>
-                    {formatCurrency(fee.amount)}원 · {fee.dueDate}까지
-                  </span>
-                </div>
-                <strong>{fee.collectionRate}%</strong>
+          <aside className="memberAside">
+            <article className="panel">
+              <div className="panelHeader">
+                <h2>회비</h2>
+                <a href="#">납부 관리</a>
               </div>
-            ))}
-          </article>
+              {overview.fees.map((fee) => (
+                <div className="summaryLine" key={fee.id}>
+                  <div>
+                    <strong>{fee.title}</strong>
+                    <span>
+                      {formatCurrency(fee.amount)}원 · {fee.dueDate}까지
+                    </span>
+                  </div>
+                  <strong>{fee.collectionRate}%</strong>
+                </div>
+              ))}
+            </article>
 
-          <article className="panel">
-            <div className="panelHeader">
-              <h2>일정</h2>
-              <a href="#">출석부</a>
-            </div>
-            {overview.events.map((event) => (
-              <div className="summaryLine" key={event.id}>
-                <div>
-                  <strong>{event.title}</strong>
-                  <span>
-                    {formatDate(event.startsAt)} · {event.locationName}
-                  </span>
-                </div>
-                <strong>{event.presentCount + event.lateCount}명</strong>
+            <article className="panel">
+              <div className="panelHeader">
+                <h2>일정</h2>
+                <a href="#">출석부</a>
               </div>
-            ))}
-          </article>
+              {overview.events.map((event) => (
+                <div className="summaryLine" key={event.id}>
+                  <div>
+                    <strong>{event.title}</strong>
+                    <span>
+                      {formatDate(event.startsAt)} · {event.locationName}
+                    </span>
+                  </div>
+                  <strong>{event.presentCount + event.lateCount}명</strong>
+                </div>
+              ))}
+            </article>
 
-          <article className="panel">
-            <div className="panelHeader">
-              <h2>공지</h2>
-              <a href="#">공지 관리</a>
-            </div>
-            {overview.notices.map((notice) => (
-              <div className="summaryLine" key={notice.id}>
-                <div>
-                  <strong>{notice.title}</strong>
-                  <span>
-                    확인 {notice.readCount}명 · 미확인 {notice.unreadCount}명 · 댓글 {notice.commentCount}개
-                  </span>
-                </div>
-                <strong>{notice.likeCount}</strong>
+            <article className="panel">
+              <div className="panelHeader">
+                <h2>공지</h2>
+                <a href="#">공지 관리</a>
               </div>
-            ))}
-          </article>
+              {overview.notices.map((notice) => (
+                <div className="summaryLine" key={notice.id}>
+                  <div>
+                    <strong>{notice.title}</strong>
+                    <span>
+                      확인 {notice.readCount}명 · 미확인 {notice.unreadCount}명 · 댓글 {notice.commentCount}개
+                    </span>
+                  </div>
+                  <strong>{notice.likeCount}</strong>
+                </div>
+              ))}
+            </article>
+          </aside>
         </section>
       </section>
     </main>
