@@ -136,6 +136,45 @@ interface AdminTaskItem {
   severity: "info" | "warning" | "danger";
 }
 
+interface MemberAppOverview {
+  club: {
+    id: string;
+    name: string;
+    sportType: string;
+  };
+  member: {
+    id: string;
+    name: string;
+    role: ClubRole;
+  };
+  fees: Array<{
+    id: string;
+    title: string;
+    amount: number;
+    dueDate: string;
+    status: FeePaymentStatus;
+  }>;
+  events: Array<{
+    id: string;
+    title: string;
+    startsAt: string;
+    locationName: string;
+    locationAddress?: string;
+    response: EventResponseValue;
+    attendanceStatus: AttendanceStatus;
+    companionCount: number;
+  }>;
+  notices: Array<{
+    id: string;
+    title: string;
+    body: string;
+    visibility: ResourceVisibility;
+    read: boolean;
+    likeCount: number;
+    commentCount: number;
+  }>;
+}
+
 interface CreateAdminMemberInput {
   name: string;
   phoneNumber: string;
@@ -680,6 +719,61 @@ function buildOverview(): AdminClubOverview {
   };
 }
 
+function buildMemberAppOverview(memberId: string): MemberAppOverview {
+  const member = findMember(memberId);
+
+  return {
+    club: {
+      id: club.id,
+      name: club.name,
+      sportType: club.sportType,
+    },
+    member: {
+      id: member.id,
+      name: member.name,
+      role: member.role,
+    },
+    fees: buildFees().map((fee) => ({
+      id: fee.id,
+      title: fee.title,
+      amount: fee.amount,
+      dueDate: fee.dueDate,
+      status: fee.payments.find((payment) => payment.memberId === member.id)?.status ?? "unpaid",
+    })),
+    events: buildEvents().map((event) => {
+      const participant = event.participants.find((item) => item.memberId === member.id);
+
+      return {
+        id: event.id,
+        title: event.title,
+        startsAt: event.startsAt,
+        locationName: event.locationName,
+        locationAddress: event.locationAddress,
+        response: participant?.response ?? "not_attending",
+        attendanceStatus: participant?.attendanceStatus ?? "absent",
+        companionCount: participant?.companionCount ?? 0,
+      };
+    }),
+    notices: buildNotices()
+      .filter((notice) => {
+        if (notice.visibility === "all_members") {
+          return true;
+        }
+
+        return member.role === "owner" || member.role === "operator";
+      })
+      .map((notice) => ({
+        id: notice.id,
+        title: notice.title,
+        body: notice.body,
+        visibility: notice.visibility,
+        read: notice.readers.find((reader) => reader.memberId === member.id)?.read ?? false,
+        likeCount: notice.likeCount,
+        commentCount: notice.commentCount,
+      })),
+  };
+}
+
 @Controller()
 export class AppController {
   @Get("health")
@@ -703,6 +797,13 @@ export class AppController {
           id: clubId,
         },
       },
+    };
+  }
+
+  @Get("clubs/:clubId/member-app/:memberId")
+  getMemberAppOverview(@Param("memberId") memberId: string) {
+    return {
+      data: buildMemberAppOverview(memberId),
     };
   }
 
