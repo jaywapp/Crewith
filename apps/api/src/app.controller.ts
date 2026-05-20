@@ -1,0 +1,15 @@
+import { Controller, Get } from "@nestjs/common";
+
+@Controller()
+export class AppController {
+  @Get("health")
+  health() {
+    return {
+      data: {
+        status: "ok",
+        service: "crewith-api",
+        checkedAt: new Date().toISOString(),
+      },
+    };
+  }
+}

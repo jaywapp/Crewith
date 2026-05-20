@@ -1,0 +1,457 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ClubRole {
+  owner
+  operator
+  member
+}
+
+enum MemberStatus {
+  active
+  dormant
+  left
+  removed
+}
+
+enum ClubVisibility {
+  public
+  private
+}
+
+enum ResourceVisibility {
+  all_members
+  operators_only
+}
+
+enum JoinRequestStatus {
+  pending
+  approved
+  rejected
+}
+
+enum FeeIntervalType {
+  weekly
+  biweekly
+  monthly
+  quarterly
+  yearly
+  custom
+}
+
+enum FeeType {
+  recurring
+  one_time
+}
+
+enum FeeTargetVisibility {
+  all_members
+  selected_members
+}
+
+enum FeePaymentStatus {
+  unpaid
+  paid
+  exempt
+}
+
+enum EventResponseValue {
+  attending
+  not_attending
+}
+
+enum AttendanceStatus {
+  present
+  late
+  absent
+}
+
+enum SubscriptionTier {
+  under_30
+  under_100
+  under_300
+}
+
+enum SubscriptionStatus {
+  trial
+  active
+  expired
+  suspended
+}
+
+enum NotificationType {
+  notice
+  event
+  fee
+  join_request
+}
+
+enum DevicePlatform {
+  android
+  ios
+}
+
+enum FileType {
+  profile_image
+}
+
+model User {
+  id              String       @id @default(uuid()) @db.Uuid
+  phoneNumber     String       @unique @map("phone_number")
+  name            String?
+  birthDate       DateTime?    @map("birth_date") @db.Date
+  gender          String?
+  profileImageUrl String?      @map("profile_image_url")
+  status          String       @default("active")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  memberships     ClubMember[]
+  ownedClubs      Club[]       @relation("ClubOwner")
+  devices         UserDevice[]
+  notifications   Notification[]
+  files           File[]
+
+  @@map("users")
+}
+
+model Club {
+  id                 String             @id @default(uuid()) @db.Uuid
+  name               String
+  sportType          String             @map("sport_type")
+  visibility         ClubVisibility
+  ownerUserId        String             @map("owner_user_id") @db.Uuid
+  owner              User               @relation("ClubOwner", fields: [ownerUserId], references: [id])
+  trialStartedAt     DateTime           @map("trial_started_at")
+  trialEndsAt        DateTime           @map("trial_ends_at")
+  subscriptionTier   SubscriptionTier   @default(under_30) @map("subscription_tier")
+  subscriptionStatus SubscriptionStatus @default(trial) @map("subscription_status")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  members            ClubMember[]
+  privacySettings    ClubPrivacySetting[]
+  joinRequests       JoinRequest[]
+  inviteLinks        InviteLink[]
+  feeSettings        ClubFeeSetting?
+  feeItems           FeeItem[]
+  events             Event[]
+  notices            Notice[]
+  notificationSettings ClubNotificationSetting?
+  notifications      Notification[]
+  files              File[]
+
+  @@map("clubs")
+}
+
+model ClubMember {
+  id                   String       @id @default(uuid()) @db.Uuid
+  clubId               String       @map("club_id") @db.Uuid
+  userId               String       @map("user_id") @db.Uuid
+  role                 ClubRole     @default(member)
+  memberStatus         MemberStatus @default(active) @map("member_status")
+  joinedAt             DateTime     @default(now()) @map("joined_at")
+  leftAt               DateTime?    @map("left_at")
+  personalDataDeleteAt DateTime?    @map("personal_data_delete_at")
+  grade                String?
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+  club                 Club         @relation(fields: [clubId], references: [id])
+  user                 User         @relation(fields: [userId], references: [id])
+  feeTargets           FeeItemTarget[]
+  feePayments          FeePayment[]
+  eventResponses       EventResponse[]
+  eventAttendance      EventAttendance[]
+  noticeReads          NoticeRead[]
+  noticeComments       NoticeComment[]
+  noticeReactions      NoticeReaction[]
+
+  @@unique([clubId, userId])
+  @@index([clubId, role])
+  @@index([clubId, memberStatus])
+  @@map("club_members")
+}
+
+model ClubPrivacySetting {
+  id                 String   @id @default(uuid()) @db.Uuid
+  clubId             String   @map("club_id") @db.Uuid
+  fieldName          String   @map("field_name")
+  visibleToMembers   Boolean  @default(false) @map("visible_to_members")
+  visibleToOperators Boolean  @default(true) @map("visible_to_operators")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  club               Club     @relation(fields: [clubId], references: [id])
+
+  @@unique([clubId, fieldName])
+  @@map("club_privacy_settings")
+}
+
+model JoinRequest {
+  id             String            @id @default(uuid()) @db.Uuid
+  clubId         String            @map("club_id") @db.Uuid
+  userId         String            @map("user_id") @db.Uuid
+  applicantName  String            @map("applicant_name")
+  applicantPhone String            @map("applicant_phone")
+  greeting       String
+  status         JoinRequestStatus @default(pending)
+  reviewedBy     String?           @map("reviewed_by") @db.Uuid
+  reviewedAt     DateTime?         @map("reviewed_at")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  club           Club              @relation(fields: [clubId], references: [id])
+
+  @@index([clubId, status, createdAt])
+  @@map("join_requests")
+}
+
+model InviteLink {
+  id         String    @id @default(uuid()) @db.Uuid
+  clubId     String    @map("club_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  createdBy  String    @map("created_by") @db.Uuid
+  disabledAt DateTime? @map("disabled_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  club       Club      @relation(fields: [clubId], references: [id])
+
+  @@map("invite_links")
+}
+
+model ClubFeeSetting {
+  id                  String          @id @default(uuid()) @db.Uuid
+  clubId              String          @unique @map("club_id") @db.Uuid
+  amount              Int
+  dueDay              Int             @map("due_day")
+  intervalType        FeeIntervalType @map("interval_type")
+  customIntervalDays  Int?            @map("custom_interval_days")
+  gracePeriodDays     Int             @default(0) @map("grace_period_days")
+  autoReminderEnabled Boolean         @default(false) @map("auto_reminder_enabled")
+  reminderRule        Json?           @map("reminder_rule")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+  club                Club            @relation(fields: [clubId], references: [id])
+
+  @@map("club_fee_settings")
+}
+
+model FeeItem {
+  id         String              @id @default(uuid()) @db.Uuid
+  clubId     String              @map("club_id") @db.Uuid
+  title      String
+  feeType    FeeType             @map("fee_type")
+  amount     Int
+  dueDate    DateTime            @map("due_date") @db.Date
+  visibility FeeTargetVisibility
+  createdBy  String              @map("created_by") @db.Uuid
+  createdAt  DateTime            @default(now()) @map("created_at")
+  updatedAt  DateTime            @updatedAt @map("updated_at")
+  club       Club                @relation(fields: [clubId], references: [id])
+  targets    FeeItemTarget[]
+  payments   FeePayment[]
+
+  @@index([clubId, dueDate])
+  @@map("fee_items")
+}
+
+model FeeItemTarget {
+  id           String     @id @default(uuid()) @db.Uuid
+  feeItemId    String     @map("fee_item_id") @db.Uuid
+  clubMemberId String     @map("club_member_id") @db.Uuid
+  feeItem      FeeItem    @relation(fields: [feeItemId], references: [id])
+  clubMember   ClubMember @relation(fields: [clubMemberId], references: [id])
+
+  @@unique([feeItemId, clubMemberId])
+  @@map("fee_item_targets")
+}
+
+model FeePayment {
+  id           String           @id @default(uuid()) @db.Uuid
+  feeItemId    String           @map("fee_item_id") @db.Uuid
+  clubMemberId String           @map("club_member_id") @db.Uuid
+  status       FeePaymentStatus @default(unpaid)
+  paidAt       DateTime?        @map("paid_at")
+  recordedBy   String?          @map("recorded_by") @db.Uuid
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+  feeItem      FeeItem          @relation(fields: [feeItemId], references: [id])
+  clubMember   ClubMember       @relation(fields: [clubMemberId], references: [id])
+
+  @@unique([feeItemId, clubMemberId])
+  @@index([clubMemberId, status])
+  @@map("fee_payments")
+}
+
+model Event {
+  id              String             @id @default(uuid()) @db.Uuid
+  clubId          String             @map("club_id") @db.Uuid
+  title           String
+  description     String?
+  startsAt        DateTime           @map("starts_at")
+  endsAt          DateTime?          @map("ends_at")
+  visibility      ResourceVisibility @default(all_members)
+  responseDeadline DateTime?         @map("response_deadline")
+  locationName    String?            @map("location_name")
+  locationAddress String?            @map("location_address")
+  naverMapPlaceId String?            @map("naver_map_place_id")
+  latitude        Decimal?
+  longitude       Decimal?
+  createdBy       String             @map("created_by") @db.Uuid
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+  club            Club               @relation(fields: [clubId], references: [id])
+  responses       EventResponse[]
+  attendance      EventAttendance[]
+
+  @@index([clubId, startsAt])
+  @@map("events")
+}
+
+model EventResponse {
+  id           String             @id @default(uuid()) @db.Uuid
+  eventId      String             @map("event_id") @db.Uuid
+  clubMemberId String             @map("club_member_id") @db.Uuid
+  response     EventResponseValue
+  respondedAt  DateTime           @default(now()) @map("responded_at")
+  event        Event              @relation(fields: [eventId], references: [id])
+  clubMember   ClubMember         @relation(fields: [clubMemberId], references: [id])
+
+  @@unique([eventId, clubMemberId])
+  @@map("event_responses")
+}
+
+model EventAttendance {
+  id             String           @id @default(uuid()) @db.Uuid
+  eventId        String           @map("event_id") @db.Uuid
+  clubMemberId   String           @map("club_member_id") @db.Uuid
+  status         AttendanceStatus
+  companionCount Int              @default(0) @map("companion_count")
+  checkedBy      String?          @map("checked_by") @db.Uuid
+  checkedAt      DateTime?        @map("checked_at")
+  event          Event            @relation(fields: [eventId], references: [id])
+  clubMember     ClubMember       @relation(fields: [clubMemberId], references: [id])
+
+  @@unique([eventId, clubMemberId])
+  @@map("event_attendance")
+}
+
+model Notice {
+  id          String             @id @default(uuid()) @db.Uuid
+  clubId      String             @map("club_id") @db.Uuid
+  title       String
+  body        String
+  visibility  ResourceVisibility @default(all_members)
+  createdBy   String             @map("created_by") @db.Uuid
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  deletedAt   DateTime?          @map("deleted_at")
+  club        Club               @relation(fields: [clubId], references: [id])
+  reads       NoticeRead[]
+  comments    NoticeComment[]
+  reactions   NoticeReaction[]
+
+  @@index([clubId, createdAt])
+  @@map("notices")
+}
+
+model NoticeRead {
+  id           String     @id @default(uuid()) @db.Uuid
+  noticeId     String     @map("notice_id") @db.Uuid
+  clubMemberId String     @map("club_member_id") @db.Uuid
+  readAt       DateTime   @default(now()) @map("read_at")
+  notice       Notice     @relation(fields: [noticeId], references: [id])
+  clubMember   ClubMember @relation(fields: [clubMemberId], references: [id])
+
+  @@unique([noticeId, clubMemberId])
+  @@map("notice_reads")
+}
+
+model NoticeComment {
+  id           String     @id @default(uuid()) @db.Uuid
+  noticeId     String     @map("notice_id") @db.Uuid
+  clubMemberId String     @map("club_member_id") @db.Uuid
+  body         String
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  deletedAt    DateTime?  @map("deleted_at")
+  notice       Notice     @relation(fields: [noticeId], references: [id])
+  clubMember   ClubMember @relation(fields: [clubMemberId], references: [id])
+
+  @@map("notice_comments")
+}
+
+model NoticeReaction {
+  id           String     @id @default(uuid()) @db.Uuid
+  noticeId     String     @map("notice_id") @db.Uuid
+  clubMemberId String     @map("club_member_id") @db.Uuid
+  reactionType String     @default("like") @map("reaction_type")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  notice       Notice     @relation(fields: [noticeId], references: [id])
+  clubMember   ClubMember @relation(fields: [clubMemberId], references: [id])
+
+  @@unique([noticeId, clubMemberId, reactionType])
+  @@map("notice_reactions")
+}
+
+model UserDevice {
+  id         String         @id @default(uuid()) @db.Uuid
+  userId     String         @map("user_id") @db.Uuid
+  platform   DevicePlatform
+  fcmToken   String         @map("fcm_token")
+  lastSeenAt DateTime?      @map("last_seen_at")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  user       User           @relation(fields: [userId], references: [id])
+
+  @@index([userId, platform])
+  @@map("user_devices")
+}
+
+model Notification {
+  id          String           @id @default(uuid()) @db.Uuid
+  userId      String           @map("user_id") @db.Uuid
+  clubId      String?          @map("club_id") @db.Uuid
+  type        NotificationType
+  title       String
+  body        String
+  deepLink    String?          @map("deep_link")
+  scheduledAt DateTime?        @map("scheduled_at")
+  sentAt      DateTime?        @map("sent_at")
+  readAt      DateTime?        @map("read_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  user        User             @relation(fields: [userId], references: [id])
+  club        Club?            @relation(fields: [clubId], references: [id])
+
+  @@index([userId, sentAt])
+  @@map("notifications")
+}
+
+model ClubNotificationSetting {
+  id                       String   @id @default(uuid()) @db.Uuid
+  clubId                   String   @unique @map("club_id") @db.Uuid
+  eventReminderRule         Json?    @map("event_reminder_rule")
+  feeReminderRule           Json?    @map("fee_reminder_rule")
+  noticeUnreadReminderRule  Json?    @map("notice_unread_reminder_rule")
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+  club                      Club     @relation(fields: [clubId], references: [id])
+
+  @@map("club_notification_settings")
+}
+
+model File {
+  id          String    @id @default(uuid()) @db.Uuid
+  ownerUserId String    @map("owner_user_id") @db.Uuid
+  clubId      String?   @map("club_id") @db.Uuid
+  fileType    FileType  @map("file_type")
+  storageKey  String    @map("storage_key")
+  publicUrl   String?   @map("public_url")
+  mimeType    String    @map("mime_type")
+  sizeBytes   Int       @map("size_bytes")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  deletedAt   DateTime? @map("deleted_at")
+  owner       User      @relation(fields: [ownerUserId], references: [id])
+  club        Club?     @relation(fields: [clubId], references: [id])
+
+  @@map("files")
+}

@@ -1,0 +1,23 @@
+{
+  "name": "crewith",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/admin-web",
+    "packages/shared-types"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w @crewith/api",
+    "dev:admin": "npm run dev -w @crewith/admin-web",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "prisma:generate": "npm run prisma:generate -w @crewith/api",
+    "prisma:migrate": "npm run prisma:migrate -w @crewith/api"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=11.0.0"
+  }
+}
