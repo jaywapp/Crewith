@@ -10,6 +10,7 @@ import {
 } from "@nestjs/common";
 
 type FeePaymentStatus = "unpaid" | "paid" | "exempt";
+type FeeType = "recurring" | "one_time";
 type AttendanceStatus = "present" | "late" | "absent";
 type ClubRole = "owner" | "operator" | "member";
 type MemberStatus = "active" | "dormant" | "left" | "removed";
@@ -58,11 +59,21 @@ interface AdminMemberListItem {
 interface AdminFeeListItem {
   id: string;
   title: string;
+  feeType: FeeType;
   amount: number;
   dueDate: string;
+  targetCount: number;
   paidCount: number;
   unpaidCount: number;
+  exemptCount: number;
   collectionRate: number;
+  payments: AdminFeePaymentListItem[];
+}
+
+interface AdminFeePaymentListItem {
+  memberId: string;
+  memberName: string;
+  status: FeePaymentStatus;
 }
 
 interface AdminEventListItem {
@@ -107,6 +118,18 @@ interface UpdateAdminMemberInput {
   role?: ClubRole;
   memberStatus?: MemberStatus;
   lastFeeStatus?: FeePaymentStatus;
+}
+
+interface CreateAdminFeeInput {
+  title: string;
+  feeType?: FeeType;
+  amount: number;
+  dueDate: string;
+}
+
+interface UpdateAdminFeePaymentInput {
+  memberId: string;
+  status: FeePaymentStatus;
 }
 
 const club = {
@@ -175,22 +198,47 @@ const fees: AdminFeeListItem[] = [
   {
     id: "fee-2026-05",
     title: "5월 월회비",
+    feeType: "recurring",
     amount: 30000,
     dueDate: "2026-05-25",
+    targetCount: 5,
     paidCount: 22,
     unpaidCount: 3,
+    exemptCount: 0,
     collectionRate: 88,
+    payments: [],
   },
   {
     id: "fee-event-01",
     title: "춘계 단체복 비용",
+    feeType: "one_time",
     amount: 45000,
     dueDate: "2026-05-30",
+    targetCount: 5,
     paidCount: 14,
     unpaidCount: 11,
+    exemptCount: 0,
     collectionRate: 56,
+    payments: [],
   },
 ];
+
+const feePayments: Record<string, Record<string, FeePaymentStatus>> = {
+  "fee-2026-05": {
+    "member-01": "paid",
+    "member-02": "paid",
+    "member-03": "unpaid",
+    "member-04": "paid",
+    "member-05": "unpaid",
+  },
+  "fee-event-01": {
+    "member-01": "paid",
+    "member-02": "paid",
+    "member-03": "unpaid",
+    "member-04": "unpaid",
+    "member-05": "unpaid",
+  },
+};
 
 const events: AdminEventListItem[] = [
   {
@@ -258,6 +306,16 @@ function findMember(memberId: string) {
   return member;
 }
 
+function findFee(feeId: string) {
+  const fee = fees.find((item) => item.id === feeId);
+
+  if (!fee) {
+    throw new NotFoundException("Fee not found");
+  }
+
+  return fee;
+}
+
 function isClubRole(value: unknown): value is ClubRole {
   return value === "owner" || value === "operator" || value === "member";
 }
@@ -270,10 +328,50 @@ function isFeePaymentStatus(value: unknown): value is FeePaymentStatus {
   return value === "unpaid" || value === "paid" || value === "exempt";
 }
 
+function isFeeType(value: unknown): value is FeeType {
+  return value === "recurring" || value === "one_time";
+}
+
+function buildFeeItem(fee: AdminFeeListItem): AdminFeeListItem {
+  const payments = feePayments[fee.id] ?? {};
+  const targetMembers = activeMembers();
+  const paidCount = targetMembers.filter((member) => payments[member.id] === "paid").length;
+  const exemptCount = targetMembers.filter((member) => payments[member.id] === "exempt").length;
+  const unpaidCount = targetMembers.filter((member) => payments[member.id] !== "paid" && payments[member.id] !== "exempt").length;
+  const payableCount = Math.max(targetMembers.length - exemptCount, 0);
+
+  return {
+    ...fee,
+    targetCount: targetMembers.length,
+    paidCount,
+    unpaidCount,
+    exemptCount,
+    collectionRate: payableCount === 0 ? 100 : Math.round((paidCount / payableCount) * 100),
+    payments: targetMembers.map((member) => ({
+      memberId: member.id,
+      memberName: member.name,
+      status: payments[member.id] ?? "unpaid",
+    })),
+  };
+}
+
+function buildFees() {
+  return fees.map((fee) => buildFeeItem(fee));
+}
+
+function ensureFeeTargets(feeId: string) {
+  feePayments[feeId] ??= {};
+
+  for (const member of activeMembers()) {
+    feePayments[feeId][member.id] ??= "unpaid";
+  }
+}
+
 function buildDashboard(): DashboardSummary {
   const totalMemberCount = visibleMembers().length;
   const activeMemberCount = activeMembers().length;
-  const overdueMemberCount = visibleMembers().filter((member) => member.lastFeeStatus === "unpaid").length;
+  const monthlyFee = buildFeeItem(fees[0]);
+  const overdueMemberCount = monthlyFee.unpaidCount;
   const latestEvent = events[0];
   const latestNotice = notices[0];
 
@@ -290,7 +388,7 @@ function buildDashboard(): DashboardSummary {
     attendanceConversionRate: Math.round(
       ((latestEvent.presentCount + latestEvent.lateCount) / latestEvent.attendingCount) * 100,
     ),
-    monthlyFeeCollectionRate: fees[0].collectionRate,
+    monthlyFeeCollectionRate: monthlyFee.collectionRate,
   };
 }
 
@@ -301,7 +399,7 @@ function buildOverview(): AdminClubOverview {
     club,
     dashboard,
     members: visibleMembers(),
-    fees,
+    fees: buildFees(),
     events,
     notices,
     tasks: [
@@ -374,6 +472,10 @@ export class AppController {
     };
 
     members.push(nextMember);
+    for (const fee of fees) {
+      feePayments[fee.id] ??= {};
+      feePayments[fee.id][nextMember.id] = "unpaid";
+    }
 
     return {
       data: nextMember,
@@ -405,6 +507,7 @@ export class AppController {
 
     if (isFeePaymentStatus(input.lastFeeStatus)) {
       member.lastFeeStatus = input.lastFeeStatus;
+      feePayments[fees[0].id][member.id] = input.lastFeeStatus;
     }
 
     return {
@@ -435,6 +538,60 @@ export class AppController {
 
     return {
       data: member,
+    };
+  }
+
+  @Get("clubs/:clubId/fees")
+  getFees() {
+    return {
+      data: buildFees(),
+    };
+  }
+
+  @Post("clubs/:clubId/fees")
+  createFee(@Body() input: CreateAdminFeeInput) {
+    const amount = Number(input.amount);
+    const nextFee: AdminFeeListItem = {
+      id: `fee-${Date.now()}`,
+      title: input.title.trim(),
+      feeType: isFeeType(input.feeType) ? input.feeType : "one_time",
+      amount: Number.isFinite(amount) ? amount : 0,
+      dueDate: input.dueDate,
+      targetCount: 0,
+      paidCount: 0,
+      unpaidCount: 0,
+      exemptCount: 0,
+      collectionRate: 0,
+      payments: [],
+    };
+
+    fees.unshift(nextFee);
+    ensureFeeTargets(nextFee.id);
+
+    return {
+      data: buildFeeItem(nextFee),
+    };
+  }
+
+  @Patch("clubs/:clubId/fees/:feeId/payments")
+  updateFeePayment(
+    @Param("feeId") feeId: string,
+    @Body() input: UpdateAdminFeePaymentInput,
+  ) {
+    const fee = findFee(feeId);
+    const member = findMember(input.memberId);
+
+    if (isFeePaymentStatus(input.status)) {
+      feePayments[feeId] ??= {};
+      feePayments[feeId][member.id] = input.status;
+
+      if (feeId === fees[0].id || fee.feeType === "recurring") {
+        member.lastFeeStatus = input.status;
+      }
+    }
+
+    return {
+      data: buildFeeItem(fee),
     };
   }
 

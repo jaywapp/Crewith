@@ -10,6 +10,7 @@ export type FeeIntervalType =
   | "yearly"
   | "custom";
 export type FeeStatus = "unpaid" | "paid" | "exempt";
+export type FeeType = "recurring" | "one_time";
 export type EventResponse = "attending" | "not_attending";
 export type AttendanceStatus = "present" | "late" | "absent";
 export type SubscriptionTier = "under_30" | "under_100" | "under_300";
@@ -69,11 +70,21 @@ export interface AdminMemberListItem {
 export interface AdminFeeListItem {
   id: string;
   title: string;
+  feeType: FeeType;
   amount: number;
   dueDate: string;
+  targetCount: number;
   paidCount: number;
   unpaidCount: number;
+  exemptCount: number;
   collectionRate: number;
+  payments: AdminFeePaymentListItem[];
+}
+
+export interface AdminFeePaymentListItem {
+  memberId: string;
+  memberName: string;
+  status: FeeStatus;
 }
 
 export interface AdminEventListItem {
@@ -118,4 +129,16 @@ export interface UpdateAdminMemberInput {
   role?: ClubRole;
   memberStatus?: MemberStatus;
   lastFeeStatus?: FeeStatus;
+}
+
+export interface CreateAdminFeeInput {
+  title: string;
+  feeType: FeeType;
+  amount: number;
+  dueDate: string;
+}
+
+export interface UpdateAdminFeePaymentInput {
+  memberId: string;
+  status: FeeStatus;
 }

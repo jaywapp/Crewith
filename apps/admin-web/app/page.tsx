@@ -64,11 +64,19 @@ const fallbackOverview: AdminClubOverview = {
     {
       id: "fee-2026-05",
       title: "5월 월회비",
+      feeType: "recurring",
       amount: 30000,
       dueDate: "2026-05-25",
+      targetCount: 3,
       paidCount: 22,
       unpaidCount: 3,
+      exemptCount: 0,
       collectionRate: 88,
+      payments: [
+        { memberId: "member-01", memberName: "김민준", status: "paid" },
+        { memberId: "member-02", memberName: "이서연", status: "paid" },
+        { memberId: "member-03", memberName: "박도윤", status: "unpaid" },
+      ],
     },
   ],
   events: [
@@ -191,6 +199,42 @@ async function removeMemberAction(memberId: string) {
 
   await fetch(`${apiBaseUrl}/clubs/${clubId}/members/${memberId}`, {
     method: "DELETE",
+  });
+
+  revalidatePath("/");
+}
+
+async function createFeeAction(formData: FormData) {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/fees`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      title: formData.get("title"),
+      feeType: formData.get("feeType"),
+      amount: Number(formData.get("amount")),
+      dueDate: formData.get("dueDate"),
+    }),
+  });
+
+  revalidatePath("/");
+}
+
+async function updateFeePaymentAction(feeId: string, formData: FormData) {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/fees/${feeId}/payments`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      memberId: formData.get("memberId"),
+      status: formData.get("status"),
+    }),
   });
 
   revalidatePath("/");
@@ -356,18 +400,70 @@ export default async function AdminHome() {
           <aside className="memberAside">
             <article className="panel">
               <div className="panelHeader">
-                <h2>회비</h2>
-                <a href="#">납부 관리</a>
+                <h2>회비 관리</h2>
+                <a href="#">납부율 {overview.dashboard.monthlyFeeCollectionRate}%</a>
               </div>
+              <form action={createFeeAction} className="feeCreateForm">
+                <label>
+                  항목명
+                  <input name="title" placeholder="6월 월회비" required />
+                </label>
+                <label>
+                  유형
+                  <select name="feeType" defaultValue="recurring">
+                    <option value="recurring">월회비</option>
+                    <option value="one_time">일회성</option>
+                  </select>
+                </label>
+                <label>
+                  금액
+                  <input name="amount" min="0" placeholder="30000" required type="number" />
+                </label>
+                <label>
+                  납부일
+                  <input name="dueDate" required type="date" />
+                </label>
+                <button className="primary compact" type="submit">
+                  추가
+                </button>
+              </form>
               {overview.fees.map((fee) => (
-                <div className="summaryLine" key={fee.id}>
-                  <div>
-                    <strong>{fee.title}</strong>
-                    <span>
-                      {formatCurrency(fee.amount)}원 · {fee.dueDate}까지
-                    </span>
+                <div className="feeBlock" key={fee.id}>
+                  <div className="summaryLine">
+                    <div>
+                      <strong>{fee.title}</strong>
+                      <span>
+                        {fee.feeType === "recurring" ? "월회비" : "일회성"} · {formatCurrency(fee.amount)}원 · {fee.dueDate}까지
+                      </span>
+                    </div>
+                    <strong>{fee.collectionRate}%</strong>
                   </div>
-                  <strong>{fee.collectionRate}%</strong>
+                  <div className="feeMeta">
+                    <span>대상 {fee.targetCount}명</span>
+                    <span>납부 {fee.paidCount}명</span>
+                    <span>미납 {fee.unpaidCount}명</span>
+                    <span>면제 {fee.exemptCount}명</span>
+                  </div>
+                  <div className="feePaymentRows">
+                    {fee.payments.map((payment) => (
+                      <form
+                        action={updateFeePaymentAction.bind(null, fee.id)}
+                        className="feePaymentRow"
+                        key={`${fee.id}-${payment.memberId}`}
+                      >
+                        <input name="memberId" type="hidden" value={payment.memberId} />
+                        <span>{payment.memberName}</span>
+                        <select name="status" defaultValue={payment.status}>
+                          <option value="paid">납부</option>
+                          <option value="unpaid">미납</option>
+                          <option value="exempt">면제</option>
+                        </select>
+                        <button className="secondary compact" type="submit">
+                          저장
+                        </button>
+                      </form>
+                    ))}
+                  </div>
                 </div>
               ))}
             </article>

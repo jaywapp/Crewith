@@ -302,8 +302,21 @@ h2 {
   padding: 16px;
 }
 
+.feeCreateForm {
+  align-items: end;
+  background: var(--color-gold-lightest);
+  border: 1px solid rgba(203, 162, 88, 0.28);
+  border-radius: var(--radius-card);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1.3fr 100px 100px 130px auto;
+  margin-bottom: 18px;
+  padding: 16px;
+}
+
 .memberCreateForm label,
-.memberRow label {
+.memberRow label,
+.feeCreateForm label {
   color: var(--color-text-black-soft);
   display: grid;
   font-size: 12px;
@@ -418,6 +431,49 @@ select:focus {
   padding: 14px 0;
 }
 
+.feeBlock {
+  border-top: 1px solid var(--color-hairline);
+  padding: 6px 0 16px;
+}
+
+.feeBlock .summaryLine {
+  border-top: 0;
+}
+
+.feeMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.feeMeta span {
+  background: var(--color-ceramic);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-black-soft);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+}
+
+.feePaymentRows {
+  display: grid;
+  gap: 8px;
+}
+
+.feePaymentRow {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(72px, 1fr) 100px auto;
+}
+
+.feePaymentRow span {
+  color: var(--color-text-black);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 @media (max-width: 1024px) {
   .shell {
     grid-template-columns: 1fr;
@@ -441,7 +497,8 @@ select:focus {
   }
 
   .memberCreateForm,
-  .memberRow {
+  .memberRow,
+  .feeCreateForm {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -473,7 +530,9 @@ select:focus {
   }
 
   .memberCreateForm,
-  .memberRow {
+  .memberRow,
+  .feeCreateForm,
+  .feePaymentRow {
     grid-template-columns: 1fr;
   }
 
