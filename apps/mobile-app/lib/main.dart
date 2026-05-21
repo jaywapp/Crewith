@@ -1,8 +1,6 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
+import 'member_api_client.dart';
 import 'member_models.dart';
 
 const _canvas = Color(0xFFF2F0EB);
@@ -16,11 +14,6 @@ const _greenLight = Color(0xFFD4E9E2);
 const _gold = Color(0xFFCBA258);
 const _red = Color(0xFFC82014);
 
-const _apiBaseUrl = String.fromEnvironment(
-  'CREWITH_API_BASE_URL',
-  defaultValue: 'http://10.0.2.2:4000/api/v1',
-);
-const _clubId = 'club-seoul-runners';
 const _defaultMemberId = 'member-03';
 
 void main() {
@@ -68,6 +61,7 @@ class _HomeShellState extends State<HomeShell> {
   int _index = 0;
   bool _isAuthenticated = false;
   String _activeMemberId = _defaultMemberId;
+  final _api = const MemberApiClient();
   late Future<MemberAppOverview> _overviewFuture;
 
   @override
@@ -77,50 +71,7 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Future<MemberAppOverview> _fetchOverview([String? memberId]) async {
-    final uri = Uri.parse(
-        '$_apiBaseUrl/clubs/$_clubId/member-app/${memberId ?? _activeMemberId}');
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
-
-    try {
-      final request = await client.getUrl(uri);
-      final response =
-          await request.close().timeout(const Duration(seconds: 3));
-
-      if (response.statusCode != HttpStatus.ok) {
-        return MemberAppOverview.seed();
-      }
-
-      final payload = await response.transform(utf8.decoder).join();
-      final json = jsonDecode(payload) as Map<String, dynamic>;
-      return MemberAppOverview.fromJson(json['data'] as Map<String, dynamic>);
-    } catch (_) {
-      return MemberAppOverview.seed();
-    } finally {
-      client.close(force: true);
-    }
-  }
-
-  Future<bool> _sendJson(
-      String method, Uri uri, Map<String, Object?> body) async {
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
-
-    try {
-      final request = switch (method) {
-        'PATCH' => await client.patchUrl(uri),
-        'POST' => await client.postUrl(uri),
-        _ => await client.postUrl(uri),
-      };
-      request.headers.contentType = ContentType.json;
-      request.write(jsonEncode(body));
-      final response =
-          await request.close().timeout(const Duration(seconds: 3));
-
-      return response.statusCode >= 200 && response.statusCode < 300;
-    } catch (_) {
-      return false;
-    } finally {
-      client.close(force: true);
-    }
+    return _api.fetchOverview(memberId ?? _activeMemberId);
   }
 
   void _refreshOverview() {
@@ -134,26 +85,10 @@ class _HomeShellState extends State<HomeShell> {
       return '휴대폰 번호를 입력하세요.';
     }
 
-    final uri = Uri.parse('$_apiBaseUrl/auth/otp/request');
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
-
-    try {
-      final request = await client.postUrl(uri);
-      request.headers.contentType = ContentType.json;
-      request.write(jsonEncode({'phoneNumber': phoneNumber}));
-      final response =
-          await request.close().timeout(const Duration(seconds: 3));
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return '개발 인증번호 123456을 입력하세요.';
-      }
-
-      return '인증번호 요청에 실패했습니다. 개발 인증번호 123456을 사용할 수 있습니다.';
-    } catch (_) {
-      return 'API 연결 전까지 개발 인증번호 123456을 사용할 수 있습니다.';
-    } finally {
-      client.close(force: true);
-    }
+    final requested = await _api.requestOtp(phoneNumber);
+    return requested
+        ? '개발 인증번호 123456을 입력하세요.'
+        : '인증번호 요청에 실패했습니다. 개발 인증번호 123456을 사용할 수 있습니다.';
   }
 
   Future<bool> _verifyOtp(String phoneNumber, String code) async {
@@ -161,36 +96,19 @@ class _HomeShellState extends State<HomeShell> {
       return false;
     }
 
-    final uri = Uri.parse('$_apiBaseUrl/auth/otp/verify');
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
+    final memberId = await _api.verifyOtp(phoneNumber, code);
 
-    try {
-      final request = await client.postUrl(uri);
-      request.headers.contentType = ContentType.json;
-      request.write(jsonEncode({'phoneNumber': phoneNumber, 'code': code}));
-      final response =
-          await request.close().timeout(const Duration(seconds: 3));
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final payload = await response.transform(utf8.decoder).join();
-        final json = jsonDecode(payload) as Map<String, dynamic>;
-        final data = json['data'] as Map<String, dynamic>;
-        final memberId = data['memberId'] as String;
-
-        setState(() {
-          _activeMemberId = memberId;
-          _isAuthenticated = true;
-          _overviewFuture = _fetchOverview(memberId);
-        });
-        return true;
-      }
-    } catch (_) {
-      // The MVP app keeps a local development path so widget tests and emulator
-      // previews can proceed before a real SMS provider is attached.
-    } finally {
-      client.close(force: true);
+    if (memberId != null) {
+      setState(() {
+        _activeMemberId = memberId;
+        _isAuthenticated = true;
+        _overviewFuture = _fetchOverview(memberId);
+      });
+      return true;
     }
 
+    // The MVP app keeps a local development path so widget tests and emulator
+    // previews can proceed before a real SMS provider is attached.
     setState(() {
       _activeMemberId = _defaultMemberId;
       _isAuthenticated = true;
@@ -204,43 +122,28 @@ class _HomeShellState extends State<HomeShell> {
       return '이름을 입력하세요.';
     }
 
-    final uri = Uri.parse('$_apiBaseUrl/members/$_activeMemberId/profile');
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
+    final saved = await _api.updateProfile(
+      _activeMemberId,
+      name: name,
+      profileImageUrl: profileImageUrl,
+    );
 
-    try {
-      final request = await client.patchUrl(uri);
-      request.headers.contentType = ContentType.json;
-      request.write(jsonEncode({
-        'name': name,
-        'profileImageUrl': profileImageUrl,
-      }));
-      final response =
-          await request.close().timeout(const Duration(seconds: 3));
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        _replaceOverview((value) => value.updateMemberName(name.trim()));
-        return '프로필을 저장했습니다.';
-      }
-
-      return '프로필 저장에 실패했습니다.';
-    } catch (_) {
+    if (saved) {
       _replaceOverview((value) => value.updateMemberName(name.trim()));
-      return '로컬 미리보기 프로필을 저장했습니다.';
-    } finally {
-      client.close(force: true);
+      return '프로필을 저장했습니다.';
     }
+
+    _replaceOverview((value) => value.updateMemberName(name.trim()));
+    return '로컬 미리보기 프로필을 저장했습니다.';
   }
 
   Future<String?> _updateEventResponse(String eventId, String response) async {
     _replaceOverview((value) => value.updateEventResponse(eventId, response));
 
-    final saved = await _sendJson(
-      'PATCH',
-      Uri.parse('$_apiBaseUrl/clubs/$_clubId/events/$eventId/responses'),
-      {
-        'memberId': _activeMemberId,
-        'response': response,
-      },
+    final saved = await _api.updateEventResponse(
+      eventId: eventId,
+      memberId: _activeMemberId,
+      response: response,
     );
 
     if (saved) {
@@ -254,10 +157,9 @@ class _HomeShellState extends State<HomeShell> {
   Future<String?> _markNoticeRead(String noticeId) async {
     _replaceOverview((value) => value.markNoticeRead(noticeId));
 
-    final saved = await _sendJson(
-      'PATCH',
-      Uri.parse('$_apiBaseUrl/clubs/$_clubId/notices/$noticeId/read'),
-      {'memberId': _activeMemberId},
+    final saved = await _api.markNoticeRead(
+      noticeId: noticeId,
+      memberId: _activeMemberId,
     );
 
     if (saved) {
@@ -276,14 +178,10 @@ class _HomeShellState extends State<HomeShell> {
       return '이름, 휴대폰 번호, 가입 인사를 입력하세요.';
     }
 
-    final saved = await _sendJson(
-      'POST',
-      Uri.parse('$_apiBaseUrl/clubs/$_clubId/join-requests'),
-      {
-        'applicantName': name,
-        'applicantPhone': phoneNumber,
-        'greeting': greeting,
-      },
+    final saved = await _api.createJoinRequest(
+      name: name,
+      phoneNumber: phoneNumber,
+      greeting: greeting,
     );
 
     return saved ? '가입 신청을 접수했습니다.' : '가입 신청 저장에 실패했습니다.';
@@ -297,14 +195,10 @@ class _HomeShellState extends State<HomeShell> {
       return '초대 코드, 이름, 휴대폰 번호를 입력하세요.';
     }
 
-    final saved = await _sendJson(
-      'POST',
-      Uri.parse(
-          '$_apiBaseUrl/clubs/$_clubId/invite-links/${token.trim()}/accept'),
-      {
-        'applicantName': name,
-        'applicantPhone': phoneNumber,
-      },
+    final saved = await _api.acceptInvite(
+      token: token,
+      name: name,
+      phoneNumber: phoneNumber,
     );
 
     if (saved) {
