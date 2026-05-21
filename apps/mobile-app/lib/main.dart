@@ -2,17 +2,13 @@ import 'package:flutter/material.dart';
 
 import 'member_api_client.dart';
 import 'member_models.dart';
-
-const _canvas = Color(0xFFF2F0EB);
-const _white = Color(0xFFFFFFFF);
-const _textBlack = Color(0xDE000000);
-const _textBlackSoft = Color(0x94000000);
-const _starbucksGreen = Color(0xFF006241);
-const _greenAccent = Color(0xFF00754A);
-const _houseGreen = Color(0xFF1E3932);
-const _greenLight = Color(0xFFD4E9E2);
-const _gold = Color(0xFFCBA258);
-const _red = Color(0xFFC82014);
+import 'member_ui.dart';
+import 'screens/auth_page.dart';
+import 'screens/events_page.dart';
+import 'screens/fees_page.dart';
+import 'screens/home_page.dart';
+import 'screens/more_page.dart';
+import 'screens/notices_page.dart';
 
 const _defaultMemberId = 'member-03';
 
@@ -30,19 +26,19 @@ class CrewithApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: const ColorScheme.light(
-          surface: _canvas,
-          primary: _greenAccent,
-          onPrimary: _white,
-          secondary: _starbucksGreen,
-          tertiary: _gold,
-          error: _red,
-          onSurface: _textBlack,
+          surface: canvas,
+          primary: greenAccent,
+          onPrimary: white,
+          secondary: starbucksGreen,
+          tertiary: gold,
+          error: red,
+          onSurface: textBlack,
         ),
-        scaffoldBackgroundColor: _canvas,
+        scaffoldBackgroundColor: canvas,
         fontFamily: 'Inter',
         navigationBarTheme: const NavigationBarThemeData(
-          backgroundColor: _white,
-          indicatorColor: _greenLight,
+          backgroundColor: white,
+          indicatorColor: greenLight,
         ),
       ),
       home: const HomeShell(),
@@ -128,13 +124,8 @@ class _HomeShellState extends State<HomeShell> {
       profileImageUrl: profileImageUrl,
     );
 
-    if (saved) {
-      _replaceOverview((value) => value.updateMemberName(name.trim()));
-      return '프로필을 저장했습니다.';
-    }
-
     _replaceOverview((value) => value.updateMemberName(name.trim()));
-    return '로컬 미리보기 프로필을 저장했습니다.';
+    return saved ? '프로필을 저장했습니다.' : '로컬 미리보기 프로필을 저장했습니다.';
   }
 
   Future<String?> _updateEventResponse(String eventId, String response) async {
@@ -171,7 +162,10 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Future<String> _createJoinRequest(
-      String name, String phoneNumber, String greeting) async {
+    String name,
+    String phoneNumber,
+    String greeting,
+  ) async {
     if (name.trim().isEmpty ||
         phoneNumber.trim().isEmpty ||
         greeting.trim().isEmpty) {
@@ -188,7 +182,10 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Future<String> _acceptInvite(
-      String token, String name, String phoneNumber) async {
+    String token,
+    String name,
+    String phoneNumber,
+  ) async {
     if (token.trim().isEmpty ||
         name.trim().isEmpty ||
         phoneNumber.trim().isEmpty) {
@@ -210,7 +207,8 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   void _replaceOverview(
-      MemberAppOverview Function(MemberAppOverview value) update) {
+    MemberAppOverview Function(MemberAppOverview value) update,
+  ) {
     setState(() {
       _overviewFuture = _overviewFuture.then(update);
     });
@@ -219,7 +217,7 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     if (!_isAuthenticated) {
-      return _AuthPage(
+      return AuthPage(
         onOtpRequested: _requestOtp,
         onVerified: _verifyOtp,
       );
@@ -230,17 +228,17 @@ class _HomeShellState extends State<HomeShell> {
       builder: (context, snapshot) {
         final overview = snapshot.data ?? MemberAppOverview.seed();
         final pages = [
-          _HomePage(overview: overview),
-          _EventsPage(
+          HomePage(overview: overview),
+          EventsPage(
             overview: overview,
             onResponseChanged: _updateEventResponse,
           ),
-          _NoticesPage(
+          NoticesPage(
             overview: overview,
             onRead: _markNoticeRead,
           ),
-          _FeesPage(overview: overview),
-          _MorePage(
+          FeesPage(overview: overview),
+          MorePage(
             overview: overview,
             onProfileSaved: _updateProfile,
             onJoinRequested: _createJoinRequest,
@@ -255,767 +253,29 @@ class _HomeShellState extends State<HomeShell> {
             onDestinationSelected: (value) => setState(() => _index = value),
             destinations: const [
               NavigationDestination(
-                  icon: Icon(Icons.home_outlined), label: '홈'),
+                icon: Icon(Icons.home_outlined),
+                label: '홈',
+              ),
               NavigationDestination(
-                  icon: Icon(Icons.event_outlined), label: '일정'),
+                icon: Icon(Icons.event_outlined),
+                label: '일정',
+              ),
               NavigationDestination(
-                  icon: Icon(Icons.campaign_outlined), label: '공지'),
+                icon: Icon(Icons.campaign_outlined),
+                label: '공지',
+              ),
               NavigationDestination(
-                  icon: Icon(Icons.payments_outlined), label: '회비'),
+                icon: Icon(Icons.payments_outlined),
+                label: '회비',
+              ),
               NavigationDestination(
-                  icon: Icon(Icons.menu_outlined), label: '더보기'),
+                icon: Icon(Icons.menu_outlined),
+                label: '더보기',
+              ),
             ],
           ),
         );
       },
     );
   }
-}
-
-class _AuthPage extends StatefulWidget {
-  const _AuthPage({
-    required this.onOtpRequested,
-    required this.onVerified,
-  });
-
-  final Future<String?> Function(String phoneNumber) onOtpRequested;
-  final Future<bool> Function(String phoneNumber, String code) onVerified;
-
-  @override
-  State<_AuthPage> createState() => _AuthPageState();
-}
-
-class _AuthPageState extends State<_AuthPage> {
-  final _phoneController = TextEditingController(text: '010-1234-1003');
-  final _codeController = TextEditingController(text: '123456');
-  String? _message;
-  bool _busy = false;
-
-  @override
-  void dispose() {
-    _phoneController.dispose();
-    _codeController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _requestOtp() async {
-    setState(() => _busy = true);
-    final message = await widget.onOtpRequested(_phoneController.text);
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _message = message;
-      _busy = false;
-    });
-  }
-
-  Future<void> _verifyOtp() async {
-    setState(() => _busy = true);
-    final verified =
-        await widget.onVerified(_phoneController.text, _codeController.text);
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _message = verified ? null : '인증번호를 확인하세요.';
-      _busy = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            const SizedBox(height: 24),
-            Text(
-              '휴대폰 인증',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: _starbucksGreen,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '모임 회원 정보를 불러오기 위해 휴대폰 번호를 확인합니다.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: _textBlackSoft),
-            ),
-            const SizedBox(height: 24),
-            _InfoCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _TextInput(
-                    controller: _phoneController,
-                    label: '휴대폰 번호',
-                    keyboardType: TextInputType.phone,
-                  ),
-                  _TextInput(
-                    controller: _codeController,
-                    label: '인증번호',
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _busy ? null : _requestOtp,
-                          child: const Text('인증번호 받기'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: _busy ? null : _verifyOtp,
-                          child: const Text('인증 확인'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (_message != null) ...[
-                    const SizedBox(height: 12),
-                    Text(_message!, style: const TextStyle(color: _houseGreen)),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _HomePage extends StatelessWidget {
-  const _HomePage({required this.overview});
-
-  final MemberAppOverview overview;
-
-  @override
-  Widget build(BuildContext context) {
-    final nextEvent = overview.events.first;
-    final unpaidCount =
-        overview.fees.where((fee) => fee.status == 'unpaid').length;
-    final unreadCount = overview.notices.where((notice) => !notice.read).length;
-
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Text(
-          overview.clubName,
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: _starbucksGreen,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.16,
-              ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '${overview.memberName} · 일반회원',
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: _textBlackSoft),
-        ),
-        const SizedBox(height: 24),
-        _SummaryCard(
-          label: '다음 일정',
-          title: nextEvent.title,
-          body:
-              '${_formatDate(nextEvent.startsAt)} · ${nextEvent.locationName}',
-        ),
-        const SizedBox(height: 12),
-        _SummaryCard(
-          label: '내 회비',
-          title: unpaidCount == 0 ? '미납 없음' : '미납 $unpaidCount건',
-          body: unpaidCount == 0
-              ? '현재 확인 필요한 회비가 없습니다.'
-              : '운영진이 납부 상태를 확인하면 반영됩니다.',
-        ),
-        const SizedBox(height: 12),
-        _SummaryCard(
-          label: '미확인 공지',
-          title: '$unreadCount건',
-          body: unreadCount == 0 ? '모든 공지를 확인했습니다.' : '공지 탭에서 열람하면 확인 처리됩니다.',
-        ),
-      ],
-    );
-  }
-}
-
-class _EventsPage extends StatelessWidget {
-  const _EventsPage({
-    required this.overview,
-    required this.onResponseChanged,
-  });
-
-  final MemberAppOverview overview;
-  final Future<String?> Function(String eventId, String response)
-      onResponseChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return _PageScaffold(
-      title: '일정',
-      subtitle: '참석 의사를 선택하고 출석 상태를 확인하세요.',
-      children: overview.events.map((event) {
-        return _InfoCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _CardHeader(
-                  label: _formatDate(event.startsAt), title: event.title),
-              Text(
-                  '${event.locationName} · ${event.locationAddress ?? '주소 없음'}'),
-              const SizedBox(height: 14),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'attending', label: Text('참석')),
-                  ButtonSegment(value: 'not_attending', label: Text('불참')),
-                ],
-                selected: {event.response},
-                onSelectionChanged: (value) async {
-                  final message =
-                      await onResponseChanged(event.id, value.first);
-                  if (context.mounted && message != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(message)),
-                    );
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _Chip(
-                      label:
-                          '출석 상태 ${_attendanceLabel(event.attendanceStatus)}'),
-                  _Chip(label: '동반 ${event.companionCount}명'),
-                ],
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-class _NoticesPage extends StatelessWidget {
-  const _NoticesPage({
-    required this.overview,
-    required this.onRead,
-  });
-
-  final MemberAppOverview overview;
-  final Future<String?> Function(String noticeId) onRead;
-
-  @override
-  Widget build(BuildContext context) {
-    return _PageScaffold(
-      title: '공지',
-      subtitle: '공지 열람 상태와 반응을 확인하세요.',
-      children: overview.notices.map((notice) {
-        return _InfoCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _CardHeader(
-                label:
-                    notice.visibility == 'operators_only' ? '운영진 공지' : '전체 공지',
-                title: notice.title,
-              ),
-              Text(notice.body),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _Chip(label: notice.read ? '확인 완료' : '미확인'),
-                  _Chip(label: '좋아요 ${notice.likeCount}'),
-                  _Chip(label: '댓글 ${notice.commentCount}'),
-                ],
-              ),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: notice.read
-                    ? null
-                    : () async {
-                        final message = await onRead(notice.id);
-                        if (context.mounted && message != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(message)),
-                          );
-                        }
-                      },
-                child: Text(notice.read ? '확인됨' : '확인 처리'),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-class _FeesPage extends StatelessWidget {
-  const _FeesPage({required this.overview});
-
-  final MemberAppOverview overview;
-
-  @override
-  Widget build(BuildContext context) {
-    return _PageScaffold(
-      title: '회비',
-      subtitle: '내 납부 상태를 확인하세요.',
-      children: overview.fees.map((fee) {
-        return _InfoCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _CardHeader(label: fee.dueDate, title: fee.title),
-              Text('${_formatCurrency(fee.amount)}원'),
-              const SizedBox(height: 12),
-              _StatusPill(label: _feeLabel(fee.status), status: fee.status),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-class _MorePage extends StatefulWidget {
-  const _MorePage({
-    required this.overview,
-    required this.onProfileSaved,
-    required this.onJoinRequested,
-    required this.onInviteAccepted,
-  });
-
-  final MemberAppOverview overview;
-  final Future<String> Function(String name, String profileImageUrl)
-      onProfileSaved;
-  final Future<String> Function(
-      String name, String phoneNumber, String greeting) onJoinRequested;
-  final Future<String> Function(String token, String name, String phoneNumber)
-      onInviteAccepted;
-
-  @override
-  State<_MorePage> createState() => _MorePageState();
-}
-
-class _MorePageState extends State<_MorePage> {
-  late final TextEditingController _profileNameController;
-  final _profileImageController = TextEditingController();
-  final _joinNameController = TextEditingController();
-  final _joinPhoneController = TextEditingController();
-  final _joinGreetingController = TextEditingController();
-  final _inviteNameController = TextEditingController();
-  final _invitePhoneController = TextEditingController();
-  final _inviteCodeController = TextEditingController(text: 'CREWITH-RUN-30');
-  String? _resultMessage;
-  bool _profileSaving = false;
-  bool _joinSaving = false;
-  bool _inviteSaving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _profileNameController =
-        TextEditingController(text: widget.overview.memberName);
-  }
-
-  @override
-  void dispose() {
-    _profileNameController.dispose();
-    _profileImageController.dispose();
-    _joinNameController.dispose();
-    _joinPhoneController.dispose();
-    _joinGreetingController.dispose();
-    _inviteNameController.dispose();
-    _invitePhoneController.dispose();
-    _inviteCodeController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _PageScaffold(
-      title: '더보기',
-      subtitle: '내 모임 정보와 가입 신청',
-      children: [
-        _InfoCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _CardHeader(
-                  label: widget.overview.sportType,
-                  title: widget.overview.clubName),
-              Text('${widget.overview.memberName}님은 현재 일반회원으로 참여 중입니다.'),
-            ],
-          ),
-        ),
-        _InfoCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _CardHeader(label: '내 정보', title: '프로필'),
-              _TextInput(controller: _profileNameController, label: '이름'),
-              _TextInput(
-                  controller: _profileImageController, label: '프로필 사진 URL'),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: _profileSaving
-                    ? null
-                    : () async {
-                        setState(() => _profileSaving = true);
-                        final message = await widget.onProfileSaved(
-                          _profileNameController.text,
-                          _profileImageController.text,
-                        );
-                        if (!mounted) {
-                          return;
-                        }
-
-                        setState(() {
-                          _resultMessage = message;
-                          _profileSaving = false;
-                        });
-                      },
-                child: const Text('프로필 저장'),
-              ),
-            ],
-          ),
-        ),
-        _InfoCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _CardHeader(label: '공개 모임', title: '가입 신청'),
-              _TextInput(controller: _joinNameController, label: '이름'),
-              _TextInput(controller: _joinPhoneController, label: '휴대폰 번호'),
-              _TextInput(controller: _joinGreetingController, label: '가입 인사'),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: _joinSaving
-                    ? null
-                    : () async {
-                        setState(() => _joinSaving = true);
-                        final message = await widget.onJoinRequested(
-                          _joinNameController.text,
-                          _joinPhoneController.text,
-                          _joinGreetingController.text,
-                        );
-                        if (!mounted) {
-                          return;
-                        }
-
-                        setState(() {
-                          _resultMessage = message;
-                          _joinSaving = false;
-                        });
-                      },
-                child: const Text('가입 신청'),
-              ),
-            ],
-          ),
-        ),
-        _InfoCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _CardHeader(label: '비공개 모임', title: '초대 코드로 가입'),
-              _TextInput(controller: _inviteNameController, label: '이름'),
-              _TextInput(controller: _invitePhoneController, label: '휴대폰 번호'),
-              _TextInput(controller: _inviteCodeController, label: '초대 코드'),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: _inviteSaving
-                    ? null
-                    : () async {
-                        setState(() => _inviteSaving = true);
-                        final message = await widget.onInviteAccepted(
-                          _inviteCodeController.text,
-                          _inviteNameController.text,
-                          _invitePhoneController.text,
-                        );
-                        if (!mounted) {
-                          return;
-                        }
-
-                        setState(() {
-                          _resultMessage = message;
-                          _inviteSaving = false;
-                        });
-                      },
-                child: const Text('초대 코드 확인'),
-              ),
-            ],
-          ),
-        ),
-        if (_resultMessage != null) _InfoCard(child: Text(_resultMessage!)),
-      ],
-    );
-  }
-}
-
-class _TextInput extends StatelessWidget {
-  const _TextInput({
-    required this.controller,
-    required this.label,
-    this.keyboardType,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final TextInputType? keyboardType;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          border: const OutlineInputBorder(),
-          labelText: label,
-        ),
-      ),
-    );
-  }
-}
-
-class _PageScaffold extends StatelessWidget {
-  const _PageScaffold({
-    required this.title,
-    required this.subtitle,
-    required this.children,
-  });
-
-  final String title;
-  final String subtitle;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: _starbucksGreen,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.16,
-              ),
-        ),
-        const SizedBox(height: 4),
-        Text(subtitle,
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: _textBlackSoft)),
-        const SizedBox(height: 20),
-        ...children.expand((child) => [child, const SizedBox(height: 12)]),
-      ],
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({
-    required this.label,
-    required this.title,
-    required this.body,
-  });
-
-  final String label;
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return _InfoCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: _textBlackSoft)),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: _houseGreen,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.16,
-                ),
-          ),
-          const SizedBox(height: 6),
-          Text(body),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(color: Color(0x24000000), blurRadius: 0.5),
-          BoxShadow(
-              color: Color(0x3D000000), blurRadius: 1, offset: Offset(0, 1)),
-        ],
-      ),
-      child: child,
-    );
-  }
-}
-
-class _CardHeader extends StatelessWidget {
-  const _CardHeader({required this.label, required this.title});
-
-  final String label;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: Theme.of(context)
-                .textTheme
-                .labelSmall
-                ?.copyWith(color: _textBlackSoft)),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: _houseGreen,
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-        const SizedBox(height: 8),
-      ],
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: _greenLight,
-        borderRadius: BorderRadius.circular(50),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Text(label,
-            style: const TextStyle(
-                color: _houseGreen, fontWeight: FontWeight.w700)),
-      ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label, required this.status});
-
-  final String label;
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = status == 'paid'
-        ? _greenLight
-        : status == 'exempt'
-            ? const Color(0xFFEDEBE9)
-            : const Color(0xFFFAF6EE);
-    final textColor = status == 'paid'
-        ? _houseGreen
-        : status == 'exempt'
-            ? _textBlackSoft
-            : _gold;
-
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-            color: color, borderRadius: BorderRadius.circular(50)),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          child: Text(label,
-              style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
-        ),
-      ),
-    );
-  }
-}
-
-String _formatDate(String value) {
-  return value.length >= 16
-      ? value.substring(5, 16).replaceFirst('T', ' ')
-      : value;
-}
-
-String _formatCurrency(int value) {
-  final text = value.toString();
-  final buffer = StringBuffer();
-
-  for (var i = 0; i < text.length; i += 1) {
-    final remaining = text.length - i;
-    buffer.write(text[i]);
-    if (remaining > 1 && remaining % 3 == 1) {
-      buffer.write(',');
-    }
-  }
-
-  return buffer.toString();
-}
-
-String _feeLabel(String status) {
-  return switch (status) {
-    'paid' => '납부',
-    'exempt' => '면제',
-    _ => '미납',
-  };
-}
-
-String _attendanceLabel(String status) {
-  return switch (status) {
-    'present' => '출석',
-    'late' => '지각',
-    _ => '결석',
-  };
 }

@@ -1,0 +1,59 @@
+import 'package:flutter/material.dart';
+
+import '../member_models.dart';
+import '../member_ui.dart';
+
+class HomePage extends StatelessWidget {
+  const HomePage({super.key, required this.overview});
+
+  final MemberAppOverview overview;
+
+  @override
+  Widget build(BuildContext context) {
+    final nextEvent = overview.events.first;
+    final unpaidCount =
+        overview.fees.where((fee) => fee.status == 'unpaid').length;
+    final unreadCount = overview.notices.where((notice) => !notice.read).length;
+
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Text(
+          overview.clubName,
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                color: starbucksGreen,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${overview.memberName} · 일반회원',
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: textBlackSoft),
+        ),
+        const SizedBox(height: 24),
+        SummaryCard(
+          label: '다음 일정',
+          title: nextEvent.title,
+          body: '${formatDate(nextEvent.startsAt)} · ${nextEvent.locationName}',
+        ),
+        const SizedBox(height: 12),
+        SummaryCard(
+          label: '내 회비',
+          title: unpaidCount == 0 ? '미납 없음' : '미납 $unpaidCount건',
+          body: unpaidCount == 0
+              ? '현재 확인 필요한 회비가 없습니다.'
+              : '운영진이 납부 상태를 확인하면 반영됩니다.',
+        ),
+        const SizedBox(height: 12),
+        SummaryCard(
+          label: '미확인 공지',
+          title: '$unreadCount건',
+          body: unreadCount == 0 ? '모든 공지를 확인했습니다.' : '공지 탭에서 열람하면 확인 처리됩니다.',
+        ),
+      ],
+    );
+  }
+}
