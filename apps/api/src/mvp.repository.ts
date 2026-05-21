@@ -43,6 +43,7 @@ import {
   buildOverview,
   buildProfile,
   buildReminderTargets,
+  applyMemberPrivacyRetention,
   clubMemberships,
   clubMembershipSummaries,
   createMemberFromProfile,
@@ -562,7 +563,7 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     if (isMemberStatus(input.memberStatus)) {
-      member.memberStatus = input.memberStatus;
+      applyMemberPrivacyRetention(member, input.memberStatus);
       if (membership) {
         membership.memberStatus = input.memberStatus;
       }
@@ -592,7 +593,7 @@ export class JsonMvpRepository implements MvpRepository {
   removeMember(clubId: string, memberId: string) {
     ensureClub(clubId);
     const member = findMember(memberId);
-    member.memberStatus = "removed";
+    applyMemberPrivacyRetention(member, "removed");
     const membership = clubMemberships.find((item) => item.clubId === clubId && item.memberId === memberId);
     if (membership) {
       membership.memberStatus = "removed";

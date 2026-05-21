@@ -170,6 +170,8 @@ export interface AdminMemberListItem {
   role: ClubRole;
   memberStatus: MemberStatus;
   joinedAt: string;
+  leftAt?: string;
+  personalDataDeleteAt?: string;
   lastFeeStatus: FeeStatus;
   attendanceRate: number;
 }

@@ -85,6 +85,8 @@ export interface AdminMemberListItem {
   role: ClubRole;
   memberStatus: MemberStatus;
   joinedAt: string;
+  leftAt?: string;
+  personalDataDeleteAt?: string;
   lastFeeStatus: FeePaymentStatus;
   attendanceRate: number;
 }
@@ -892,6 +894,20 @@ export function buildProfile(member: AdminMemberListItem): MemberProfile {
     phoneNumber: member.phoneNumber,
     profileImageUrl: profileImages.get(member.id),
   };
+}
+
+export function applyMemberPrivacyRetention(member: AdminMemberListItem, status: MemberStatus) {
+  member.memberStatus = status;
+
+  if (status === "left" || status === "removed" || status === "dormant") {
+    const now = new Date();
+    member.leftAt ??= now.toISOString();
+    member.personalDataDeleteAt ??= new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    return;
+  }
+
+  delete member.leftAt;
+  delete member.personalDataDeleteAt;
 }
 
 export function initializeMemberState(member: AdminMemberListItem) {

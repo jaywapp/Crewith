@@ -4,6 +4,7 @@ import {
   UnauthorizedPanel,
   createMemberAction,
   feeStatusLabels,
+  formatDate,
   getOverview,
   importMembersAction,
   memberStatusLabels,
@@ -85,6 +86,9 @@ export default async function MembersPage() {
                 <span>
                   {member.phoneNumber} · 가입 {member.joinedAt}
                 </span>
+                {member.personalDataDeleteAt ? (
+                  <span className="retentionNotice">개인정보 삭제 예정 {formatDate(member.personalDataDeleteAt)}</span>
+                ) : null}
               </div>
               <label>
                 역할

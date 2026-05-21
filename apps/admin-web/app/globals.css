@@ -473,6 +473,11 @@ textarea:focus {
   font-size: 13px;
 }
 
+.memberIdentity .retentionNotice {
+  color: var(--color-red);
+  font-weight: 700;
+}
+
 .table {
   display: grid;
 }

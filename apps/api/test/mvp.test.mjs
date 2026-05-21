@@ -134,6 +134,26 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(importResult.skippedCount, 1);
   assert.equal(importResult.errors[0].row, 2);
 
+  const dormantMember = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/member-04`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({ memberStatus: "dormant" }),
+  });
+  assert.equal(dormantMember.status, 200);
+  const dormantMemberJson = (await dormantMember.json()).data;
+  assert.equal(dormantMemberJson.memberStatus, "dormant");
+  assert.equal(typeof dormantMemberJson.personalDataDeleteAt, "string");
+
+  const reactivatedMember = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/member-04`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({ memberStatus: "active" }),
+  });
+  assert.equal(reactivatedMember.status, 200);
+  const reactivatedMemberJson = (await reactivatedMember.json()).data;
+  assert.equal(reactivatedMemberJson.memberStatus, "active");
+  assert.equal(reactivatedMemberJson.personalDataDeleteAt, undefined);
+
   const memberOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/member-03`);
   assert.equal(memberOverview.status, 200);
   assert.equal((await memberOverview.json()).data.member.name, "박도윤");
