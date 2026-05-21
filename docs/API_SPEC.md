@@ -43,6 +43,34 @@ Authorization: Bearer <accessToken>
 | 409 | 중복 또는 상태 충돌 |
 | 422 | 검증 실패 |
 
+## 2-1. clubId 기반 다중 모임 계약
+
+모든 모임 리소스는 `clubId` 기준으로 접근한다. 아래 규칙은 모든 Club 스코프 API에 적용된다.
+
+| 규칙 | 상세 |
+|---|---|
+| 존재하지 않는 `clubId` | HTTP 404 반환 |
+| 해당 모임에 가입되지 않은 사용자 | HTTP 403 반환 |
+| 일반 회원은 가입된 모임 데이터만 접근 가능 | 멤버십 검증 미들웨어 필수 |
+| 운영진은 본인이 운영진인 모임만 관리 가능 | 역할 가드 필수 |
+| 한 사용자는 여러 모임에 서로 다른 역할로 가입 가능 | 역할은 모임별로 독립 |
+| `memberStatus`가 `removed`인 회원은 접근 불가 | 멤버십 검증에서 상태 체크 |
+
+### 오류 코드 표준
+
+| 상황 | HTTP 상태 | 오류 코드 (권고) |
+|---|---|---|
+| 존재하지 않는 clubId | 404 | `CLUB_NOT_FOUND` |
+| 모임 멤버십 없음 | 403 | `NOT_CLUB_MEMBER` |
+| 역할 권한 부족 | 403 | `INSUFFICIENT_ROLE` |
+| 리소스 없음 | 404 | `RESOURCE_NOT_FOUND` |
+| 상태 충돌 (중복 신청 등) | 409 | `CONFLICT` |
+| 응답 마감 초과 | 422 | `RESPONSE_DEADLINE_PASSED` |
+
+> 계약상 필요하지만 구현 확인 필요: 오류 응답 포맷 통일 및 오류 코드 열거형 정의
+
+---
+
 ## 3. 인증 API
 
 ### SMS 인증 요청
@@ -873,6 +901,71 @@ API 엔드포인트는 아니지만 백엔드 작업으로 필요하다.
 | 공지 미확인 리마인드 | 공지 확인 기록 기준 FCM 발송 |
 | 개인정보 삭제 | 탈퇴/강퇴/휴면 후 30일 경과 데이터 삭제 |
 
+## 15-1. 리마인더 API
+
+### 리마인더 대상 목록 조회
+
+```http
+GET /clubs/{clubId}/reminders/targets?type=fee
+GET /clubs/{clubId}/reminders/targets?type=notice&noticeId=uuid
+GET /clubs/{clubId}/reminders/targets?type=event&eventId=uuid
+```
+
+권한: owner, operator
+
+파라미터:
+- `type`: `fee` | `notice` | `event`
+- `feeItemId`, `noticeId`, `eventId`: 해당 type에 따라 필요
+
+Response (fee 예시):
+```json
+{
+  "data": {
+    "type": "fee",
+    "targets": [
+      {
+        "memberId": "uuid",
+        "name": "홍길동",
+        "feeItemTitle": "5월 회비",
+        "daysOverdue": 5
+      }
+    ]
+  }
+}
+```
+
+### 리마인더 발송
+
+```http
+POST /clubs/{clubId}/reminders/send
+```
+
+권한: owner, operator
+
+Request:
+```json
+{
+  "type": "fee",
+  "targetMemberIds": ["uuid", "uuid"],
+  "feeItemId": "uuid"
+}
+```
+
+Response:
+```json
+{
+  "data": {
+    "sentCount": 2,
+    "failedCount": 0,
+    "logId": "uuid"
+  }
+}
+```
+
+> 계약상 필요하지만 구현 확인 필요: FCM 미연동 시 로그만 기록하고 실제 발송 없음
+
+---
+
 ## 16. 권한 요약
 
 | 역할 | 가능 작업 |
@@ -880,6 +973,61 @@ API 엔드포인트는 아니지만 백엔드 작업으로 필요하다.
 | owner | 모임 설정, 역할 변경, 모든 운영 기능 |
 | operator | 구성원, 회비, 일정, 공지, 출석, 통계 관리 |
 | member | 본인 정보, 본인 회비, 일정 응답, 공지 조회/댓글/좋아요 |
+
+## 17. 화면별 API 매핑
+
+### 관리자 웹
+
+| 화면 | 사용하는 API |
+|---|---|
+| 대시보드 | `GET /clubs/{clubId}/dashboard/summary` |
+| 회원 목록 | `GET /clubs/{clubId}/members` |
+| 회원 상세/수정 | `GET /clubs/{clubId}/members/{memberId}`, `PATCH /clubs/{clubId}/members/{memberId}` |
+| 회원 상태 변경 | `PATCH /clubs/{clubId}/members/{memberId}/status` |
+| 회원 역할 변경 | `PATCH /clubs/{clubId}/members/{memberId}/role` |
+| Excel 업로드 | `POST /clubs/{clubId}/members/imports` |
+| 개인정보 공개 설정 | `GET/PUT /clubs/{clubId}/privacy-settings` |
+| 회비 현황 | `GET /clubs/{clubId}/fee-items`, `GET /clubs/{clubId}/fee-items/{id}/payments` |
+| 월회비 설정 | `GET/PUT /clubs/{clubId}/fee-settings` |
+| 일회성 비용 생성 | `POST /clubs/{clubId}/fee-items` |
+| 납부 상태 토글 | `PATCH /clubs/{clubId}/fee-payments/{paymentId}` |
+| 미납자 목록 | `GET /clubs/{clubId}/fee-payments/overdue` |
+| 일정 목록 | `GET /clubs/{clubId}/events` |
+| 일정 생성/수정/삭제 | `POST/PATCH/DELETE /clubs/{clubId}/events/{eventId}` |
+| 참석 의사 현황 | `GET /clubs/{clubId}/events/{eventId}/responses` |
+| 출석부 조회/저장 | `GET/PUT /clubs/{clubId}/events/{eventId}/attendance` |
+| 공지 목록 | `GET /clubs/{clubId}/notices` |
+| 공지 작성/수정/삭제 | `POST/PATCH/DELETE /clubs/{clubId}/notices/{noticeId}` |
+| 공지 확인 현황 | `GET /clubs/{clubId}/notices/{noticeId}/reads` |
+| 가입 신청 목록 | `GET /clubs/{clubId}/join-requests?status=pending` |
+| 가입 신청 승인/거절 | `POST /clubs/{clubId}/join-requests/{id}/approve`, `.../reject` |
+| 초대 링크 관리 | `POST/GET /clubs/{clubId}/invite-links` |
+| 리마인더 | `GET/POST /clubs/{clubId}/reminders/targets`, `.../send` |
+| 알림 설정 | `GET/PUT /clubs/{clubId}/notification-settings` |
+
+### 회원 앱
+
+| 화면 | 사용하는 API |
+|---|---|
+| 로그인 | `POST /auth/sms/request`, `POST /auth/sms/verify` |
+| 프로필 입력/수정 | `GET/PATCH /me` |
+| 모임 목록 | `GET /me/clubs` |
+| 홈 (회원 앱) | `GET /clubs/{clubId}/dashboard/member-summary` *(계약상 필요, 구현 확인 필요)* |
+| 일정 목록 | `GET /clubs/{clubId}/events` |
+| 일정 상세 | `GET /clubs/{clubId}/events/{eventId}` |
+| 참석 의사 응답 | `PUT /clubs/{clubId}/events/{eventId}/response` |
+| 공지 목록 | `GET /clubs/{clubId}/notices` |
+| 공지 상세 (확인 처리) | `GET /clubs/{clubId}/notices/{noticeId}` (자동 확인) |
+| 댓글/좋아요 | `POST /clubs/{clubId}/notices/{noticeId}/comments`, `PUT .../reaction` |
+| 내 회비 | `GET /clubs/{clubId}/my/fee-payments` |
+| 구성원 목록 | `GET /clubs/{clubId}/members` |
+| 알림 목록 | `GET /me/notifications` |
+| 디바이스 등록 | `POST /me/devices` |
+| 공개 모임 가입 신청 | `POST /clubs/{clubId}/join-requests` |
+| 초대 링크 가입 | `POST /invite-links/{token}/join` |
+| 프로필 사진 | `POST /files/presigned-upload`, `PATCH /me/profile-image` |
+
+---
 
 세부 규칙:
 

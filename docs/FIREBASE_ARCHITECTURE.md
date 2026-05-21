@@ -208,6 +208,21 @@ disabledAt: Timestamp | null
 createdAt: Timestamp
 ```
 
+### users/{userId}/clubMemberships/{clubId}
+
+회원이 가입한 모임 목록을 빠르게 조회하기 위한 캐시 문서. Cloud Functions에서 관리한다.
+
+```
+clubId: string
+clubName: string
+role: string                // owner | operator | member
+memberStatus: string        // active | dormant | left | removed
+joinedAt: Timestamp
+updatedAt: Timestamp
+```
+
+Collection Group Query 대신 이 서브컬렉션을 먼저 조회하여 모임 목록을 가져올 수 있다.
+
 ### users/{userId}/devices/{deviceId}
 
 ```
@@ -294,6 +309,18 @@ function isOwner(clubId) {
 
 ## Firebase Auth 사용 방식
 
+### 추후 확장 인증 방식
+
+MVP 이후 아래 방식으로 확장을 검토할 수 있다.
+
+| 방식 | 용도 | 비고 |
+|---|---|---|
+| PASS (통신사 본인인증) | 실명 확인 필요 시 | KT/SKT/LG U+ 연동 필요 |
+| NICE/KMC 본인인증 | 금융/결제 연동 시 실명 인증 | 결제 도입 시 검토 |
+| 이메일 인증 | 선택적 추가 인증 | Firebase Auth 이메일 지원 |
+
+MVP는 SMS OTP만 사용하며, 본인 인증 강화는 결제 도입 시 함께 검토한다.
+
 ### MVP SMS 인증 흐름
 
 1. 앱에서 `firebase.auth().signInWithPhoneNumber(phoneNumber, recaptchaVerifier)` 호출
@@ -330,6 +357,16 @@ function isOwner(clubId) {
 3. FCM `sendMulticast` 또는 `send` 호출
 4. 발송 결과를 `clubs/{clubId}/notificationLogs`에 저장
 5. 만료/무효 토큰은 발송 결과에서 감지하여 삭제
+
+### FCM 발송 실패 및 재시도 정책
+
+| 상황 | 처리 방법 |
+|---|---|
+| 토큰 만료 (UNREGISTERED) | 해당 device 문서에서 토큰 삭제 |
+| 일시적 오류 (500, INTERNAL) | 최대 3회 재시도 (지수 백오프: 1초, 2초, 4초) |
+| 발송 실패 기록 | `notificationLogs`에 `sentAt: null`, 오류 코드 저장 |
+| 재시도 소진 후 실패 | 로그에 `failed: true` 기록, 알림 없이 종료 |
+| 디바이스 없음 | 발송 대상 없음으로 처리, 로그에 `noDevice: true` 기록 |
 
 ---
 
@@ -545,6 +582,14 @@ ADMIN_WEB_ORIGIN=https://admin.crewith.app
 | Functions | Emulator (`localhost:5001`) | Cloud Functions |
 | FCM | 로그만 출력 | 실제 발송 |
 | 스토리지 | Emulator 또는 생략 | Firebase Storage |
+
+---
+
+## Security Rules
+
+Security Rules 전체 코드와 상세 설계는 별도 문서를 참고한다.
+
+- [FIREBASE_SECURITY_RULES_DRAFT.md](FIREBASE_SECURITY_RULES_DRAFT.md)
 
 ---
 
