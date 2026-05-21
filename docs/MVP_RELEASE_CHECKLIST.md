@@ -90,7 +90,7 @@
 | 프로덕션 환경변수 설정 | 배포 환경 환경변수 목록 확인 | 모든 필수 값 설정됨 |
 | 시크릿 하드코딩 없음 | 소스코드에서 실제 시크릿 값 검색 | 발견되지 않음 |
 | `.env` gitignore 포함 | `.gitignore` 파일 확인 | `.env`, `.env.local` 포함됨 |
-| JWT_SECRET 길이 | 배포 환경 값 확인 | 32자 이상 랜덤 문자열 |
+| JWT_ACCESS_SECRET/JWT_REFRESH_SECRET 길이 | 배포 환경 값 확인 | 각각 32자 이상 랜덤 문자열 |
 | DATABASE_URL 형식 | 배포 환경 값 확인 | PostgreSQL connection string 형식 |
 
 ---

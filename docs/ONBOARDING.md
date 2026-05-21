@@ -124,7 +124,8 @@ flutter run
 ```bash
 # apps/api/.env 파일 생성 (예시)
 PORT=4000
-JWT_SECRET=your-secret-key-here
+JWT_ACCESS_SECRET=your-access-secret-here
+JWT_REFRESH_SECRET=your-refresh-secret-here
 DATABASE_URL=postgresql://...
 ADMIN_WEB_ORIGIN=http://localhost:3000
 ```
