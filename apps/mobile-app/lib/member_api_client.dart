@@ -53,7 +53,8 @@ class MemberApiClient {
     final client = _client();
 
     try {
-      final request = await client.postUrl(Uri.parse('$apiBaseUrl/auth/otp/verify'));
+      final request =
+          await client.postUrl(Uri.parse('$apiBaseUrl/auth/otp/verify'));
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode({'phoneNumber': phoneNumber, 'code': code}));
       final response =
@@ -138,7 +139,8 @@ class MemberApiClient {
   }) {
     return _sendJson(
       'POST',
-      Uri.parse('$apiBaseUrl/clubs/$clubId/invite-links/${token.trim()}/accept'),
+      Uri.parse(
+          '$apiBaseUrl/clubs/$clubId/invite-links/${token.trim()}/accept'),
       {
         'applicantName': name,
         'applicantPhone': phoneNumber,
