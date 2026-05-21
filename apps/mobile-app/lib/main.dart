@@ -9,6 +9,7 @@ import 'screens/fees_page.dart';
 import 'screens/home_page.dart';
 import 'screens/more_page.dart';
 import 'screens/notices_page.dart';
+import 'screens/notifications_page.dart';
 
 const _defaultMemberId = 'member-03';
 const _defaultClubId = 'club-seoul-runners';
@@ -71,11 +72,13 @@ class _HomeShellState extends State<HomeShell> {
   List<ClubSummary> _clubs = _defaultClubs;
   final _api = const MemberApiClient();
   late Future<MemberAppOverview> _overviewFuture;
+  late Future<List<MemberNotification>> _notificationsFuture;
 
   @override
   void initState() {
     super.initState();
     _overviewFuture = _fetchOverview();
+    _notificationsFuture = _fetchNotifications();
   }
 
   Future<MemberAppOverview> _fetchOverview([String? memberId]) async {
@@ -88,6 +91,16 @@ class _HomeShellState extends State<HomeShell> {
   void _refreshOverview() {
     setState(() {
       _overviewFuture = _fetchOverview(_activeMemberId);
+    });
+  }
+
+  Future<List<MemberNotification>> _fetchNotifications([String? memberId]) {
+    return _api.fetchNotifications(memberId: memberId ?? _activeMemberId);
+  }
+
+  void _refreshNotifications() {
+    setState(() {
+      _notificationsFuture = _fetchNotifications(_activeMemberId);
     });
   }
 
@@ -111,6 +124,7 @@ class _HomeShellState extends State<HomeShell> {
       _activeMemberId = _defaultMemberId;
       _isAuthenticated = true;
       _overviewFuture = _fetchOverview(_defaultMemberId);
+      _notificationsFuture = _fetchNotifications(_defaultMemberId);
     });
 
     final session = await _api.verifyOtp(phoneNumber, code);
@@ -125,6 +139,7 @@ class _HomeShellState extends State<HomeShell> {
         _clubs = nextClubs;
         _activeClubId = nextClubId;
         _overviewFuture = _fetchOverview(session.memberId);
+        _notificationsFuture = _fetchNotifications(session.memberId);
       });
 
       await _api.registerDevice(
@@ -231,6 +246,32 @@ class _HomeShellState extends State<HomeShell> {
     return '오프라인 미리보기로 댓글을 반영했습니다.';
   }
 
+  Future<String?> _markNotificationRead(String notificationId) async {
+    setState(() {
+      _notificationsFuture = _notificationsFuture.then(
+        (notifications) => notifications
+            .map(
+              (notification) => notification.id == notificationId
+                  ? notification.markRead()
+                  : notification,
+            )
+            .toList(),
+      );
+    });
+
+    final saved = await _api.markNotificationRead(
+      memberId: _activeMemberId,
+      notificationId: notificationId,
+    );
+
+    if (saved) {
+      _refreshNotifications();
+      return '알림을 읽음 처리했습니다.';
+    }
+
+    return '오프라인 미리보기로 읽음 처리했습니다.';
+  }
+
   Future<String> _createJoinRequest(
     String name,
     String phoneNumber,
@@ -294,6 +335,7 @@ class _HomeShellState extends State<HomeShell> {
     setState(() {
       _activeClubId = clubId;
       _overviewFuture = _fetchOverview(_activeMemberId);
+      _notificationsFuture = _fetchNotifications(_activeMemberId);
       _index = 0;
     });
   }
@@ -333,6 +375,15 @@ class _HomeShellState extends State<HomeShell> {
             onCommentCreated: _createNoticeComment,
           ),
           FeesPage(overview: overview),
+          FutureBuilder<List<MemberNotification>>(
+            future: _notificationsFuture,
+            builder: (context, notificationSnapshot) {
+              return NotificationsPage(
+                notifications: notificationSnapshot.data ?? const [],
+                onRead: _markNotificationRead,
+              );
+            },
+          ),
           MorePage(
             overview: overview,
             clubs: _clubs,
@@ -365,6 +416,10 @@ class _HomeShellState extends State<HomeShell> {
               NavigationDestination(
                 icon: Icon(Icons.payments_outlined),
                 label: '회비',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.notifications_outlined),
+                label: '알림',
               ),
               NavigationDestination(
                 icon: Icon(Icons.menu_outlined),

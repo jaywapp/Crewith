@@ -195,6 +195,17 @@ export interface AdminNotificationLogItem {
   skippedCount?: number;
 }
 
+export interface MemberNotificationItem {
+  id: string;
+  memberId: string;
+  clubId: string;
+  type: ReminderType;
+  title: string;
+  body: string;
+  createdAt: string;
+  readAt?: string;
+}
+
 export interface MemberDeviceItem {
   id: string;
   memberId: string;
@@ -253,6 +264,7 @@ export interface MvpStore {
   joinRequests: AdminJoinRequestListItem[];
   inviteLinks: AdminInviteLinkListItem[];
   notificationLogs: AdminNotificationLogItem[];
+  memberNotifications: MemberNotificationItem[];
   profileImages: Record<string, string>;
 }
 
@@ -704,6 +716,7 @@ export const inviteLinks: AdminInviteLinkListItem[] = [
 ];
 
 export const notificationLogs: AdminNotificationLogItem[] = [];
+export const memberNotifications: MemberNotificationItem[] = [];
 export const memberDevices: MemberDeviceItem[] = [];
 export const otpCodes = new Map<string, { code: string; expiresAt: string }>();
 export const profileImages = new Map<string, string>();
@@ -764,6 +777,7 @@ export function persistStore() {
     joinRequests,
     inviteLinks,
     notificationLogs,
+    memberNotifications,
     profileImages: Object.fromEntries(profileImages),
   };
 
@@ -795,6 +809,7 @@ export function hydrateStore() {
     replaceArray(joinRequests, store.joinRequests);
     replaceArray(inviteLinks, store.inviteLinks);
     replaceArray(notificationLogs, store.notificationLogs);
+    replaceArray(memberNotifications, store.memberNotifications);
     profileImages.clear();
 
     for (const [memberId, imageUrl] of Object.entries(store.profileImages ?? {})) {

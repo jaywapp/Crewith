@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from "@nestjs/common";
 import {
   type AcceptInviteInput,
@@ -99,6 +100,19 @@ export class AppController {
     @Param("memberId") memberId: string,
   ) {
     return { data: this.repository.getMemberAppOverview(clubId, memberId) };
+  }
+
+  @Get("me/notifications")
+  getMemberNotifications(@Query("memberId") memberId: string) {
+    return { data: this.repository.getMemberNotifications(memberId) };
+  }
+
+  @Patch("me/notifications/:notificationId/read")
+  markMemberNotificationRead(
+    @Param("notificationId") notificationId: string,
+    @Body("memberId") memberId: string,
+  ) {
+    return { data: this.repository.markMemberNotificationRead(memberId, notificationId) };
   }
 
   @Get("clubs/:clubId/reminders")

@@ -9,6 +9,7 @@ import {
   type AdminNoticeCommentListItem,
   type AdminNoticeListItem,
   type AdminNotificationLogItem,
+  type MemberNotificationItem,
   type AuthOtpRequestInput,
   type AuthOtpVerifyInput,
   type CreateAdminEventInput,
@@ -69,6 +70,7 @@ import {
   isResourceVisibility,
   joinRequests,
   memberDevices,
+  memberNotifications,
   members,
   normalizePhoneNumber,
   noticeComments,
@@ -94,6 +96,8 @@ export abstract class MvpRepository {
   abstract getMemberProfile(memberId: string): ReturnType<typeof buildProfile>;
   abstract updateMemberProfile(memberId: string, input: UpdateMemberProfileInput): ReturnType<typeof buildProfile>;
   abstract getMemberAppOverview(clubId: string, memberId: string): ReturnType<typeof buildMemberAppOverview>;
+  abstract getMemberNotifications(memberId: string): MemberNotificationItem[];
+  abstract markMemberNotificationRead(memberId: string, notificationId: string): MemberNotificationItem;
   abstract getReminderTargets(clubId: string): ReturnType<typeof buildReminderTargets>;
   abstract sendReminder(clubId: string, input: SendReminderInput): AdminNotificationLogItem;
   abstract getMembers(clubId: string): AdminMemberListItem[];
@@ -216,6 +220,26 @@ export class JsonMvpRepository implements MvpRepository {
     return buildMemberAppOverview(clubId, memberId);
   }
 
+  getMemberNotifications(memberId: string) {
+    findMember(memberId);
+    return memberNotifications.filter((notification) => notification.memberId === memberId);
+  }
+
+  markMemberNotificationRead(memberId: string, notificationId: string) {
+    findMember(memberId);
+    const notification = memberNotifications.find(
+      (item) => item.id === notificationId && item.memberId === memberId,
+    );
+
+    if (!notification) {
+      throw new NotFoundException("Notification not found");
+    }
+
+    notification.readAt ??= new Date().toISOString();
+    persistStore();
+    return notification;
+  }
+
   getReminderTargets(clubId: string) {
     ensureClub(clubId);
     return buildReminderTargets(clubId);
@@ -246,6 +270,19 @@ export class JsonMvpRepository implements MvpRepository {
     };
 
     notificationLogs.unshift(log);
+
+    for (const target of reminder.targets) {
+      memberNotifications.unshift({
+        id: `member-notification-${Date.now()}-${target.memberId}`,
+        memberId: target.memberId,
+        clubId,
+        type: reminder.type,
+        title: reminder.title,
+        body: target.reason,
+        createdAt: log.sentAt,
+      });
+    }
+
     persistStore();
     return log;
   }

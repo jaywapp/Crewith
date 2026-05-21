@@ -19,6 +19,7 @@ void main() {
     expect(find.text('일정'), findsOneWidget);
     expect(find.text('공지'), findsOneWidget);
     expect(find.text('회비'), findsOneWidget);
+    expect(find.text('알림'), findsOneWidget);
 
     await tester.tap(find.text('일정'));
     await tester.pumpAndSettle();
@@ -30,6 +31,10 @@ void main() {
     expect(find.text('확인 처리'), findsOneWidget);
     expect(find.text('좋아요'), findsOneWidget);
     expect(find.text('댓글 등록'), findsOneWidget);
+
+    await tester.tap(find.text('알림'));
+    await tester.pumpAndSettle();
+    expect(find.text('아직 수신된 알림이 없습니다.'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.menu_outlined));
     await tester.pumpAndSettle();

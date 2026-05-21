@@ -106,6 +106,45 @@ class MemberApiClient {
     );
   }
 
+  Future<List<MemberNotification>> fetchNotifications({
+    required String memberId,
+  }) async {
+    final uri = Uri.parse('$apiBaseUrl/me/notifications?memberId=$memberId');
+    final client = _client();
+
+    try {
+      final request = await client.getUrl(uri);
+      final response =
+          await request.close().timeout(const Duration(seconds: 3));
+
+      if (response.statusCode != HttpStatus.ok) {
+        return const [];
+      }
+
+      final payload = await response.transform(utf8.decoder).join();
+      final json = jsonDecode(payload) as Map<String, dynamic>;
+      return (json['data'] as List<dynamic>)
+          .map((item) =>
+              MemberNotification.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return const [];
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<bool> markNotificationRead({
+    required String memberId,
+    required String notificationId,
+  }) {
+    return _sendJson(
+      'PATCH',
+      Uri.parse('$apiBaseUrl/me/notifications/$notificationId/read'),
+      {'memberId': memberId},
+    );
+  }
+
   Future<bool> updateEventResponse({
     required String clubId,
     required String eventId,

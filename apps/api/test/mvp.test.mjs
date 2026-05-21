@@ -159,6 +159,21 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(reminderLog.targetCount, 3);
   assert.equal(reminderLog.deliveredCount, 1);
 
+  const memberNotifications = await fetch(`${baseUrl}/me/notifications?memberId=${session.memberId}`);
+  assert.equal(memberNotifications.status, 200);
+  const notification = (await memberNotifications.json()).data[0];
+  assert.equal(notification.memberId, session.memberId);
+  assert.equal(notification.title, "회비 미납 리마인더");
+  assert.equal(notification.readAt, undefined);
+
+  const notificationRead = await fetch(`${baseUrl}/me/notifications/${notification.id}/read`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ memberId: session.memberId }),
+  });
+  assert.equal(notificationRead.status, 200);
+  assert.equal(typeof (await notificationRead.json()).data.readAt, "string");
+
   const secondClubOverview = await fetch(`${baseUrl}/clubs/club-seoul-riders/member-app/member-03`);
   assert.equal(secondClubOverview.status, 200);
   const secondClubOverviewJson = await secondClubOverview.json();

@@ -43,6 +43,56 @@ class ClubSummary {
   }
 }
 
+class MemberNotification {
+  const MemberNotification({
+    required this.id,
+    required this.memberId,
+    required this.clubId,
+    required this.type,
+    required this.title,
+    required this.body,
+    required this.createdAt,
+    required this.readAt,
+  });
+
+  final String id;
+  final String memberId;
+  final String clubId;
+  final String type;
+  final String title;
+  final String body;
+  final String createdAt;
+  final String? readAt;
+
+  bool get read => readAt != null;
+
+  factory MemberNotification.fromJson(Map<String, dynamic> json) {
+    return MemberNotification(
+      id: json['id'] as String,
+      memberId: json['memberId'] as String,
+      clubId: json['clubId'] as String,
+      type: json['type'] as String,
+      title: json['title'] as String,
+      body: json['body'] as String,
+      createdAt: json['createdAt'] as String,
+      readAt: json['readAt'] as String?,
+    );
+  }
+
+  MemberNotification markRead() {
+    return MemberNotification(
+      id: id,
+      memberId: memberId,
+      clubId: clubId,
+      type: type,
+      title: title,
+      body: body,
+      createdAt: createdAt,
+      readAt: readAt ?? DateTime.now().toIso8601String(),
+    );
+  }
+}
+
 class MemberAppOverview {
   const MemberAppOverview({
     required this.clubName,

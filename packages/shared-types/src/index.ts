@@ -123,6 +123,17 @@ export interface AdminNotificationLogItem {
   skippedCount?: number;
 }
 
+export interface MemberNotificationItem {
+  id: string;
+  memberId: string;
+  clubId: string;
+  type: ReminderType;
+  title: string;
+  body: string;
+  createdAt: string;
+  readAt?: string;
+}
+
 export interface AdminJoinRequestListItem {
   id: string;
   applicantName: string;
