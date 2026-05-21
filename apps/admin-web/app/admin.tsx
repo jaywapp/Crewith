@@ -6,13 +6,20 @@ import type {
   MemberStatus,
 } from "@crewith/shared-types";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import Link from "next/link";
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://127.0.0.1:4000/api/v1";
-const clubId = "club-seoul-runners";
+const defaultClubId = "club-seoul-runners";
+const activeClubCookieName = "crewith-admin-club-id";
 const adminRoleHeaders = { "x-crewith-role": "owner" };
 const adminJsonHeaders = { "Content-Type": "application/json", ...adminRoleHeaders };
 const adminPaths = ["/", "/members", "/fees", "/events", "/notices", "/join", "/reminders"];
+
+const adminClubs = [
+  { id: "club-seoul-runners", name: "서울 러너스", sportType: "러닝" },
+  { id: "club-seoul-riders", name: "Seoul Riders", sportType: "cycling" },
+];
 
 export const navItems = [
   { href: "/", label: "대시보드" },
@@ -45,7 +52,7 @@ export const feeStatusLabels: Record<FeeStatus, string> = {
 
 const fallbackOverview: AdminClubOverview = {
   club: {
-    id: clubId,
+    id: defaultClubId,
     name: "서울 러너스",
     sportType: "러닝",
     visibility: "private",
@@ -72,7 +79,19 @@ const fallbackOverview: AdminClubOverview = {
   tasks: [],
 };
 
+function safeClubId(value: FormDataEntryValue | string | undefined | null) {
+  const nextValue = typeof value === "string" ? value : "";
+  return adminClubs.some((club) => club.id === nextValue) ? nextValue : defaultClubId;
+}
+
+async function getActiveClubId() {
+  const cookieStore = await cookies();
+  return safeClubId(cookieStore.get(activeClubCookieName)?.value);
+}
+
 export async function getOverview() {
+  const clubId = await getActiveClubId();
+
   try {
     const response = await fetch(`${apiBaseUrl}/clubs/${clubId}/admin/overview`, {
       cache: "no-store",
@@ -96,9 +115,24 @@ function revalidateAdmin() {
   }
 }
 
+export async function switchClubAction(formData: FormData) {
+  "use server";
+
+  const nextClubId = safeClubId(formData.get("clubId"));
+  const cookieStore = await cookies();
+  cookieStore.set(activeClubCookieName, nextClubId, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+  });
+
+  revalidateAdmin();
+}
+
 export async function createMemberAction(formData: FormData) {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/members`, {
     method: "POST",
     headers: adminJsonHeaders,
@@ -115,6 +149,7 @@ export async function createMemberAction(formData: FormData) {
 export async function updateMemberAction(memberId: string, formData: FormData) {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/members/${memberId}`, {
     method: "PATCH",
     headers: adminJsonHeaders,
@@ -131,6 +166,7 @@ export async function updateMemberAction(memberId: string, formData: FormData) {
 export async function removeMemberAction(memberId: string) {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/members/${memberId}`, {
     method: "DELETE",
     headers: adminRoleHeaders,
@@ -142,6 +178,7 @@ export async function removeMemberAction(memberId: string) {
 export async function createFeeAction(formData: FormData) {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/fees`, {
     method: "POST",
     headers: adminJsonHeaders,
@@ -159,6 +196,7 @@ export async function createFeeAction(formData: FormData) {
 export async function updateFeePaymentAction(feeId: string, formData: FormData) {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/fees/${feeId}/payments`, {
     method: "PATCH",
     headers: adminJsonHeaders,
@@ -174,6 +212,7 @@ export async function updateFeePaymentAction(feeId: string, formData: FormData) 
 export async function createEventAction(formData: FormData) {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/events`, {
     method: "POST",
     headers: adminJsonHeaders,
@@ -193,6 +232,7 @@ export async function createEventAction(formData: FormData) {
 export async function updateEventResponseAction(eventId: string, formData: FormData) {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/events/${eventId}/responses`, {
     method: "PATCH",
     headers: adminJsonHeaders,
@@ -208,6 +248,7 @@ export async function updateEventResponseAction(eventId: string, formData: FormD
 export async function updateAttendanceAction(eventId: string, formData: FormData) {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/events/${eventId}/attendance`, {
     method: "PATCH",
     headers: adminJsonHeaders,
@@ -224,6 +265,7 @@ export async function updateAttendanceAction(eventId: string, formData: FormData
 export async function createNoticeAction(formData: FormData) {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/notices`, {
     method: "POST",
     headers: adminJsonHeaders,
@@ -240,6 +282,7 @@ export async function createNoticeAction(formData: FormData) {
 export async function markNoticeReadAction(noticeId: string, formData: FormData) {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/notices/${noticeId}/read`, {
     method: "PATCH",
     headers: adminJsonHeaders,
@@ -252,6 +295,7 @@ export async function markNoticeReadAction(noticeId: string, formData: FormData)
 export async function toggleNoticeReactionAction(noticeId: string, formData: FormData) {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/notices/${noticeId}/reactions`, {
     method: "PATCH",
     headers: adminJsonHeaders,
@@ -264,6 +308,7 @@ export async function toggleNoticeReactionAction(noticeId: string, formData: For
 export async function createNoticeCommentAction(noticeId: string, formData: FormData) {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/notices/${noticeId}/comments`, {
     method: "POST",
     headers: adminJsonHeaders,
@@ -279,6 +324,7 @@ export async function createNoticeCommentAction(noticeId: string, formData: Form
 export async function reviewJoinRequestAction(requestId: string, status: "approved" | "rejected") {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/join-requests/${requestId}`, {
     method: "PATCH",
     headers: adminJsonHeaders,
@@ -291,6 +337,7 @@ export async function reviewJoinRequestAction(requestId: string, status: "approv
 export async function createInviteLinkAction(formData: FormData) {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/invite-links`, {
     method: "POST",
     headers: adminJsonHeaders,
@@ -303,6 +350,7 @@ export async function createInviteLinkAction(formData: FormData) {
 export async function sendReminderAction(formData: FormData) {
   "use server";
 
+  const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/reminders/send`, {
     method: "POST",
     headers: adminJsonHeaders,
@@ -343,6 +391,19 @@ export function AdminShell({
             <h1>{overview.club.name}</h1>
           </div>
           <div className="actions">
+            <form className="clubSwitcher" action={switchClubAction}>
+              <label htmlFor="admin-club-select">모임</label>
+              <select id="admin-club-select" name="clubId" defaultValue={overview.club.id}>
+                {adminClubs.map((club) => (
+                  <option key={club.id} value={club.id}>
+                    {club.name}
+                  </option>
+                ))}
+              </select>
+              <button className="secondary" type="submit">
+                전환
+              </button>
+            </form>
             <Link className="secondary" href="/events">
               일정 생성
             </Link>

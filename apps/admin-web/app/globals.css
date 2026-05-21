@@ -135,8 +135,25 @@ h2 {
 }
 
 .actions {
+  align-items: center;
   display: flex;
   gap: 12px;
+}
+
+.clubSwitcher {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.clubSwitcher label {
+  color: var(--color-text-black-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.clubSwitcher select {
+  min-width: 160px;
 }
 
 .primary,
@@ -835,7 +852,8 @@ textarea:focus {
   }
 
   .topbar,
-  .actions {
+  .actions,
+  .clubSwitcher {
     flex-direction: column;
   }
 
