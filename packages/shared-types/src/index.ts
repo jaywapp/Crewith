@@ -237,6 +237,21 @@ export interface CreateAdminMemberInput {
   role: ClubRole;
 }
 
+export interface ImportAdminMembersInput {
+  rows: string;
+}
+
+export interface ImportAdminMembersResult {
+  createdCount: number;
+  skippedCount: number;
+  errors: Array<{
+    row: number;
+    reason: string;
+    value: string;
+  }>;
+  members: AdminMemberListItem[];
+}
+
 export interface UpdateAdminMemberInput {
   name?: string;
   phoneNumber?: string;

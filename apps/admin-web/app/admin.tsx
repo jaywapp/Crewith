@@ -146,6 +146,21 @@ export async function createMemberAction(formData: FormData) {
   revalidateAdmin();
 }
 
+export async function importMembersAction(formData: FormData) {
+  "use server";
+
+  const clubId = await getActiveClubId();
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/members/imports`, {
+    method: "POST",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({
+      rows: formData.get("rows"),
+    }),
+  });
+
+  revalidateAdmin();
+}
+
 export async function updateMemberAction(memberId: string, formData: FormData) {
   "use server";
 

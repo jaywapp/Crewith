@@ -78,6 +78,19 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(adminOverview.status, 200);
   assert.equal((await adminOverview.json()).data.club.name, "서울 러너스");
 
+  const importMembers = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/imports`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({
+      rows: "테스트회원,010-7777-0001,member\n중복회원,010-1234-1003,member\n운영테스트\t010-7777-0002\toperator",
+    }),
+  });
+  assert.equal(importMembers.status, 201);
+  const importResult = (await importMembers.json()).data;
+  assert.equal(importResult.createdCount, 2);
+  assert.equal(importResult.skippedCount, 1);
+  assert.equal(importResult.errors[0].row, 2);
+
   const memberOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/member-03`);
   assert.equal(memberOverview.status, 200);
   assert.equal((await memberOverview.json()).data.member.name, "박도윤");
@@ -120,7 +133,7 @@ test("API serves overview and persists member app actions", async (t) => {
   });
   assert.equal(reminderSend.status, 201);
   const reminderLog = (await reminderSend.json()).data;
-  assert.equal(reminderLog.targetCount, 1);
+  assert.equal(reminderLog.targetCount, 3);
   assert.equal(reminderLog.deliveredCount, 1);
 
   const secondClubOverview = await fetch(`${baseUrl}/clubs/club-seoul-riders/member-app/member-03`);
@@ -141,7 +154,7 @@ test("API serves overview and persists member app actions", async (t) => {
     body: JSON.stringify({ memberId: "member-03", response: "attending" }),
   });
   assert.equal(responseUpdate.status, 200);
-  assert.equal((await responseUpdate.json()).data.notAttendingCount, 0);
+  assert.equal((await responseUpdate.json()).data.notAttendingCount, 2);
 
   const noticeRead = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/notice-01/read`, {
     method: "PATCH",
@@ -149,5 +162,5 @@ test("API serves overview and persists member app actions", async (t) => {
     body: JSON.stringify({ memberId: "member-03" }),
   });
   assert.equal(noticeRead.status, 200);
-  assert.equal((await noticeRead.json()).data.unreadCount, 0);
+  assert.equal((await noticeRead.json()).data.unreadCount, 2);
 });

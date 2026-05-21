@@ -21,6 +21,7 @@ import {
   type CreateInviteLinkInput,
   type CreateJoinRequestInput,
   type FeePaymentStatus,
+  type ImportAdminMembersInput,
   type RegisterDeviceInput,
   type ReviewJoinRequestInput,
   type SendReminderInput,
@@ -188,6 +189,16 @@ export class AppController {
   ) {
     assertOperatorRole(role);
     return { data: this.repository.createMember(clubId, input) };
+  }
+
+  @Post("clubs/:clubId/members/imports")
+  importMembers(
+    @Param("clubId") clubId: string,
+    @Body() input: ImportAdminMembersInput,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+    return { data: this.repository.importMembers(clubId, input) };
   }
 
   @Patch("clubs/:clubId/members/:memberId")

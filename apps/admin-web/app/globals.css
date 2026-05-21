@@ -355,6 +355,16 @@ h2 {
   padding: 16px;
 }
 
+.memberImportForm {
+  background: var(--color-gold-lightest);
+  border: 1px solid rgba(203, 162, 88, 0.28);
+  border-radius: var(--radius-card);
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px;
+}
+
 .feeCreateForm {
   align-items: end;
   background: var(--color-gold-lightest);
@@ -392,6 +402,7 @@ h2 {
 }
 
 .memberCreateForm label,
+.memberImportForm label,
 .memberRow label,
 .feeCreateForm label,
 .eventCreateForm label,
@@ -412,6 +423,11 @@ textarea {
   color: var(--color-text-black);
   min-height: 40px;
   padding: 8px 10px;
+}
+
+.memberImportForm textarea {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  min-height: 120px;
 }
 
 input:focus,

@@ -19,6 +19,8 @@ import {
   type CreateInviteLinkInput,
   type CreateJoinRequestInput,
   type FeePaymentStatus,
+  type ImportAdminMembersInput,
+  type ImportAdminMembersResult,
   type RegisterDeviceInput,
   type ReviewJoinRequestInput,
   type SendReminderInput,
@@ -102,6 +104,7 @@ export abstract class MvpRepository {
   abstract createInviteLink(clubId: string, input: CreateInviteLinkInput): AdminInviteLinkListItem;
   abstract acceptInvite(clubId: string, token: string, input: AcceptInviteInput): AdminMemberListItem;
   abstract createMember(clubId: string, input: CreateAdminMemberInput): AdminMemberListItem;
+  abstract importMembers(clubId: string, input: ImportAdminMembersInput): ImportAdminMembersResult;
   abstract updateMember(clubId: string, memberId: string, input: UpdateAdminMemberInput): AdminMemberListItem;
   abstract updateMemberFeeStatus(clubId: string, memberId: string, status: FeePaymentStatus): AdminMemberListItem;
   abstract removeMember(clubId: string, memberId: string): AdminMemberListItem;
@@ -374,6 +377,53 @@ export class JsonMvpRepository implements MvpRepository {
     initializeMemberState(nextMember);
     persistStore();
     return nextMember;
+  }
+
+  importMembers(clubId: string, input: ImportAdminMembersInput): ImportAdminMembersResult {
+    ensureClub(clubId);
+
+    const errors: ImportAdminMembersResult["errors"] = [];
+    const importedMembers: AdminMemberListItem[] = [];
+    const rows = `${input.rows ?? ""}`
+      .split(/\r?\n/)
+      .map((row) => row.trim())
+      .filter(Boolean);
+
+    for (const [index, row] of rows.entries()) {
+      const rowNumber = index + 1;
+      const columns = row.split(/\t|,/).map((column) => column.trim());
+      const [name, phoneNumber, roleValue] = columns;
+
+      if (!name || !phoneNumber) {
+        errors.push({ row: rowNumber, reason: "Name and phone number are required", value: row });
+        continue;
+      }
+
+      const normalizedPhoneNumber = normalizePhoneNumber(phoneNumber);
+      const duplicate = visibleMembers(clubId).some(
+        (member) => normalizePhoneNumber(member.phoneNumber) === normalizedPhoneNumber,
+      );
+
+      if (duplicate) {
+        errors.push({ row: rowNumber, reason: "Duplicate phone number", value: row });
+        continue;
+      }
+
+      const role = isClubRole(roleValue) ? roleValue : "member";
+      const member = this.createMember(clubId, {
+        name,
+        phoneNumber: normalizedPhoneNumber,
+        role,
+      });
+      importedMembers.push(member);
+    }
+
+    return {
+      createdCount: importedMembers.length,
+      skippedCount: errors.length,
+      errors,
+      members: importedMembers,
+    };
   }
 
   updateMember(clubId: string, memberId: string, input: UpdateAdminMemberInput) {
