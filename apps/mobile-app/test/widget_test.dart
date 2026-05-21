@@ -31,7 +31,7 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.menu_outlined));
     await tester.pumpAndSettle();
-    expect(find.text('내 모임 정보와 가입 신청'), findsOneWidget);
+    expect(find.text('내 모임 정보와 가입 신청을 관리합니다.'), findsOneWidget);
 
     await tester.drag(find.byType(ListView).last, const Offset(0, -500));
     await tester.pumpAndSettle();

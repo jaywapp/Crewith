@@ -83,7 +83,8 @@ class HomePage extends StatelessWidget {
         SummaryCard(
           label: '미확인 공지',
           title: '$unreadCount건',
-          body: unreadCount == 0 ? '모든 공지를 확인했습니다.' : '공지 탭에서 열람하면 확인 처리됩니다.',
+          body:
+              unreadCount == 0 ? '모든 공지를 확인했습니다.' : '공지 탭에서 열람하면 확인 처리됩니다.',
         ),
       ],
     );

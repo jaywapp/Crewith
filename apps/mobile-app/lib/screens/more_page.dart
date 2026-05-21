@@ -71,21 +71,17 @@ class _MorePageState extends State<MorePage> {
   Widget build(BuildContext context) {
     return PageScaffold(
       title: '더보기',
-      subtitle: '내 모임 정보와 가입 신청',
+      subtitle: '내 모임 정보와 가입 신청을 관리합니다.',
       children: [
         InfoCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CardHeader(
-                label: widget.activeClub.role == 'owner'
-                    ? '모임장'
-                    : widget.activeClub.role == 'operator'
-                        ? '운영진'
-                        : '일반회원',
+                label: _roleLabel(widget.activeClub.role),
                 title: widget.overview.clubName,
               ),
-              Text('${widget.overview.memberName}님은 현재 일반회원으로 참여 중입니다.'),
+              Text('${widget.overview.memberName}님이 현재 참여 중인 모임입니다.'),
             ],
           ),
         ),
@@ -227,4 +223,12 @@ class _MorePageState extends State<MorePage> {
       ],
     );
   }
+}
+
+String _roleLabel(String role) {
+  return switch (role) {
+    'owner' => '모임장',
+    'operator' => '운영진',
+    _ => '일반회원',
+  };
 }

@@ -24,8 +24,7 @@ class NoticesPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CardHeader(
-                label:
-                    notice.visibility == 'operators_only' ? '운영진 공지' : '전체 공지',
+                label: notice.visibility == 'operators_only' ? '운영진 공지' : '전체 공지',
                 title: notice.title,
               ),
               Text(notice.body),
