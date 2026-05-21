@@ -1,3 +1,48 @@
+class AuthSession {
+  const AuthSession({
+    required this.memberId,
+    required this.clubs,
+  });
+
+  final String memberId;
+  final List<ClubSummary> clubs;
+
+  factory AuthSession.fromJson(Map<String, dynamic> json) {
+    return AuthSession(
+      memberId: json['memberId'] as String,
+      clubs: (json['clubs'] as List<dynamic>? ?? [])
+          .map((item) => ClubSummary.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class ClubSummary {
+  const ClubSummary({
+    required this.clubId,
+    required this.name,
+    required this.sportType,
+    required this.role,
+    required this.memberStatus,
+  });
+
+  final String clubId;
+  final String name;
+  final String sportType;
+  final String role;
+  final String memberStatus;
+
+  factory ClubSummary.fromJson(Map<String, dynamic> json) {
+    return ClubSummary(
+      clubId: json['clubId'] as String,
+      name: json['name'] as String,
+      sportType: json['sportType'] as String,
+      role: json['role'] as String,
+      memberStatus: json['memberStatus'] as String,
+    );
+  }
+}
+
 class MemberAppOverview {
   const MemberAppOverview({
     required this.clubName,

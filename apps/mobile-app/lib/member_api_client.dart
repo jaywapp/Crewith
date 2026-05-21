@@ -7,18 +7,18 @@ const _defaultApiBaseUrl = String.fromEnvironment(
   'CREWITH_API_BASE_URL',
   defaultValue: 'http://10.0.2.2:4000/api/v1',
 );
-const _defaultClubId = 'club-seoul-runners';
 
 class MemberApiClient {
   const MemberApiClient({
     this.apiBaseUrl = _defaultApiBaseUrl,
-    this.clubId = _defaultClubId,
   });
 
   final String apiBaseUrl;
-  final String clubId;
 
-  Future<MemberAppOverview> fetchOverview(String memberId) async {
+  Future<MemberAppOverview> fetchOverview({
+    required String clubId,
+    required String memberId,
+  }) async {
     final uri = Uri.parse('$apiBaseUrl/clubs/$clubId/member-app/$memberId');
     final client = _client();
 
@@ -49,7 +49,7 @@ class MemberApiClient {
     );
   }
 
-  Future<String?> verifyOtp(String phoneNumber, String code) async {
+  Future<AuthSession?> verifyOtp(String phoneNumber, String code) async {
     final client = _client();
 
     try {
@@ -64,7 +64,7 @@ class MemberApiClient {
         final payload = await response.transform(utf8.decoder).join();
         final json = jsonDecode(payload) as Map<String, dynamic>;
         final data = json['data'] as Map<String, dynamic>;
-        return data['memberId'] as String;
+        return AuthSession.fromJson(data);
       }
     } catch (_) {
       return null;
@@ -91,6 +91,7 @@ class MemberApiClient {
   }
 
   Future<bool> updateEventResponse({
+    required String clubId,
     required String eventId,
     required String memberId,
     required String response,
@@ -106,6 +107,7 @@ class MemberApiClient {
   }
 
   Future<bool> markNoticeRead({
+    required String clubId,
     required String noticeId,
     required String memberId,
   }) {
@@ -117,6 +119,7 @@ class MemberApiClient {
   }
 
   Future<bool> createJoinRequest({
+    required String clubId,
     required String name,
     required String phoneNumber,
     required String greeting,
@@ -133,6 +136,7 @@ class MemberApiClient {
   }
 
   Future<bool> acceptInvite({
+    required String clubId,
     required String token,
     required String name,
     required String phoneNumber,

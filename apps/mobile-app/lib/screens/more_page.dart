@@ -7,12 +7,18 @@ class MorePage extends StatefulWidget {
   const MorePage({
     super.key,
     required this.overview,
+    required this.clubs,
+    required this.activeClub,
+    required this.onClubChanged,
     required this.onProfileSaved,
     required this.onJoinRequested,
     required this.onInviteAccepted,
   });
 
   final MemberAppOverview overview;
+  final List<ClubSummary> clubs;
+  final ClubSummary activeClub;
+  final ValueChanged<String> onClubChanged;
   final Future<String> Function(String name, String profileImageUrl)
       onProfileSaved;
   final Future<String> Function(
@@ -72,10 +78,48 @@ class _MorePageState extends State<MorePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CardHeader(
-                label: widget.overview.sportType,
+                label: widget.activeClub.role == 'owner'
+                    ? '모임장'
+                    : widget.activeClub.role == 'operator'
+                        ? '운영진'
+                        : '일반회원',
                 title: widget.overview.clubName,
               ),
               Text('${widget.overview.memberName}님은 현재 일반회원으로 참여 중입니다.'),
+            ],
+          ),
+        ),
+        InfoCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const CardHeader(label: '내 모임', title: '모임 전환'),
+              DropdownButtonFormField<String>(
+                value: widget.activeClub.clubId,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: '활성 모임',
+                ),
+                items: widget.clubs
+                    .map(
+                      (club) => DropdownMenuItem(
+                        value: club.clubId,
+                        child: Text('${club.name} · ${club.sportType}'),
+                      ),
+                    )
+                    .toList(),
+                onChanged: widget.clubs.length <= 1
+                    ? null
+                    : (value) {
+                        if (value != null) {
+                          widget.onClubChanged(value);
+                        }
+                      },
+              ),
+              if (widget.clubs.length <= 1) ...[
+                const SizedBox(height: 10),
+                const Text('가입된 모임이 하나라 전환할 모임이 없습니다.'),
+              ],
             ],
           ),
         ),

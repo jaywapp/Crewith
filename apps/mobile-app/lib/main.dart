@@ -11,6 +11,16 @@ import 'screens/more_page.dart';
 import 'screens/notices_page.dart';
 
 const _defaultMemberId = 'member-03';
+const _defaultClubId = 'club-seoul-runners';
+const _defaultClubs = [
+  ClubSummary(
+    clubId: _defaultClubId,
+    name: '서울 러너스',
+    sportType: '러닝',
+    role: 'member',
+    memberStatus: 'active',
+  ),
+];
 
 void main() {
   runApp(const CrewithApp());
@@ -57,6 +67,8 @@ class _HomeShellState extends State<HomeShell> {
   int _index = 0;
   bool _isAuthenticated = false;
   String _activeMemberId = _defaultMemberId;
+  String _activeClubId = _defaultClubId;
+  List<ClubSummary> _clubs = _defaultClubs;
   final _api = const MemberApiClient();
   late Future<MemberAppOverview> _overviewFuture;
 
@@ -67,7 +79,10 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Future<MemberAppOverview> _fetchOverview([String? memberId]) async {
-    return _api.fetchOverview(memberId ?? _activeMemberId);
+    return _api.fetchOverview(
+      clubId: _activeClubId,
+      memberId: memberId ?? _activeMemberId,
+    );
   }
 
   void _refreshOverview() {
@@ -98,11 +113,18 @@ class _HomeShellState extends State<HomeShell> {
       _overviewFuture = _fetchOverview(_defaultMemberId);
     });
 
-    final memberId = await _api.verifyOtp(phoneNumber, code);
-    if (memberId != null && mounted) {
+    final session = await _api.verifyOtp(phoneNumber, code);
+    if (session != null && mounted) {
+      final nextClubs = session.clubs.isEmpty ? _defaultClubs : session.clubs;
+      final nextClubId = nextClubs.any((club) => club.clubId == _activeClubId)
+          ? _activeClubId
+          : nextClubs.first.clubId;
+
       setState(() {
-        _activeMemberId = memberId;
-        _overviewFuture = _fetchOverview(memberId);
+        _activeMemberId = session.memberId;
+        _clubs = nextClubs;
+        _activeClubId = nextClubId;
+        _overviewFuture = _fetchOverview(session.memberId);
       });
     }
 
@@ -128,6 +150,7 @@ class _HomeShellState extends State<HomeShell> {
     _replaceOverview((value) => value.updateEventResponse(eventId, response));
 
     final saved = await _api.updateEventResponse(
+      clubId: _activeClubId,
       eventId: eventId,
       memberId: _activeMemberId,
       response: response,
@@ -145,6 +168,7 @@ class _HomeShellState extends State<HomeShell> {
     _replaceOverview((value) => value.markNoticeRead(noticeId));
 
     final saved = await _api.markNoticeRead(
+      clubId: _activeClubId,
       noticeId: noticeId,
       memberId: _activeMemberId,
     );
@@ -169,6 +193,7 @@ class _HomeShellState extends State<HomeShell> {
     }
 
     final saved = await _api.createJoinRequest(
+      clubId: _activeClubId,
       name: name,
       phoneNumber: phoneNumber,
       greeting: greeting,
@@ -189,6 +214,7 @@ class _HomeShellState extends State<HomeShell> {
     }
 
     final saved = await _api.acceptInvite(
+      clubId: _activeClubId,
       token: token,
       name: name,
       phoneNumber: phoneNumber,
@@ -210,6 +236,18 @@ class _HomeShellState extends State<HomeShell> {
     });
   }
 
+  void _changeClub(String clubId) {
+    if (clubId == _activeClubId) {
+      return;
+    }
+
+    setState(() {
+      _activeClubId = clubId;
+      _overviewFuture = _fetchOverview(_activeMemberId);
+      _index = 0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_isAuthenticated) {
@@ -223,8 +261,17 @@ class _HomeShellState extends State<HomeShell> {
       future: _overviewFuture,
       builder: (context, snapshot) {
         final overview = snapshot.data ?? MemberAppOverview.seed();
+        final activeClub = _clubs.firstWhere(
+          (club) => club.clubId == _activeClubId,
+          orElse: () => _defaultClubs.first,
+        );
         final pages = [
-          HomePage(overview: overview),
+          HomePage(
+            overview: overview,
+            clubs: _clubs,
+            activeClubId: _activeClubId,
+            onClubChanged: _changeClub,
+          ),
           EventsPage(
             overview: overview,
             onResponseChanged: _updateEventResponse,
@@ -236,6 +283,9 @@ class _HomeShellState extends State<HomeShell> {
           FeesPage(overview: overview),
           MorePage(
             overview: overview,
+            clubs: _clubs,
+            activeClub: activeClub,
+            onClubChanged: _changeClub,
             onProfileSaved: _updateProfile,
             onJoinRequested: _createJoinRequest,
             onInviteAccepted: _acceptInvite,

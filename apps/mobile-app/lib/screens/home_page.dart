@@ -4,9 +4,18 @@ import '../member_models.dart';
 import '../member_ui.dart';
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key, required this.overview});
+  const HomePage({
+    super.key,
+    required this.overview,
+    required this.clubs,
+    required this.activeClubId,
+    required this.onClubChanged,
+  });
 
   final MemberAppOverview overview;
+  final List<ClubSummary> clubs;
+  final String activeClubId;
+  final ValueChanged<String> onClubChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +41,29 @@ class HomePage extends StatelessWidget {
               .textTheme
               .bodyMedium
               ?.copyWith(color: textBlackSoft),
+        ),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<String>(
+          value: activeClubId,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: '내 모임',
+          ),
+          items: clubs
+              .map(
+                (club) => DropdownMenuItem(
+                  value: club.clubId,
+                  child: Text('${club.name} · ${club.sportType}'),
+                ),
+              )
+              .toList(),
+          onChanged: clubs.length <= 1
+              ? null
+              : (value) {
+                  if (value != null) {
+                    onClubChanged(value);
+                  }
+                },
         ),
         const SizedBox(height: 24),
         SummaryCard(
