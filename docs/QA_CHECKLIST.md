@@ -1,70 +1,901 @@
-# Crewith MVP QA Checklist
+# Crewith MVP QA 체크리스트
 
-## Admin Web
+## 작성 기준
 
-- Dashboard metrics render from API data.
-- Sidebar routes open successfully:
-  - `/`
-  - `/members`
-  - `/fees`
-  - `/events`
-  - `/notices`
-  - `/join`
-  - `/reminders`
-- Member creation works with name, phone number, and role.
-- Member role can be changed between owner, operator, and member.
-- Member status can be changed between active, dormant, and left.
-- Member delete action changes the member status to removed.
-- Fee item creation works for recurring and one-time fees.
-- Fee payment status can be changed to paid, unpaid, and exempt.
-- Event creation works with date, location, response deadline, and visibility.
-- Event response can be changed between attending and not attending.
-- Attendance can be changed between present, late, and absent.
-- Companion count can be saved.
-- Notice creation works with all members and operators only visibility.
-- Notice read status can be saved per member.
-- Notice reaction can be toggled.
-- Notice comment can be created.
-- Join request can be approved or rejected.
-- Invite link can be created with 7, 30, or 90 day expiry.
-- Reminder target groups render for fee, event, and notice reminders.
-- Reminder send action creates a notification log.
-- Admin APIs return 403 without an owner/operator role.
+- 각 항목은 사전 조건, 실행 단계, 기대 결과, 실패 시 확인할 것으로 구성한다.
+- 구현 완료 여부와 무관하게 QA 기준으로 작성한다.
+- 개발 환경 기준이며, OTP는 개발용 `123456`을 사용한다.
 
-## Member App
+---
 
-- Phone auth screen renders.
-- Development OTP `123456` can enter the app.
-- Home tab renders club name, next event, unpaid fee count, and unread notice count.
-- Events tab renders event details and attendance response controls.
-- Event response updates locally and through the API when reachable.
-- Notices tab renders visible notices only.
-- Operators-only notices are hidden from regular members.
-- Notice read action updates locally and through the API when reachable.
-- Fees tab renders fee amount, due date, and status.
-- More tab renders profile editing, join request, and invite code flows.
-- Profile name update reflects in the app.
-- Public club join request can be submitted.
-- Private club invite code can be accepted.
+## 1. 관리자 웹
 
-## API
+### 1.1 대시보드 지표 렌더링
 
-- `GET /api/v1/health` returns `ok`.
-- Admin overview requires owner/operator role.
-- Member app overview returns only data visible to the member role.
-- Fee dashboard metrics are recalculated from payment records.
-- Event attendance metrics are recalculated from response and attendance records.
-- Notice read metrics respect notice visibility.
-- Removed members are hidden from normal member lists.
-- Reminder targets are derived from unpaid fees, event no-response, and unread notices.
-- JSON persistence works across API restarts in local development.
+**사전 조건**
+- 운영진 계정으로 로그인 완료
+- 해당 모임에 회원 1명 이상 존재
+- 회비 항목, 일정, 공지 각 1건 이상 존재
 
-## Release Gate
+**실행 단계**
+1. 관리자 웹 `/` 진입
+2. 대시보드 화면 로드 대기
+3. 전체 회원, 활성 회원, 미납자, 공지 확인률, 실제 출석률, 회비 수납률 값 확인
 
-- `npm run test -w @crewith/api` passes.
-- `npm run build -w @crewith/admin-web` passes.
-- `flutter test` passes.
-- Admin web routes return HTTP 200.
-- API health endpoint returns HTTP 200.
-- No hard-coded production secrets exist in the repository.
-- Environment variables are documented in `.env.example`.
+**기대 결과**
+- 6개 지표 카드가 모두 렌더링됨
+- 각 값이 API 응답 데이터와 일치
+
+**실패 시 확인할 것**
+- `GET /api/v1/clubs/:clubId/overview` 응답 확인
+- 권한 토큰(헤더) 전달 여부 확인
+- 브라우저 콘솔 오류 확인
+
+---
+
+### 1.2 사이드바 라우트 이동
+
+**사전 조건**
+- 운영진 계정으로 로그인 완료
+
+**실행 단계**
+1. 각 사이드바 메뉴 순서대로 클릭
+   - 대시보드 `/`
+   - 구성원 `/members`
+   - 회비 `/fees`
+   - 일정 `/events`
+   - 공지 `/notices`
+   - 가입/초대 `/join`
+   - 리마인더 `/reminders`
+
+**기대 결과**
+- 각 메뉴 클릭 시 해당 URL로 라우팅됨
+- 화면이 오류 없이 렌더링됨
+- 현재 활성 메뉴가 시각적으로 구분됨
+
+**실패 시 확인할 것**
+- Next.js 라우팅 설정 확인
+- 해당 페이지 컴포넌트 존재 여부 확인
+- 콘솔 404 또는 렌더링 오류 확인
+
+---
+
+### 1.3 회원 등록
+
+**사전 조건**
+- 운영진 이상 권한 계정으로 로그인
+- `/members` 화면 진입
+
+**실행 단계**
+1. 회원 추가 버튼 클릭
+2. 이름, 휴대폰 번호, 역할 입력
+3. 저장 버튼 클릭
+4. 회원 목록 새로고침
+
+**기대 결과**
+- 신규 회원이 목록에 추가됨
+- 입력한 이름, 번호, 역할이 정확히 저장됨
+- `member_status`가 `active`로 초기화됨
+
+**실패 시 확인할 것**
+- `POST /api/v1/clubs/:clubId/members` 요청/응답 확인
+- 필수 필드 누락 여부 확인
+- 중복 휴대폰 번호 여부 확인
+
+---
+
+### 1.4 회원 역할 변경
+
+**사전 조건**
+- 모임장(owner) 계정으로 로그인
+- 대상 회원이 `active` 상태
+
+**실행 단계**
+1. 회원 상세 패널 진입
+2. 역할 드롭다운에서 변경 대상 선택 (owner/operator/member)
+3. 변경 확인
+
+**기대 결과**
+- 역할이 즉시 변경됨
+- 변경된 역할에 맞는 권한이 적용됨
+- operator가 아닌 회원은 owner 역할을 부여받을 수 없음 (owner는 transfer 방식)
+
+**실패 시 확인할 것**
+- `PATCH /api/v1/clubs/:clubId/members/:memberId` 요청 확인
+- 호출자 권한 레벨 확인 (operator는 owner 부여 불가)
+- UI에서 역할 옵션이 권한에 맞게 제한되는지 확인
+
+---
+
+### 1.5 회원 상태 변경
+
+**사전 조건**
+- 운영진 이상 권한 계정으로 로그인
+- 대상 회원 존재
+
+**실행 단계**
+1. 회원 상세 패널에서 상태 드롭다운 선택
+2. active / dormant / left 중 선택
+3. 변경 확인
+4. 삭제 버튼 클릭 시 removed 상태 적용 여부 확인
+
+**기대 결과**
+- 상태가 선택한 값으로 변경됨
+- removed 처리된 회원은 일반 회원 목록에서 숨겨짐
+- left/removed 처리 시 `personal_data_delete_at`이 30일 후로 설정됨
+
+**실패 시 확인할 것**
+- `PATCH /api/v1/clubs/:clubId/members/:memberId` 응답 확인
+- removed 처리 후 목록 쿼리 필터 확인
+
+---
+
+### 1.6 회비 항목 생성
+
+**사전 조건**
+- 운영진 이상 권한 계정으로 로그인
+- `/fees` 화면 진입
+
+**실행 단계**
+1. 회비 생성 버튼 클릭
+2. 정기 회비: 금액, 납부일, 간격, 유예기간 입력
+3. 일회성 비용: 금액, 제목, 납부 기한 입력
+4. 저장
+
+**기대 결과**
+- 회비 항목이 목록에 표시됨
+- 정기 회비의 경우 납부 상태가 활성 회원 수만큼 자동 생성됨
+- 일회성 비용의 경우 전체 또는 선택된 회원에게 납부 상태 생성됨
+
+**실패 시 확인할 것**
+- `POST /api/v1/clubs/:clubId/fees` 요청 확인
+- 납부 상태 자동 생성 여부 (`fee_payments` 레코드 확인)
+- 대상 회원 지정 로직 확인
+
+---
+
+### 1.7 납부 상태 변경
+
+**사전 조건**
+- 운영진 이상 권한 계정으로 로그인
+- 회비 항목 존재
+- 납부 대상 회원 존재
+
+**실행 단계**
+1. `/fees` 화면에서 납부 현황 테이블 진입
+2. 특정 회원의 납부 상태 토글 클릭 (unpaid → paid)
+3. paid → exempt로 변경
+4. 날짜 직접 수정 시도
+
+**기대 결과**
+- paid 처리 시 `paid_at`이 현재 시각으로 저장됨
+- exempt 처리 시 납부 불필요 상태로 표시됨
+- 날짜 직접 수정 시 입력 값으로 `paid_at` 업데이트됨
+- 상태 변경자 (`recorded_by`) 저장됨
+
+**실패 시 확인할 것**
+- `PATCH /api/v1/clubs/:clubId/fees/:feeId/payments/:memberId` 응답 확인
+- 상태 전이 유효성 확인 (exempt → paid 등)
+
+---
+
+### 1.8 일정 생성
+
+**사전 조건**
+- 운영진 이상 권한 계정으로 로그인
+- `/events` 화면 진입
+
+**실행 단계**
+1. 일정 생성 버튼 클릭
+2. 제목, 일시, 장소, 참석 응답 마감일 입력
+3. 공개 대상 선택 (전체/운영진 전용)
+4. 저장
+
+**기대 결과**
+- 일정이 목록에 표시됨
+- 운영진 전용 일정은 운영진 계정에만 표시됨
+- 응답 마감일이 일정 시작일 이전으로 저장됨
+
+**실패 시 확인할 것**
+- `POST /api/v1/clubs/:clubId/events` 요청 확인
+- `visibility: operators_only` 일정이 일반 회원 조회 API에서 필터링되는지 확인
+
+---
+
+### 1.9 참석 의사 응답 확인
+
+**사전 조건**
+- 일정 존재
+- 회원이 참석 의사를 응답한 상태
+
+**실행 단계**
+1. 일정 상세 화면 진입
+2. 참석 의사 현황 목록 확인
+3. 참석/불참 인원 수 확인
+
+**기대 결과**
+- 응답한 회원 목록이 표시됨
+- 응답 마감 후에는 수정 불가 표시
+- 미응답 회원 수가 계산됨
+
+**실패 시 확인할 것**
+- `GET /api/v1/clubs/:clubId/events/:eventId/responses` 응답 확인
+- 마감일 기준 수정 제한 처리 확인
+
+---
+
+### 1.10 출석부 작성
+
+**사전 조건**
+- 운영진 이상 권한 계정으로 로그인
+- 일정이 존재하고 참석 의사 응답 데이터 존재
+
+**실행 단계**
+1. 일정 상세에서 출석부 버튼 클릭
+2. 각 회원의 출석 상태 선택 (present/late/absent)
+3. 동반 인원 수 입력
+4. 저장
+
+**기대 결과**
+- 출석 상태가 저장됨
+- 동반 인원 수가 저장됨
+- 실제 출석률이 재계산됨
+- 처리한 운영진 정보가 `checked_by`에 저장됨
+
+**실패 시 확인할 것**
+- `POST /api/v1/clubs/:clubId/events/:eventId/attendance` 요청 확인
+- 출석률 집계 로직 확인
+
+---
+
+### 1.11 공지 작성
+
+**사전 조건**
+- 운영진 이상 권한 계정으로 로그인
+- `/notices` 화면 진입
+
+**실행 단계**
+1. 공지 작성 버튼 클릭
+2. 제목, 내용 입력
+3. 공개 대상 선택 (전체/운영진 전용)
+4. 저장
+
+**기대 결과**
+- 공지가 목록에 표시됨
+- 운영진 전용 공지는 운영진 계정에만 표시됨
+- 작성자 정보가 저장됨
+
+**실패 시 확인할 것**
+- `POST /api/v1/clubs/:clubId/notices` 요청 확인
+- visibility 필터링 확인
+
+---
+
+### 1.12 공지 확인률 조회
+
+**사전 조건**
+- 공지 존재
+- 회원 일부가 공지 확인 처리된 상태
+
+**실행 단계**
+1. 공지 상세 화면 진입
+2. 확인/미확인 목록 탭 확인
+3. 확인률 수치 확인
+
+**기대 결과**
+- 확인한 회원 목록이 표시됨
+- 미확인 회원 목록이 표시됨
+- 확인률(%)이 계산됨
+
+**실패 시 확인할 것**
+- `GET /api/v1/clubs/:clubId/notices/:noticeId/reads` 응답 확인
+- 대상 회원 범위(공개 대상 기준) 계산 확인
+
+---
+
+### 1.13 가입 신청 승인/거절
+
+**사전 조건**
+- 운영진 이상 권한 계정으로 로그인
+- 가입 신청 1건 이상 pending 상태
+
+**실행 단계**
+1. `/join` 화면에서 신청 목록 확인
+2. 신청 항목 선택 후 승인 클릭
+3. 별도 신청 항목 선택 후 거절 클릭
+4. 목록 새로고침
+
+**기대 결과**
+- 승인된 신청: 해당 사용자가 club_member로 추가됨, 신청 상태가 `approved`로 변경됨
+- 거절된 신청: 상태가 `rejected`로 변경됨, club_member 미생성
+- 처리 운영진, 처리일이 저장됨
+
+**실패 시 확인할 것**
+- `PATCH /api/v1/clubs/:clubId/join-requests/:requestId` 요청 확인
+- 승인 후 club_members 레코드 생성 확인
+
+---
+
+### 1.14 초대 링크 생성
+
+**사전 조건**
+- 운영진 이상 권한 계정으로 로그인
+- `/join` 화면 진입
+
+**실행 단계**
+1. 초대 링크 생성 버튼 클릭
+2. 유효 기간 선택 (7일/30일/90일)
+3. 생성 확인
+4. 링크 복사 버튼 클릭
+
+**기대 결과**
+- 초대 링크가 생성되고 목록에 표시됨
+- 만료일이 선택한 기간 기준으로 계산됨
+- 링크 URL이 클립보드에 복사됨
+- 비활성화 버튼이 노출됨
+
+**실패 시 확인할 것**
+- `POST /api/v1/clubs/:clubId/invite-links` 요청 확인
+- 토큰 해시 생성 로직 확인
+- 만료일 계산 확인
+
+---
+
+### 1.15 리마인더 발송
+
+**사전 조건**
+- 운영진 이상 권한 계정으로 로그인
+- 미납자/미응답자/미확인자 1명 이상 존재
+
+**실행 단계**
+1. `/reminders` 화면 진입
+2. 회비 미납 리마인더 대상 목록 확인
+3. 발송 버튼 클릭
+4. 공지 미확인 리마인더 반복
+
+**기대 결과**
+- 발송 대상 목록이 조건에 맞게 필터링됨
+- 발송 후 notification_log가 생성됨
+- 발송 완료 UI 피드백 표시
+
+**실패 시 확인할 것**
+- `POST /api/v1/clubs/:clubId/reminders/send` 요청 확인
+- FCM 미연동 환경에서는 로그만 생성되고 실제 발송 없음 확인
+- 대상 필터 조건 (유예기간 경과 여부 등) 확인
+
+---
+
+## 2. 회원 앱
+
+### 2.1 휴대폰 인증 로그인
+
+**사전 조건**
+- 앱 설치 완료
+- 개발 환경에서 OTP `123456` 사용 가능
+
+**실행 단계**
+1. 앱 실행
+2. 휴대폰 번호 입력
+3. OTP 요청
+4. `123456` 입력
+5. 로그인 완료 확인
+
+**기대 결과**
+- OTP 입력 후 홈 화면으로 이동
+- 기존 사용자: 가입된 모임 목록 화면
+- 신규 사용자: 프로필 입력 화면으로 이동
+
+**실패 시 확인할 것**
+- `POST /api/v1/auth/otp/request` 응답 확인
+- `POST /api/v1/auth/otp/verify` 응답 및 JWT 반환 여부 확인
+- 개발 OTP 환경변수 설정 여부 확인
+
+---
+
+### 2.2 홈 탭 렌더링
+
+**사전 조건**
+- 회원 계정으로 로그인 완료
+- 모임 가입 상태
+
+**실행 단계**
+1. 홈 탭 진입
+2. 모임명, 다음 일정, 미납 회비 건수, 미확인 공지 건수 확인
+
+**기대 결과**
+- 모임명이 헤더에 표시됨
+- 다음 일정 정보가 카드로 표시됨 (없으면 없음 표시)
+- 미납 회비 건수가 정확히 표시됨
+- 미확인 공지 건수가 정확히 표시됨
+
+**실패 시 확인할 것**
+- `GET /api/v1/clubs/:clubId/member-overview` 응답 확인
+- 권한 토큰 전달 여부 확인
+
+---
+
+### 2.3 일정 참석/불참 응답
+
+**사전 조건**
+- 회원 계정으로 로그인
+- 응답 마감 전 일정 존재
+
+**실행 단계**
+1. 일정 탭 진입
+2. 일정 선택
+3. 참석 버튼 클릭
+4. 앱 재시작 후 응답 유지 확인
+5. 마감 후 응답 변경 시도
+
+**기대 결과**
+- 참석 응답이 저장됨
+- 앱 재시작 후에도 응답 상태 유지
+- 마감 후에는 변경 버튼 비활성화 또는 오류 메시지 표시
+
+**실패 시 확인할 것**
+- `POST /api/v1/clubs/:clubId/events/:eventId/responses` 요청 확인
+- 마감일 기준 로직 확인
+- 오프라인 시 로컬 저장 후 동기화 로직 확인
+
+---
+
+### 2.4 공지 확인 처리
+
+**사전 조건**
+- 회원 계정으로 로그인
+- 미확인 공지 존재
+
+**실행 단계**
+1. 공지 탭 진입
+2. 미확인 공지 클릭하여 상세 진입
+3. 상세 페이지 로드 완료 확인
+4. 공지 목록으로 돌아와 확인 표시 변경 확인
+
+**기대 결과**
+- 공지 상세 진입 시 자동으로 확인 처리됨
+- 목록에서 해당 공지의 미확인 뱃지가 사라짐
+- API를 통해 `notice_reads` 레코드 생성됨
+
+**실패 시 확인할 것**
+- `POST /api/v1/clubs/:clubId/notices/:noticeId/read` 요청 확인
+- 중복 확인 처리(이미 확인된 경우) 오류 없이 처리 확인
+
+---
+
+### 2.5 공지 좋아요/댓글
+
+**사전 조건**
+- 회원 계정으로 로그인
+- 공지 상세 화면 진입
+
+**실행 단계**
+1. 좋아요 버튼 클릭
+2. 좋아요 수 증가 확인
+3. 다시 클릭하여 토글 해제 확인
+4. 댓글 입력 후 등록
+5. 댓글 목록에 표시 확인
+
+**기대 결과**
+- 좋아요가 토글됨 (on/off)
+- 댓글이 목록에 즉시 표시됨
+- 작성자 이름이 표시됨
+
+**실패 시 확인할 것**
+- `POST /api/v1/clubs/:clubId/notices/:noticeId/reactions` 요청 확인
+- `POST /api/v1/clubs/:clubId/notices/:noticeId/comments` 요청 확인
+- 운영진 전용 공지에 대한 일반 회원 댓글 권한 확인
+
+---
+
+### 2.6 회비 납부 상태 확인
+
+**사전 조건**
+- 회원 계정으로 로그인
+- 본인에게 청구된 회비 항목 존재
+
+**실행 단계**
+1. 회비 탭 진입
+2. 회비 목록 확인
+3. 각 항목의 금액, 납부일, 상태 확인
+
+**기대 결과**
+- 본인의 납부 상태만 표시됨
+- 다른 회원의 납부 상태 미노출
+- 미납/납부/면제 상태가 구분되어 표시됨
+
+**실패 시 확인할 것**
+- `GET /api/v1/clubs/:clubId/fees/my` 응답 확인
+- 권한 필터 (본인 데이터만 반환) 확인
+
+---
+
+### 2.7 프로필 수정
+
+**사전 조건**
+- 회원 계정으로 로그인
+
+**실행 단계**
+1. 더보기 탭 진입
+2. 프로필 수정 클릭
+3. 이름 변경
+4. 저장
+5. 홈 화면에서 변경된 이름 확인
+
+**기대 결과**
+- 이름이 저장됨
+- 변경 내용이 앱 전체에 반영됨
+
+**실패 시 확인할 것**
+- `PATCH /api/v1/users/me` 요청 확인
+- 모임별 공개 설정이 있는 필드의 수정 범위 확인
+
+---
+
+### 2.8 공개 모임 가입 신청
+
+**사전 조건**
+- 로그인 완료
+- 공개(`visibility: public`) 모임 존재
+
+**실행 단계**
+1. 더보기 탭에서 모임 가입 신청 진입
+2. 이름, 연락처, 가입 인사 입력
+3. 신청 제출
+4. 중복 신청 시도
+
+**기대 결과**
+- 신청이 `pending` 상태로 저장됨
+- 신청 완료 메시지 표시
+- 중복 신청 시 오류 메시지 표시
+
+**실패 시 확인할 것**
+- `POST /api/v1/clubs/:clubId/join-requests` 요청 확인
+- 중복 신청 방지 로직 확인
+
+---
+
+### 2.9 비공개 모임 초대코드 가입
+
+**사전 조건**
+- 유효한 초대 링크 존재 (미만료, 미비활성화)
+
+**실행 단계**
+1. 초대 링크 URL 진입 (딥링크 또는 앱 내 코드 입력)
+2. 가입 확인 화면에서 모임 정보 확인
+3. 가입 버튼 클릭
+4. 만료된 링크로 재시도
+
+**기대 결과**
+- 가입 완료 후 해당 모임이 내 모임 목록에 추가됨
+- 만료된 링크는 오류 메시지 표시 후 가입 불가
+
+**실패 시 확인할 것**
+- `POST /api/v1/invite-links/:token/accept` 요청 확인
+- 토큰 만료/비활성화 검증 로직 확인
+
+---
+
+### 2.10 운영진 전용 콘텐츠 숨김
+
+**사전 조건**
+- 일반 회원 계정으로 로그인
+- 운영진 전용 일정/공지 존재
+
+**실행 단계**
+1. 일정 탭 진입 후 운영진 전용 일정 미노출 확인
+2. 공지 탭 진입 후 운영진 전용 공지 미노출 확인
+3. 운영진 계정으로 전환 후 노출 확인
+
+**기대 결과**
+- 일반 회원에게 `operators_only` 일정/공지 미노출
+- 운영진 계정에서는 노출됨
+
+**실패 시 확인할 것**
+- API 응답에서 visibility 필터 적용 확인
+- 클라이언트 필터링이 아닌 서버 필터링 여부 확인
+
+---
+
+## 3. API
+
+### 3.1 헬스 체크
+
+**사전 조건**
+- API 서버 실행 중
+
+**실행 단계**
+1. `GET /api/v1/health` 호출
+
+**기대 결과**
+- HTTP 200 응답
+- `{ "status": "ok" }` 또는 유사 응답 반환
+
+**실패 시 확인할 것**
+- 서버 프로세스 실행 여부 확인
+- 포트 충돌 여부 확인
+- 환경변수 로드 오류 확인
+
+---
+
+### 3.2 운영진 권한 보호
+
+**사전 조건**
+- API 서버 실행 중
+
+**실행 단계**
+1. 권한 헤더 없이 `GET /api/v1/clubs/:clubId/overview` 호출
+2. 일반 회원 권한으로 운영진 전용 API 호출
+3. 운영진 권한으로 동일 API 호출
+
+**기대 결과**
+- 권한 없음: HTTP 401 반환
+- 일반 회원으로 운영진 전용 호출: HTTP 403 반환
+- 운영진 권한: HTTP 200 반환
+
+**실패 시 확인할 것**
+- JWT 가드 적용 여부 확인
+- 역할 가드 (`ClubRoles` 데코레이터) 적용 여부 확인
+
+---
+
+### 3.3 회원 앱 데이터 분리
+
+**사전 조건**
+- 일반 회원 계정 JWT 발급
+
+**실행 단계**
+1. 일반 회원 JWT로 모임 개요 API 호출
+2. 응답에서 운영진 전용 필드 포함 여부 확인
+3. 다른 회원의 비공개 개인정보 포함 여부 확인
+
+**기대 결과**
+- 모임 개요에 운영진 전용 지표 미포함
+- 다른 회원의 개인정보가 공개 설정 범위 내에서만 반환됨
+
+**실패 시 확인할 것**
+- 응답 직렬화(serializer/DTO) 에서 역할 기반 필드 제어 확인
+- `club_privacy_settings` 반영 여부 확인
+
+---
+
+### 3.4 회비 지표 계산
+
+**사전 조건**
+- 회비 항목과 납부 상태 데이터 존재
+
+**실행 단계**
+1. 납부 상태 변경
+2. 대시보드 지표 API 재호출
+3. 미납자 수, 수납률 변경 확인
+
+**기대 결과**
+- 납부 상태 변경 후 지표가 재계산됨
+- 캐시 없이 실시간 반영됨
+
+**실패 시 확인할 것**
+- 지표 집계 쿼리 확인
+- 캐시 또는 스냅샷 방식 사용 여부 확인
+
+---
+
+### 3.5 탈퇴/강퇴 회원 숨김
+
+**사전 조건**
+- removed 상태 회원 1명 이상 존재
+
+**실행 단계**
+1. 관리자 웹 회원 목록 API 호출
+2. 회원 앱 회원 목록 API 호출
+3. removed 회원 포함 여부 확인
+
+**기대 결과**
+- 일반 회원 목록 API에서 removed 회원 미반환
+- 운영진 전용 관리 API에서만 조회 가능 (옵션 필터 기준)
+
+**실패 시 확인할 것**
+- 회원 목록 쿼리의 `member_status` 필터 확인
+
+---
+
+### 3.6 JSON 영속성 (로컬 개발)
+
+**사전 조건**
+- 로컬 개발 환경
+- JSON 저장소 사용 중
+
+**실행 단계**
+1. 데이터 생성 (회원, 회비, 일정 등)
+2. API 서버 재시작
+3. 생성한 데이터 재조회
+
+**기대 결과**
+- 재시작 후에도 데이터 유지됨
+- 파일 기반 저장소에 정상 기록됨
+
+**실패 시 확인할 것**
+- 저장 파일 경로 설정 확인
+- 쓰기 권한 확인
+
+---
+
+## 4. 권한/보안
+
+### 4.1 모임 간 데이터 격리
+
+**사전 조건**
+- 모임 A, 모임 B 각각 존재
+- 계정이 모임 A 소속
+
+**실행 단계**
+1. 모임 A 계정으로 모임 B의 `clubId` 포함 API 호출
+2. 응답 데이터 확인
+
+**기대 결과**
+- HTTP 403 반환 또는 빈 결과 반환
+- 모임 B 데이터 미노출
+
+**실패 시 확인할 것**
+- `clubId` 기반 멤버십 검증 미들웨어 확인
+- 모든 Club 스코프 API에 멤버십 검증 적용 여부 확인
+
+---
+
+### 4.2 초대 링크 만료/비활성화
+
+**사전 조건**
+- 만료된 초대 링크 토큰 존재
+- 비활성화된 초대 링크 토큰 존재
+
+**실행 단계**
+1. 만료된 토큰으로 `POST /api/v1/invite-links/:token/accept` 호출
+2. 비활성화된 토큰으로 동일 호출
+3. 유효한 토큰으로 가입 후 동일 토큰 재사용 시도 (일회성인 경우)
+
+**기대 결과**
+- 만료/비활성화된 토큰: HTTP 400 또는 410 반환
+- 오류 메시지에 만료 또는 비활성화 이유 포함
+
+**실패 시 확인할 것**
+- `expires_at`, `disabled_at` 검증 로직 확인
+- 토큰 해시 조회 로직 확인
+
+---
+
+### 4.3 타 회원 정보 직접 접근 차단
+
+**사전 조건**
+- 일반 회원 A, B 각각 존재
+
+**실행 단계**
+1. 회원 A JWT로 회원 B의 상세 정보 API 직접 호출
+2. 회원 A JWT로 회원 B의 납부 상태 조회 시도
+
+**기대 결과**
+- 회원 B의 비공개 개인정보 미반환
+- 납부 상태는 본인 것만 조회 가능
+
+**실패 시 확인할 것**
+- 조회 API의 `sub` 기반 필터 적용 확인
+- 운영진 여부 체크 없이 전체 조회되는 엔드포인트 확인
+
+---
+
+### 4.4 secrets 하드코딩 없음
+
+**사전 조건**
+- 저장소 전체 접근 가능
+
+**실행 단계**
+1. 저장소에서 JWT secret, Firebase key, DB URL 등 하드코딩 확인
+2. `.env.example`에 필요한 모든 환경변수 문서화 여부 확인
+3. `.gitignore`에 `.env` 파일 포함 여부 확인
+
+**기대 결과**
+- 실제 시크릿 값이 소스코드에 없음
+- `.env.example`에 모든 환경변수 키 문서화됨
+- `.env` 파일이 `.gitignore`에 포함됨
+
+**실패 시 확인할 것**
+- `git log -S "password"` 등으로 히스토리 검색
+- CI 환경변수 설정 확인
+
+---
+
+## 5. 릴리즈 게이트
+
+### 5.1 API 테스트 통과
+
+**사전 조건**
+- 테스트 환경 구성 완료
+
+**실행 단계**
+1. `npm run test -w @crewith/api` 실행
+2. 테스트 결과 확인
+
+**기대 결과**
+- 모든 테스트 통과
+- 커버리지 기준 충족 (설정된 경우)
+
+**실패 시 확인할 것**
+- 실패한 테스트 케이스 상세 확인
+- 환경변수 또는 목 설정 오류 확인
+
+---
+
+### 5.2 관리자 웹 빌드
+
+**사전 조건**
+- Node.js, npm 설치 완료
+- 환경변수 설정 완료
+
+**실행 단계**
+1. `npm run build -w @crewith/admin-web` 실행
+2. 빌드 결과물 확인
+
+**기대 결과**
+- 빌드 오류 없음
+- `.next` 또는 `out` 디렉토리에 결과물 생성됨
+
+**실패 시 확인할 것**
+- TypeScript 타입 오류 확인
+- 환경변수 참조 오류 확인
+- 의존 패키지 버전 충돌 확인
+
+---
+
+### 5.3 Flutter 테스트
+
+**사전 조건**
+- Flutter SDK 설치 완료
+- Android 에뮬레이터 또는 실기기 연결
+
+**실행 단계**
+1. `flutter test` 실행
+2. `flutter run` 으로 앱 실행
+3. 핵심 흐름 수동 검증
+
+**기대 결과**
+- 모든 단위 테스트 통과
+- 앱이 오류 없이 실행됨
+
+**실패 시 확인할 것**
+- 실패한 위젯 테스트 확인
+- 의존 패키지 버전 확인
+- AndroidManifest 권한 설정 확인
+
+---
+
+### 5.4 라우트 HTTP 200 확인
+
+**사전 조건**
+- 관리자 웹 빌드 및 실행 중
+
+**실행 단계**
+1. 각 라우트에 HTTP GET 요청
+2. 응답 코드 확인
+
+**기대 결과**
+- `/`, `/members`, `/fees`, `/events`, `/notices`, `/join`, `/reminders` 모두 200 반환
+
+**실패 시 확인할 것**
+- Next.js 라우팅 구조 확인
+- 서버사이드 렌더링 오류 확인
+
+---
+
+### 5.5 환경변수 문서화
+
+**사전 조건**
+- 저장소 루트에 `.env.example` 존재
+
+**실행 단계**
+1. `.env.example` 파일 내 키 목록 확인
+2. 실제 사용 중인 환경변수와 비교
+
+**기대 결과**
+- 모든 필수 환경변수 키가 `.env.example`에 포함됨
+- 시크릿 값은 빈 값 또는 예시 값으로만 기재됨
+
+**실패 시 확인할 것**
+- `process.env.` 참조 전체 검색
+- 누락된 키 추가
