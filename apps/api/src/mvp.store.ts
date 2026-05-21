@@ -12,6 +12,23 @@ export type ResourceVisibility = "all_members" | "operators_only";
 export type SubscriptionStatus = "trial" | "active" | "expired" | "suspended";
 export type ReminderType = "fee_overdue" | "notice_unread" | "event_no_response";
 
+export interface ClubListItem {
+  id: string;
+  name: string;
+  sportType: string;
+  visibility: ClubVisibility;
+  subscriptionStatus: SubscriptionStatus;
+  trialEndsAt: string;
+}
+
+export interface ClubMembershipItem {
+  clubId: string;
+  memberId: string;
+  role: ClubRole;
+  memberStatus: MemberStatus;
+  joinedAt: string;
+}
+
 export interface DashboardSummary {
   totalMemberCount: number;
   activeMemberCount: number;
@@ -204,6 +221,7 @@ export interface SendReminderInput {
 
 export interface MvpStore {
   members: AdminMemberListItem[];
+  clubMemberships: ClubMembershipItem[];
   fees: AdminFeeListItem[];
   feePayments: Record<string, Record<string, FeePaymentStatus>>;
   events: AdminEventListItem[];
@@ -343,7 +361,7 @@ export interface AcceptInviteInput {
   applicantPhone: string;
 }
 
-export const club = {
+export const club: ClubListItem = {
   id: "club-seoul-runners",
   name: "서울 러너스",
   sportType: "러닝",
@@ -352,12 +370,26 @@ export const club = {
   trialEndsAt: "2026-06-20",
 };
 
+export const clubs: ClubListItem[] = [
+  club,
+  {
+    id: "club-seoul-riders",
+    name: "Seoul Riders",
+    sportType: "cycling",
+    visibility: "public",
+    subscriptionStatus: "trial",
+    trialEndsAt: "2026-06-20",
+  },
+];
+
 export function ensureClub(clubId: string) {
-  if (clubId !== club.id) {
+  const currentClub = clubs.find((item) => item.id === clubId);
+
+  if (!currentClub) {
     throw new NotFoundException("Club not found");
   }
 
-  return club;
+  return currentClub;
 }
 
 export const members: AdminMemberListItem[] = [
@@ -410,6 +442,30 @@ export const members: AdminMemberListItem[] = [
     joinedAt: "2026-03-09",
     lastFeeStatus: "unpaid",
     attendanceRate: 42,
+  },
+];
+
+export const clubMemberships: ClubMembershipItem[] = [
+  ...members.map((member) => ({
+    clubId: club.id,
+    memberId: member.id,
+    role: member.role,
+    memberStatus: member.memberStatus,
+    joinedAt: member.joinedAt,
+  })),
+  {
+    clubId: "club-seoul-riders",
+    memberId: "member-03",
+    role: "operator",
+    memberStatus: "active",
+    joinedAt: "2026-04-03",
+  },
+  {
+    clubId: "club-seoul-riders",
+    memberId: "member-04",
+    role: "member",
+    memberStatus: "active",
+    joinedAt: "2026-04-10",
   },
 ];
 
@@ -657,6 +713,7 @@ export function hydrateSetRecord(target: Record<string, Set<string>>, source: Re
 export function persistStore() {
   const store: MvpStore = {
     members,
+    clubMemberships,
     fees,
     feePayments,
     events,
@@ -686,6 +743,7 @@ export function hydrateStore() {
     const store = JSON.parse(readFileSync(dataFilePath, "utf8")) as Partial<MvpStore>;
 
     replaceArray(members, store.members);
+    replaceArray(clubMemberships, store.clubMemberships);
     replaceArray(fees, store.fees);
     replaceRecord(feePayments, store.feePayments);
     replaceArray(events, store.events);
@@ -752,18 +810,71 @@ export function createMemberFromProfile(name: string, phoneNumber: string): Admi
   };
 
   members.push(nextMember);
+  clubMemberships.push({
+    clubId: club.id,
+    memberId: nextMember.id,
+    role: "member",
+    memberStatus: "active",
+    joinedAt: nextMember.joinedAt,
+  });
   initializeMemberState(nextMember);
   return nextMember;
 }
 
 hydrateStore();
 
-export function activeMembers() {
-  return members.filter((member) => member.memberStatus === "active");
+export function findClubMembership(clubId: string, memberId: string) {
+  ensureClub(clubId);
+  const membership = clubMemberships.find(
+    (item) => item.clubId === clubId && item.memberId === memberId && item.memberStatus !== "removed",
+  );
+
+  if (!membership) {
+    throw new NotFoundException("Club membership not found");
+  }
+
+  return membership;
 }
 
-export function visibleMembers() {
-  return members.filter((member) => member.memberStatus !== "removed");
+export function clubMembershipSummaries(memberId: string) {
+  return clubMemberships
+    .filter((membership) => membership.memberId === memberId && membership.memberStatus !== "removed")
+    .map((membership) => {
+      const currentClub = ensureClub(membership.clubId);
+
+      return {
+        clubId: currentClub.id,
+        name: currentClub.name,
+        sportType: currentClub.sportType,
+        role: membership.role,
+        memberStatus: membership.memberStatus,
+      };
+    });
+}
+
+export function memberWithMembership(membership: ClubMembershipItem): AdminMemberListItem {
+  const member = findMember(membership.memberId);
+
+  return {
+    ...member,
+    role: membership.role,
+    memberStatus: membership.memberStatus,
+    joinedAt: membership.joinedAt,
+  };
+}
+
+export function activeMembers(clubId = club.id) {
+  ensureClub(clubId);
+  return clubMemberships
+    .filter((membership) => membership.clubId === clubId && membership.memberStatus === "active")
+    .map((membership) => memberWithMembership(membership));
+}
+
+export function visibleMembers(clubId = club.id) {
+  ensureClub(clubId);
+  return clubMemberships
+    .filter((membership) => membership.clubId === clubId && membership.memberStatus !== "removed")
+    .map((membership) => memberWithMembership(membership));
 }
 
 export function findMember(memberId: string) {
@@ -854,9 +965,9 @@ export function isResourceVisibility(value: unknown): value is ResourceVisibilit
   return value === "all_members" || value === "operators_only";
 }
 
-export function buildFeeItem(fee: AdminFeeListItem): AdminFeeListItem {
+export function buildFeeItem(fee: AdminFeeListItem, clubId = club.id): AdminFeeListItem {
   const payments = feePayments[fee.id] ?? {};
-  const targetMembers = activeMembers();
+  const targetMembers = activeMembers(clubId);
   const paidCount = targetMembers.filter((member) => payments[member.id] === "paid").length;
   const exemptCount = targetMembers.filter((member) => payments[member.id] === "exempt").length;
   const unpaidCount = targetMembers.filter((member) => payments[member.id] !== "paid" && payments[member.id] !== "exempt").length;
@@ -877,32 +988,32 @@ export function buildFeeItem(fee: AdminFeeListItem): AdminFeeListItem {
   };
 }
 
-export function buildFees() {
-  return fees.map((fee) => buildFeeItem(fee));
+export function buildFees(clubId = club.id) {
+  return fees.map((fee) => buildFeeItem(fee, clubId));
 }
 
-export function ensureFeeTargets(feeId: string) {
+export function ensureFeeTargets(feeId: string, clubId = club.id) {
   feePayments[feeId] ??= {};
 
-  for (const member of activeMembers()) {
+  for (const member of activeMembers(clubId)) {
     feePayments[feeId][member.id] ??= "unpaid";
   }
 }
 
-export function ensureEventTargets(eventId: string) {
+export function ensureEventTargets(eventId: string, clubId = club.id) {
   eventResponses[eventId] ??= {};
   eventAttendance[eventId] ??= {};
 
-  for (const member of activeMembers()) {
+  for (const member of activeMembers(clubId)) {
     eventResponses[eventId][member.id] ??= "not_attending";
     eventAttendance[eventId][member.id] ??= { status: "absent", companionCount: 0 };
   }
 }
 
-export function buildEventItem(event: AdminEventListItem): AdminEventListItem {
-  ensureEventTargets(event.id);
+export function buildEventItem(event: AdminEventListItem, clubId = club.id): AdminEventListItem {
+  ensureEventTargets(event.id, clubId);
 
-  const targetMembers = activeMembers();
+  const targetMembers = activeMembers(clubId);
   const responses = eventResponses[event.id] ?? {};
   const attendance = eventAttendance[event.id] ?? {};
   const attendingCount = targetMembers.filter((member) => responses[member.id] === "attending").length;
@@ -933,12 +1044,12 @@ export function buildEventItem(event: AdminEventListItem): AdminEventListItem {
   };
 }
 
-export function buildEvents() {
-  return events.map((event) => buildEventItem(event));
+export function buildEvents(clubId = club.id) {
+  return events.map((event) => buildEventItem(event, clubId));
 }
 
-export function noticeTargetMembers(notice: AdminNoticeListItem) {
-  const targetMembers = activeMembers();
+export function noticeTargetMembers(notice: AdminNoticeListItem, clubId = club.id) {
+  const targetMembers = activeMembers(clubId);
 
   if (notice.visibility === "operators_only") {
     return targetMembers.filter((member) => member.role === "owner" || member.role === "operator");
@@ -947,12 +1058,12 @@ export function noticeTargetMembers(notice: AdminNoticeListItem) {
   return targetMembers;
 }
 
-export function buildNoticeItem(notice: AdminNoticeListItem): AdminNoticeListItem {
+export function buildNoticeItem(notice: AdminNoticeListItem, clubId = club.id): AdminNoticeListItem {
   noticeReads[notice.id] ??= new Set();
   noticeLikes[notice.id] ??= new Set();
   noticeComments[notice.id] ??= [];
 
-  const targetMembers = noticeTargetMembers(notice);
+  const targetMembers = noticeTargetMembers(notice, clubId);
   const readCount = targetMembers.filter((member) => noticeReads[notice.id].has(member.id)).length;
   const unreadCount = Math.max(targetMembers.length - readCount, 0);
 
@@ -971,15 +1082,15 @@ export function buildNoticeItem(notice: AdminNoticeListItem): AdminNoticeListIte
   };
 }
 
-export function buildNotices() {
-  return notices.map((notice) => buildNoticeItem(notice));
+export function buildNotices(clubId = club.id) {
+  return notices.map((notice) => buildNoticeItem(notice, clubId));
 }
 
-export function buildReminderTargets(): AdminReminderTargetGroup[] {
+export function buildReminderTargets(clubId = club.id): AdminReminderTargetGroup[] {
   const reminderTargets: AdminReminderTargetGroup[] = [];
-  const latestFee = buildFees()[0];
-  const upcomingEvent = buildEvents()[0];
-  const latestNotice = buildNotices()[0];
+  const latestFee = buildFees(clubId)[0];
+  const upcomingEvent = buildEvents(clubId)[0];
+  const latestNotice = buildNotices(clubId)[0];
 
   if (latestFee) {
     const targets = latestFee.payments
@@ -1056,13 +1167,13 @@ export function buildReminderTargets(): AdminReminderTargetGroup[] {
   return reminderTargets;
 }
 
-export function buildDashboard(): DashboardSummary {
-  const totalMemberCount = visibleMembers().length;
-  const activeMemberCount = activeMembers().length;
-  const monthlyFee = buildFeeItem(fees[0]);
+export function buildDashboard(clubId = club.id): DashboardSummary {
+  const totalMemberCount = visibleMembers(clubId).length;
+  const activeMemberCount = activeMembers(clubId).length;
+  const monthlyFee = buildFeeItem(fees[0], clubId);
   const overdueMemberCount = monthlyFee.unpaidCount;
-  const latestEvent = buildEventItem(events[0]);
-  const latestNotice = buildNoticeItem(notices[0]);
+  const latestEvent = buildEventItem(events[0], clubId);
+  const latestNotice = buildNoticeItem(notices[0], clubId);
 
   return {
     totalMemberCount,
@@ -1080,16 +1191,16 @@ export function buildDashboard(): DashboardSummary {
 
 export function buildOverview(clubId = club.id): AdminClubOverview {
   const currentClub = ensureClub(clubId);
-  const dashboard = buildDashboard();
-  const reminderTargets = buildReminderTargets();
+  const dashboard = buildDashboard(clubId);
+  const reminderTargets = buildReminderTargets(clubId);
 
   return {
     club: currentClub,
     dashboard,
-    members: visibleMembers(),
-    fees: buildFees(),
-    events: buildEvents(),
-    notices: buildNotices(),
+    members: visibleMembers(clubId),
+    fees: buildFees(clubId),
+    events: buildEvents(clubId),
+    notices: buildNotices(clubId),
     joinRequests,
     inviteLinks,
     reminderTargets,
@@ -1125,6 +1236,7 @@ export function buildOverview(clubId = club.id): AdminClubOverview {
 
 export function buildMemberAppOverview(clubId: string, memberId: string): MemberAppOverview {
   const currentClub = ensureClub(clubId);
+  const membership = findClubMembership(clubId, memberId);
   const member = findMember(memberId);
 
   return {
@@ -1136,22 +1248,22 @@ export function buildMemberAppOverview(clubId: string, memberId: string): Member
     member: {
       id: member.id,
       name: member.name,
-      role: member.role,
+      role: membership.role,
     },
-    fees: buildFees().map((fee) => ({
+    fees: buildFees(clubId).map((fee) => ({
       id: fee.id,
       title: fee.title,
       amount: fee.amount,
       dueDate: fee.dueDate,
       status: fee.payments.find((payment) => payment.memberId === member.id)?.status ?? "unpaid",
     })),
-    events: buildEvents()
+    events: buildEvents(clubId)
       .filter((event) => {
         if (event.visibility === "all_members") {
           return true;
         }
 
-        return member.role === "owner" || member.role === "operator";
+        return membership.role === "owner" || membership.role === "operator";
       })
       .map((event) => {
         const participant = event.participants.find((item) => item.memberId === member.id);
@@ -1168,13 +1280,13 @@ export function buildMemberAppOverview(clubId: string, memberId: string): Member
           companionCount: participant?.companionCount ?? 0,
         };
       }),
-    notices: buildNotices()
+    notices: buildNotices(clubId)
       .filter((notice) => {
         if (notice.visibility === "all_members") {
           return true;
         }
 
-        return member.role === "owner" || member.role === "operator";
+        return membership.role === "owner" || membership.role === "operator";
       })
       .map((notice) => ({
         id: notice.id,

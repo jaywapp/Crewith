@@ -38,7 +38,8 @@ import {
   buildOverview,
   buildProfile,
   buildReminderTargets,
-  club,
+  clubMemberships,
+  clubMembershipSummaries,
   createMemberFromProfile,
   ensureClub,
   ensureEventTargets,
@@ -167,15 +168,7 @@ export class JsonMvpRepository implements MvpRepository {
       token: `dev-token-${member.id}`,
       memberId: member.id,
       profile: buildProfile(member),
-      clubs: [
-        {
-          clubId: club.id,
-          name: club.name,
-          sportType: club.sportType,
-          role: member.role,
-          memberStatus: member.memberStatus,
-        },
-      ],
+      clubs: clubMembershipSummaries(member.id),
     };
   }
 
@@ -213,12 +206,12 @@ export class JsonMvpRepository implements MvpRepository {
 
   getReminderTargets(clubId: string) {
     ensureClub(clubId);
-    return buildReminderTargets();
+    return buildReminderTargets(clubId);
   }
 
   sendReminder(clubId: string, input: SendReminderInput) {
     ensureClub(clubId);
-    const reminder = buildReminderTargets().find((item) => item.id === input.reminderId);
+    const reminder = buildReminderTargets(clubId).find((item) => item.id === input.reminderId);
 
     if (!reminder) {
       throw new NotFoundException("Reminder target not found");
@@ -240,7 +233,7 @@ export class JsonMvpRepository implements MvpRepository {
 
   getMembers(clubId: string) {
     ensureClub(clubId);
-    return visibleMembers();
+    return visibleMembers(clubId);
   }
 
   getJoinRequests(clubId: string) {
@@ -275,7 +268,16 @@ export class JsonMvpRepository implements MvpRepository {
     if (request.status === "approved") {
       const exists = members.some((member) => member.phoneNumber === request.applicantPhone);
       if (!exists) {
-        createMemberFromProfile(request.applicantName, request.applicantPhone);
+        const member = createMemberFromProfile(request.applicantName, request.applicantPhone);
+        if (clubId !== "club-seoul-runners") {
+          clubMemberships.push({
+            clubId,
+            memberId: member.id,
+            role: "member",
+            memberStatus: "active",
+            joinedAt: member.joinedAt,
+          });
+        }
       }
     }
 
@@ -321,6 +323,13 @@ export class JsonMvpRepository implements MvpRepository {
     };
 
     members.push(member);
+    clubMemberships.push({
+      clubId,
+      memberId: member.id,
+      role: "member",
+      memberStatus: "active",
+      joinedAt: member.joinedAt,
+    });
     initializeMemberState(member);
     persistStore();
     return member;
@@ -340,6 +349,13 @@ export class JsonMvpRepository implements MvpRepository {
     };
 
     members.push(nextMember);
+    clubMemberships.push({
+      clubId,
+      memberId: nextMember.id,
+      role: nextMember.role,
+      memberStatus: nextMember.memberStatus,
+      joinedAt: nextMember.joinedAt,
+    });
     initializeMemberState(nextMember);
     persistStore();
     return nextMember;
@@ -348,6 +364,7 @@ export class JsonMvpRepository implements MvpRepository {
   updateMember(clubId: string, memberId: string, input: UpdateAdminMemberInput) {
     ensureClub(clubId);
     const member = findMember(memberId);
+    const membership = clubMemberships.find((item) => item.clubId === clubId && item.memberId === memberId);
 
     if (typeof input.name === "string" && input.name.trim()) {
       member.name = input.name.trim();
@@ -359,10 +376,16 @@ export class JsonMvpRepository implements MvpRepository {
 
     if (isClubRole(input.role)) {
       member.role = input.role;
+      if (membership) {
+        membership.role = input.role;
+      }
     }
 
     if (isMemberStatus(input.memberStatus)) {
       member.memberStatus = input.memberStatus;
+      if (membership) {
+        membership.memberStatus = input.memberStatus;
+      }
     }
 
     if (isFeePaymentStatus(input.lastFeeStatus)) {
@@ -390,13 +413,17 @@ export class JsonMvpRepository implements MvpRepository {
     ensureClub(clubId);
     const member = findMember(memberId);
     member.memberStatus = "removed";
+    const membership = clubMemberships.find((item) => item.clubId === clubId && item.memberId === memberId);
+    if (membership) {
+      membership.memberStatus = "removed";
+    }
     persistStore();
     return member;
   }
 
   getFees(clubId: string) {
     ensureClub(clubId);
-    return buildFees();
+    return buildFees(clubId);
   }
 
   createFee(clubId: string, input: CreateAdminFeeInput) {
@@ -417,9 +444,9 @@ export class JsonMvpRepository implements MvpRepository {
     };
 
     fees.unshift(nextFee);
-    ensureFeeTargets(nextFee.id);
+    ensureFeeTargets(nextFee.id, clubId);
     persistStore();
-    return buildFeeItem(nextFee);
+    return buildFeeItem(nextFee, clubId);
   }
 
   updateFeePayment(clubId: string, feeId: string, input: UpdateAdminFeePaymentInput) {
@@ -437,7 +464,7 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     persistStore();
-    return buildFeeItem(fee);
+    return buildFeeItem(fee, clubId);
   }
 
   updateEventAttendance(clubId: string, eventId: string, input: UpdateAdminAttendanceInput) {
@@ -454,12 +481,12 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     persistStore();
-    return buildEventItem(event);
+    return buildEventItem(event, clubId);
   }
 
   getEvents(clubId: string) {
     ensureClub(clubId);
-    return buildEvents();
+    return buildEvents(clubId);
   }
 
   createEvent(clubId: string, input: CreateAdminEventInput) {
@@ -483,9 +510,9 @@ export class JsonMvpRepository implements MvpRepository {
     };
 
     events.unshift(nextEvent);
-    ensureEventTargets(nextEvent.id);
+    ensureEventTargets(nextEvent.id, clubId);
     persistStore();
-    return buildEventItem(nextEvent);
+    return buildEventItem(nextEvent, clubId);
   }
 
   updateEventResponse(clubId: string, eventId: string, input: UpdateAdminEventResponseInput) {
@@ -499,12 +526,12 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     persistStore();
-    return buildEventItem(event);
+    return buildEventItem(event, clubId);
   }
 
   getNotices(clubId: string) {
     ensureClub(clubId);
-    return buildNotices();
+    return buildNotices(clubId);
   }
 
   createNotice(clubId: string, input: CreateAdminNoticeInput) {
@@ -528,7 +555,7 @@ export class JsonMvpRepository implements MvpRepository {
     noticeLikes[nextNotice.id] = new Set();
     noticeComments[nextNotice.id] = [];
     persistStore();
-    return buildNoticeItem(nextNotice);
+    return buildNoticeItem(nextNotice, clubId);
   }
 
   markNoticeRead(clubId: string, noticeId: string, input: UpdateAdminNoticeReadInput) {
@@ -538,7 +565,7 @@ export class JsonMvpRepository implements MvpRepository {
     noticeReads[noticeId] ??= new Set();
     noticeReads[noticeId].add(member.id);
     persistStore();
-    return buildNoticeItem(notice);
+    return buildNoticeItem(notice, clubId);
   }
 
   toggleNoticeReaction(clubId: string, noticeId: string, input: ToggleAdminNoticeReactionInput) {
@@ -554,7 +581,7 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     persistStore();
-    return buildNoticeItem(notice);
+    return buildNoticeItem(notice, clubId);
   }
 
   createNoticeComment(clubId: string, noticeId: string, input: CreateAdminNoticeCommentInput) {
@@ -571,6 +598,6 @@ export class JsonMvpRepository implements MvpRepository {
     noticeComments[noticeId] ??= [];
     noticeComments[noticeId].push(comment);
     persistStore();
-    return buildNoticeItem(notice);
+    return buildNoticeItem(notice, clubId);
   }
 }

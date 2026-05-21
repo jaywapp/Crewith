@@ -82,6 +82,34 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(memberOverview.status, 200);
   assert.equal((await memberOverview.json()).data.member.name, "박도윤");
 
+  const otpRequest = await fetch(`${baseUrl}/auth/otp/request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phoneNumber: "010-1234-1003" }),
+  });
+  assert.equal(otpRequest.status, 201);
+
+  const otpVerify = await fetch(`${baseUrl}/auth/otp/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phoneNumber: "010-1234-1003", code: "123456" }),
+  });
+  assert.equal(otpVerify.status, 201);
+  const session = (await otpVerify.json()).data;
+  assert.deepEqual(
+    session.clubs.map((club) => club.clubId),
+    ["club-seoul-runners", "club-seoul-riders"],
+  );
+
+  const secondClubOverview = await fetch(`${baseUrl}/clubs/club-seoul-riders/member-app/member-03`);
+  assert.equal(secondClubOverview.status, 200);
+  const secondClubOverviewJson = await secondClubOverview.json();
+  assert.equal(secondClubOverviewJson.data.club.id, "club-seoul-riders");
+  assert.equal(secondClubOverviewJson.data.member.role, "operator");
+
+  const nonMemberClubOverview = await fetch(`${baseUrl}/clubs/club-seoul-riders/member-app/member-01`);
+  assert.equal(nonMemberClubOverview.status, 404);
+
   const unknownClubMemberOverview = await fetch(`${baseUrl}/clubs/unknown-club/member-app/member-03`);
   assert.equal(unknownClubMemberOverview.status, 404);
 
