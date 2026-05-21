@@ -141,6 +141,24 @@ const fallbackOverview: AdminClubOverview = {
       createdAt: "2026-05-20T20:00:00+09:00",
     },
   ],
+  reminderTargets: [
+    {
+      id: "fee:fee-2026-05",
+      type: "fee_overdue",
+      title: "회비 미납 리마인더",
+      description: "5월 월회비 미납 회원에게 앱 푸시를 보냅니다.",
+      targetCount: 1,
+      targets: [
+        {
+          memberId: "member-03",
+          memberName: "박도윤",
+          phoneNumber: "010-1234-1003",
+          reason: "5월 월회비 2026-05-25까지 미납",
+        },
+      ],
+    },
+  ],
+  notificationLogs: [],
   tasks: [
     {
       id: "task-join",
@@ -429,6 +447,22 @@ async function createNoticeCommentAction(noticeId: string, formData: FormData) {
   revalidatePath("/");
 }
 
+async function sendReminderAction(formData: FormData) {
+  "use server";
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/reminders/send`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      reminderId: formData.get("reminderId"),
+    }),
+  });
+
+  revalidatePath("/");
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("ko-KR", {
     month: "short",
@@ -510,6 +544,57 @@ export default async function AdminHome() {
             <h2>30일 체험이 진행 중입니다.</h2>
             <p>체험 종료일은 {overview.club.trialEndsAt}입니다. 실제 결제 연동 전까지 구독 상태만 표시합니다.</p>
           </article>
+        </section>
+
+        <section className="notificationPanel panel">
+          <div className="panelHeader">
+            <h2>알림/리마인더</h2>
+            <a href="#">앱 푸시 발송 대상</a>
+          </div>
+          <div className="reminderGrid">
+            {overview.reminderTargets.map((reminder) => (
+              <article className="reminderCard" key={reminder.id}>
+                <div className="summaryLine">
+                  <div>
+                    <strong>{reminder.title}</strong>
+                    <span>{reminder.description}</span>
+                  </div>
+                  <strong>{reminder.targetCount}명</strong>
+                </div>
+                <div className="reminderTargets">
+                  {reminder.targets.length === 0 ? (
+                    <span className="emptyState">발송 대상 없음</span>
+                  ) : (
+                    reminder.targets.slice(0, 4).map((target) => (
+                      <div className="reminderTarget" key={`${reminder.id}-${target.memberId}`}>
+                        <strong>{target.memberName}</strong>
+                        <span>
+                          {target.phoneNumber} · {target.reason}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <form action={sendReminderAction} className="reminderAction">
+                  <input name="reminderId" type="hidden" value={reminder.id} />
+                  <button className="primary compact" disabled={reminder.targetCount === 0} type="submit">
+                    발송 기록
+                  </button>
+                </form>
+              </article>
+            ))}
+          </div>
+          <div className="notificationLogs">
+            {overview.notificationLogs.slice(0, 5).map((log) => (
+              <div className="notificationLog" key={log.id}>
+                <strong>{log.title}</strong>
+                <span>
+                  {formatDate(log.sentAt)} · {log.targetCount}명 · {log.channel === "app_push" ? "앱 푸시" : log.channel}
+                </span>
+              </div>
+            ))}
+            {overview.notificationLogs.length === 0 ? <span className="emptyState">아직 발송 기록이 없습니다.</span> : null}
+          </div>
         </section>
 
         <section className="memberWorkspace">

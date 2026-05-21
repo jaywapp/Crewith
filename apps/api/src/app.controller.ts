@@ -21,6 +21,7 @@ type MemberStatus = "active" | "dormant" | "left" | "removed";
 type ClubVisibility = "public" | "private";
 type ResourceVisibility = "all_members" | "operators_only";
 type SubscriptionStatus = "trial" | "active" | "expired" | "suspended";
+type ReminderType = "fee_overdue" | "notice_unread" | "event_no_response";
 
 interface DashboardSummary {
   totalMemberCount: number;
@@ -48,6 +49,8 @@ interface AdminClubOverview {
   notices: AdminNoticeListItem[];
   joinRequests: AdminJoinRequestListItem[];
   inviteLinks: AdminInviteLinkListItem[];
+  reminderTargets: AdminReminderTargetGroup[];
+  notificationLogs: AdminNotificationLogItem[];
   tasks: AdminTaskItem[];
 }
 
@@ -158,6 +161,31 @@ interface AdminTaskItem {
   severity: "info" | "warning" | "danger";
 }
 
+interface AdminReminderTargetGroup {
+  id: string;
+  type: ReminderType;
+  title: string;
+  description: string;
+  targetCount: number;
+  targets: AdminReminderTargetItem[];
+}
+
+interface AdminReminderTargetItem {
+  memberId: string;
+  memberName: string;
+  phoneNumber: string;
+  reason: string;
+}
+
+interface AdminNotificationLogItem {
+  id: string;
+  type: ReminderType;
+  title: string;
+  targetCount: number;
+  sentAt: string;
+  channel: "app_push";
+}
+
 interface MemberProfile {
   memberId: string;
   name: string;
@@ -180,6 +208,10 @@ interface UpdateMemberProfileInput {
   profileImageUrl?: string;
 }
 
+interface SendReminderInput {
+  reminderId: string;
+}
+
 interface MvpStore {
   members: AdminMemberListItem[];
   fees: AdminFeeListItem[];
@@ -193,6 +225,7 @@ interface MvpStore {
   noticeComments: Record<string, AdminNoticeCommentListItem[]>;
   joinRequests: AdminJoinRequestListItem[];
   inviteLinks: AdminInviteLinkListItem[];
+  notificationLogs: AdminNotificationLogItem[];
   profileImages: Record<string, string>;
 }
 
@@ -576,6 +609,7 @@ const inviteLinks: AdminInviteLinkListItem[] = [
   },
 ];
 
+const notificationLogs: AdminNotificationLogItem[] = [];
 const otpCodes = new Map<string, { code: string; expiresAt: string }>();
 const profileImages = new Map<string, string>();
 const dataFilePath = process.env.CREWITH_DATA_FILE ?? join(process.cwd(), "data", "mvp-store.json");
@@ -632,6 +666,7 @@ function persistStore() {
     noticeComments,
     joinRequests,
     inviteLinks,
+    notificationLogs,
     profileImages: Object.fromEntries(profileImages),
   };
 
@@ -645,24 +680,29 @@ function hydrateStore() {
     return;
   }
 
-  const store = JSON.parse(readFileSync(dataFilePath, "utf8")) as Partial<MvpStore>;
+  try {
+    const store = JSON.parse(readFileSync(dataFilePath, "utf8")) as Partial<MvpStore>;
 
-  replaceArray(members, store.members);
-  replaceArray(fees, store.fees);
-  replaceRecord(feePayments, store.feePayments);
-  replaceArray(events, store.events);
-  replaceRecord(eventResponses, store.eventResponses);
-  replaceRecord(eventAttendance, store.eventAttendance);
-  replaceArray(notices, store.notices);
-  hydrateSetRecord(noticeReads, store.noticeReads);
-  hydrateSetRecord(noticeLikes, store.noticeLikes);
-  replaceRecord(noticeComments, store.noticeComments);
-  replaceArray(joinRequests, store.joinRequests);
-  replaceArray(inviteLinks, store.inviteLinks);
-  profileImages.clear();
+    replaceArray(members, store.members);
+    replaceArray(fees, store.fees);
+    replaceRecord(feePayments, store.feePayments);
+    replaceArray(events, store.events);
+    replaceRecord(eventResponses, store.eventResponses);
+    replaceRecord(eventAttendance, store.eventAttendance);
+    replaceArray(notices, store.notices);
+    hydrateSetRecord(noticeReads, store.noticeReads);
+    hydrateSetRecord(noticeLikes, store.noticeLikes);
+    replaceRecord(noticeComments, store.noticeComments);
+    replaceArray(joinRequests, store.joinRequests);
+    replaceArray(inviteLinks, store.inviteLinks);
+    replaceArray(notificationLogs, store.notificationLogs);
+    profileImages.clear();
 
-  for (const [memberId, imageUrl] of Object.entries(store.profileImages ?? {})) {
-    profileImages.set(memberId, imageUrl);
+    for (const [memberId, imageUrl] of Object.entries(store.profileImages ?? {})) {
+      profileImages.set(memberId, imageUrl);
+    }
+  } catch {
+    persistStore();
   }
 }
 
@@ -932,6 +972,87 @@ function buildNotices() {
   return notices.map((notice) => buildNoticeItem(notice));
 }
 
+function buildReminderTargets(): AdminReminderTargetGroup[] {
+  const reminderTargets: AdminReminderTargetGroup[] = [];
+  const latestFee = buildFees()[0];
+  const upcomingEvent = buildEvents()[0];
+  const latestNotice = buildNotices()[0];
+
+  if (latestFee) {
+    const targets = latestFee.payments
+      .filter((payment) => payment.status === "unpaid")
+      .map((payment) => {
+        const member = findMember(payment.memberId);
+
+        return {
+          memberId: member.id,
+          memberName: member.name,
+          phoneNumber: member.phoneNumber,
+          reason: `${latestFee.title} ${latestFee.dueDate}까지 미납`,
+        };
+      });
+
+    reminderTargets.push({
+      id: `fee:${latestFee.id}`,
+      type: "fee_overdue",
+      title: "회비 미납 리마인더",
+      description: `${latestFee.title} 미납 회원에게 앱 푸시를 보냅니다.`,
+      targetCount: targets.length,
+      targets,
+    });
+  }
+
+  if (upcomingEvent) {
+    const targets = upcomingEvent.participants
+      .filter((participant) => participant.response === "not_attending")
+      .map((participant) => {
+        const member = findMember(participant.memberId);
+
+        return {
+          memberId: member.id,
+          memberName: member.name,
+          phoneNumber: member.phoneNumber,
+          reason: `${upcomingEvent.title} 참석 의사 확인 필요`,
+        };
+      });
+
+    reminderTargets.push({
+      id: `event:${upcomingEvent.id}`,
+      type: "event_no_response",
+      title: "일정 참석 확인 리마인더",
+      description: `${upcomingEvent.title} 참석 의사를 다시 요청합니다.`,
+      targetCount: targets.length,
+      targets,
+    });
+  }
+
+  if (latestNotice) {
+    const targets = latestNotice.readers
+      .filter((reader) => !reader.read)
+      .map((reader) => {
+        const member = findMember(reader.memberId);
+
+        return {
+          memberId: member.id,
+          memberName: member.name,
+          phoneNumber: member.phoneNumber,
+          reason: `${latestNotice.title} 미확인`,
+        };
+      });
+
+    reminderTargets.push({
+      id: `notice:${latestNotice.id}`,
+      type: "notice_unread",
+      title: "공지 미확인 리마인더",
+      description: `${latestNotice.title} 미확인 회원에게 확인을 요청합니다.`,
+      targetCount: targets.length,
+      targets,
+    });
+  }
+
+  return reminderTargets;
+}
+
 function buildDashboard(): DashboardSummary {
   const totalMemberCount = visibleMembers().length;
   const activeMemberCount = activeMembers().length;
@@ -956,6 +1077,7 @@ function buildDashboard(): DashboardSummary {
 
 function buildOverview(): AdminClubOverview {
   const dashboard = buildDashboard();
+  const reminderTargets = buildReminderTargets();
 
   return {
     club,
@@ -966,7 +1088,15 @@ function buildOverview(): AdminClubOverview {
     notices: buildNotices(),
     joinRequests,
     inviteLinks,
+    reminderTargets,
+    notificationLogs,
     tasks: [
+      {
+        id: "task-reminder",
+        label: "발송 대기 알림",
+        value: `${reminderTargets.reduce((sum, item) => sum + item.targetCount, 0)}명`,
+        severity: reminderTargets.some((item) => item.targetCount > 0) ? "warning" : "info",
+      },
       {
         id: "task-join",
         label: "가입 신청 대기",
@@ -1175,6 +1305,38 @@ export class AppController {
   getMemberAppOverview(@Param("memberId") memberId: string) {
     return {
       data: buildMemberAppOverview(memberId),
+    };
+  }
+
+  @Get("clubs/:clubId/reminders")
+  getReminderTargets() {
+    return {
+      data: buildReminderTargets(),
+    };
+  }
+
+  @Post("clubs/:clubId/reminders/send")
+  sendReminder(@Body() input: SendReminderInput) {
+    const reminder = buildReminderTargets().find((item) => item.id === input.reminderId);
+
+    if (!reminder) {
+      throw new NotFoundException("Reminder target not found");
+    }
+
+    const log: AdminNotificationLogItem = {
+      id: `notification-${Date.now()}`,
+      type: reminder.type,
+      title: reminder.title,
+      targetCount: reminder.targetCount,
+      sentAt: new Date().toISOString(),
+      channel: "app_push",
+    };
+
+    notificationLogs.unshift(log);
+    persistStore();
+
+    return {
+      data: log,
     };
   }
 

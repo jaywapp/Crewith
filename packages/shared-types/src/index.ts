@@ -15,6 +15,7 @@ export type EventResponse = "attending" | "not_attending";
 export type AttendanceStatus = "present" | "late" | "absent";
 export type SubscriptionTier = "under_30" | "under_100" | "under_300";
 export type SubscriptionStatus = "trial" | "active" | "expired" | "suspended";
+export type ReminderType = "fee_overdue" | "notice_unread" | "event_no_response";
 
 export interface ApiEnvelope<T> {
   data: T;
@@ -90,7 +91,34 @@ export interface AdminClubOverview {
   notices: AdminNoticeListItem[];
   joinRequests: AdminJoinRequestListItem[];
   inviteLinks: AdminInviteLinkListItem[];
+  reminderTargets: AdminReminderTargetGroup[];
+  notificationLogs: AdminNotificationLogItem[];
   tasks: AdminTaskItem[];
+}
+
+export interface AdminReminderTargetGroup {
+  id: string;
+  type: ReminderType;
+  title: string;
+  description: string;
+  targetCount: number;
+  targets: AdminReminderTargetItem[];
+}
+
+export interface AdminReminderTargetItem {
+  memberId: string;
+  memberName: string;
+  phoneNumber: string;
+  reason: string;
+}
+
+export interface AdminNotificationLogItem {
+  id: string;
+  type: ReminderType;
+  title: string;
+  targetCount: number;
+  sentAt: string;
+  channel: "app_push";
 }
 
 export interface AdminJoinRequestListItem {
@@ -281,4 +309,8 @@ export interface CreateInviteLinkInput {
 export interface AcceptInviteInput {
   applicantName: string;
   applicantPhone: string;
+}
+
+export interface SendReminderInput {
+  reminderId: string;
 }

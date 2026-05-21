@@ -223,6 +223,10 @@ h2 {
   margin-bottom: 24px;
 }
 
+.notificationPanel {
+  margin-bottom: 24px;
+}
+
 .panel {
   background: var(--color-white);
   border-radius: var(--radius-card);
@@ -520,6 +524,62 @@ textarea:focus {
   gap: 8px;
 }
 
+.reminderGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.reminderCard {
+  border-top: 1px solid var(--color-hairline);
+  display: grid;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.reminderCard .summaryLine {
+  border-top: 0;
+}
+
+.reminderTargets,
+.notificationLogs {
+  display: grid;
+  gap: 8px;
+}
+
+.reminderTarget,
+.notificationLog {
+  background: var(--color-neutral-cool);
+  border-radius: var(--radius-input);
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.reminderTarget strong,
+.notificationLog strong {
+  color: var(--color-text-black);
+  font-size: 13px;
+}
+
+.reminderTarget span,
+.notificationLog span,
+.emptyState {
+  color: var(--color-text-black-soft);
+  font-size: 13px;
+}
+
+.reminderAction {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.notificationLogs {
+  border-top: 1px solid var(--color-hairline);
+  margin-top: 18px;
+  padding-top: 16px;
+}
+
 .feePaymentRow {
   align-items: center;
   display: grid;
@@ -721,6 +781,7 @@ textarea:focus {
 
   .metrics,
   .grid,
+  .reminderGrid,
   .operations,
   .memberWorkspace {
     grid-template-columns: 1fr 1fr;
@@ -752,6 +813,7 @@ textarea:focus {
 
   .metrics,
   .grid,
+  .reminderGrid,
   .operations,
   .memberWorkspace {
     grid-template-columns: 1fr;
