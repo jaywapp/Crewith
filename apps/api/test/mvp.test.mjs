@@ -64,7 +64,12 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(health.status, 200);
   assert.equal((await health.json()).data.status, "ok");
 
-  const adminOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/admin/overview`);
+  const deniedOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/admin/overview`);
+  assert.equal(deniedOverview.status, 403);
+
+  const adminOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/admin/overview`, {
+    headers: { "x-crewith-role": "operator" },
+  });
   assert.equal(adminOverview.status, 200);
   assert.equal((await adminOverview.json()).data.club.name, "서울 러너스");
 

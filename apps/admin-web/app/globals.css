@@ -31,7 +31,7 @@ body {
   background: var(--color-canvas);
   color: var(--color-text-black);
   font-family: var(--font-primary);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 a {
@@ -256,6 +256,33 @@ h2 {
   font-weight: 700;
 }
 
+.pageTitle {
+  margin-bottom: 24px;
+}
+
+.pageTitle h2 {
+  color: var(--color-starbucks-green);
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.pageTitle p,
+.muted {
+  color: var(--color-text-black-soft);
+}
+
+.pageGrid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.stack {
+  display: grid;
+  gap: 16px;
+}
+
 .taskList {
   list-style: none;
   margin: 0;
@@ -330,7 +357,7 @@ h2 {
   border-radius: var(--radius-card);
   display: grid;
   gap: 12px;
-  grid-template-columns: 1fr 150px 1fr 1fr 150px auto;
+  grid-template-columns: 1fr 150px 1fr 1fr 150px 120px auto;
   margin-bottom: 18px;
   padding: 16px;
 }
@@ -781,6 +808,7 @@ textarea:focus {
 
   .metrics,
   .grid,
+  .pageGrid,
   .reminderGrid,
   .operations,
   .memberWorkspace {
@@ -813,6 +841,7 @@ textarea:focus {
 
   .metrics,
   .grid,
+  .pageGrid,
   .reminderGrid,
   .operations,
   .memberWorkspace {

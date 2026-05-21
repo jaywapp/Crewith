@@ -176,6 +176,7 @@ export interface AdminEventListItem {
   locationName: string;
   locationAddress?: string;
   responseDeadline?: string;
+  visibility: ResourceVisibility;
   attendingCount: number;
   notAttendingCount: number;
   presentCount: number;
@@ -260,6 +261,7 @@ export interface CreateAdminEventInput {
   locationName: string;
   locationAddress?: string;
   responseDeadline?: string;
+  visibility?: ResourceVisibility;
 }
 
 export interface UpdateAdminEventResponseInput {

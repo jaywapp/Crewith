@@ -98,6 +98,7 @@ export interface AdminEventListItem {
   locationName: string;
   locationAddress?: string;
   responseDeadline?: string;
+  visibility: ResourceVisibility;
   attendingCount: number;
   notAttendingCount: number;
   presentCount: number;
@@ -242,6 +243,7 @@ export interface MemberAppOverview {
     startsAt: string;
     locationName: string;
     locationAddress?: string;
+    visibility: ResourceVisibility;
     response: EventResponseValue;
     attendanceStatus: AttendanceStatus;
     companionCount: number;
@@ -289,6 +291,7 @@ export interface CreateAdminEventInput {
   locationName: string;
   locationAddress?: string;
   responseDeadline?: string;
+  visibility?: ResourceVisibility;
 }
 
 export interface UpdateAdminEventResponseInput {
@@ -456,6 +459,7 @@ export const events: AdminEventListItem[] = [
     locationName: "여의도 한강공원",
     locationAddress: "서울 영등포구 여의동로 330",
     responseDeadline: "2026-05-21T18:00:00+09:00",
+    visibility: "all_members",
     attendingCount: 18,
     notAttendingCount: 5,
     presentCount: 16,
@@ -472,6 +476,7 @@ export const events: AdminEventListItem[] = [
     locationName: "서울숲",
     locationAddress: "서울 성동구 뚝섬로 273",
     responseDeadline: "2026-05-23T22:00:00+09:00",
+    visibility: "all_members",
     attendingCount: 14,
     notAttendingCount: 4,
     presentCount: 0,
@@ -902,6 +907,7 @@ export function buildEventItem(event: AdminEventListItem): AdminEventListItem {
 
   return {
     ...event,
+    visibility: isResourceVisibility(event.visibility) ? event.visibility : "all_members",
     attendingCount,
     notAttendingCount,
     presentCount,
@@ -1129,20 +1135,29 @@ export function buildMemberAppOverview(memberId: string): MemberAppOverview {
       dueDate: fee.dueDate,
       status: fee.payments.find((payment) => payment.memberId === member.id)?.status ?? "unpaid",
     })),
-    events: buildEvents().map((event) => {
-      const participant = event.participants.find((item) => item.memberId === member.id);
+    events: buildEvents()
+      .filter((event) => {
+        if (event.visibility === "all_members") {
+          return true;
+        }
 
-      return {
-        id: event.id,
-        title: event.title,
-        startsAt: event.startsAt,
-        locationName: event.locationName,
-        locationAddress: event.locationAddress,
-        response: participant?.response ?? "not_attending",
-        attendanceStatus: participant?.attendanceStatus ?? "absent",
-        companionCount: participant?.companionCount ?? 0,
-      };
-    }),
+        return member.role === "owner" || member.role === "operator";
+      })
+      .map((event) => {
+        const participant = event.participants.find((item) => item.memberId === member.id);
+
+        return {
+          id: event.id,
+          title: event.title,
+          startsAt: event.startsAt,
+          locationName: event.locationName,
+          locationAddress: event.locationAddress,
+          visibility: event.visibility,
+          response: participant?.response ?? "not_attending",
+          attendanceStatus: participant?.attendanceStatus ?? "absent",
+          companionCount: participant?.companionCount ?? 0,
+        };
+      }),
     notices: buildNotices()
       .filter((notice) => {
         if (notice.visibility === "all_members") {

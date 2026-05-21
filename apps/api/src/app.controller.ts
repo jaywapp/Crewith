@@ -3,7 +3,9 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
+  Headers,
   NotFoundException,
   Param,
   Patch,
@@ -87,6 +89,12 @@ import {
   visibleMembers,
 } from "./mvp.store";
 
+function assertOperatorRole(role: string | undefined) {
+  if (role !== "owner" && role !== "operator") {
+    throw new ForbiddenException("Operator role is required");
+  }
+}
+
 @Controller()
 export class AppController {
   @Get("health")
@@ -101,7 +109,12 @@ export class AppController {
   }
 
   @Get("clubs/:clubId/admin/overview")
-  getAdminOverview(@Param("clubId") clubId: string) {
+  getAdminOverview(
+    @Param("clubId") clubId: string,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+
     return {
       data: {
         ...buildOverview(),
@@ -229,7 +242,12 @@ export class AppController {
   }
 
   @Post("clubs/:clubId/reminders/send")
-  sendReminder(@Body() input: SendReminderInput) {
+  sendReminder(
+    @Body() input: SendReminderInput,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+
     const reminder = buildReminderTargets().find((item) => item.id === input.reminderId);
 
     if (!reminder) {
@@ -254,14 +272,18 @@ export class AppController {
   }
 
   @Get("clubs/:clubId/members")
-  getMembers() {
+  getMembers(@Headers("x-crewith-role") role: string | undefined) {
+    assertOperatorRole(role);
+
     return {
       data: visibleMembers(),
     };
   }
 
   @Get("clubs/:clubId/join-requests")
-  getJoinRequests() {
+  getJoinRequests(@Headers("x-crewith-role") role: string | undefined) {
+    assertOperatorRole(role);
+
     return {
       data: joinRequests,
     };
@@ -290,7 +312,10 @@ export class AppController {
   reviewJoinRequest(
     @Param("requestId") requestId: string,
     @Body() input: ReviewJoinRequestInput,
+    @Headers("x-crewith-role") role: string | undefined,
   ) {
+    assertOperatorRole(role);
+
     const request = findJoinRequest(requestId);
 
     if (input.status === "approved" || input.status === "rejected") {
@@ -312,14 +337,21 @@ export class AppController {
   }
 
   @Get("clubs/:clubId/invite-links")
-  getInviteLinks() {
+  getInviteLinks(@Headers("x-crewith-role") role: string | undefined) {
+    assertOperatorRole(role);
+
     return {
       data: inviteLinks,
     };
   }
 
   @Post("clubs/:clubId/invite-links")
-  createInviteLink(@Body() input: CreateInviteLinkInput) {
+  createInviteLink(
+    @Body() input: CreateInviteLinkInput,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+
     const expiresInDays = Number(input.expiresInDays) || 30;
     const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const nextInvite: AdminInviteLinkListItem = {
@@ -366,7 +398,12 @@ export class AppController {
   }
 
   @Post("clubs/:clubId/members")
-  createMember(@Body() input: CreateAdminMemberInput) {
+  createMember(
+    @Body() input: CreateAdminMemberInput,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+
     const nextMember: AdminMemberListItem = {
       id: `member-${Date.now()}`,
       name: input.name.trim(),
@@ -391,7 +428,10 @@ export class AppController {
   updateMember(
     @Param("memberId") memberId: string,
     @Body() input: UpdateAdminMemberInput,
+    @Headers("x-crewith-role") role: string | undefined,
   ) {
+    assertOperatorRole(role);
+
     const member = findMember(memberId);
 
     if (typeof input.name === "string" && input.name.trim()) {
@@ -426,7 +466,10 @@ export class AppController {
   updateMemberFeeStatus(
     @Param("memberId") memberId: string,
     @Body("status") status: FeePaymentStatus,
+    @Headers("x-crewith-role") role: string | undefined,
   ) {
+    assertOperatorRole(role);
+
     const member = findMember(memberId);
 
     if (isFeePaymentStatus(status)) {
@@ -441,7 +484,12 @@ export class AppController {
   }
 
   @Delete("clubs/:clubId/members/:memberId")
-  removeMember(@Param("memberId") memberId: string) {
+  removeMember(
+    @Param("memberId") memberId: string,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+
     const member = findMember(memberId);
     member.memberStatus = "removed";
     persistStore();
@@ -452,14 +500,21 @@ export class AppController {
   }
 
   @Get("clubs/:clubId/fees")
-  getFees() {
+  getFees(@Headers("x-crewith-role") role: string | undefined) {
+    assertOperatorRole(role);
+
     return {
       data: buildFees(),
     };
   }
 
   @Post("clubs/:clubId/fees")
-  createFee(@Body() input: CreateAdminFeeInput) {
+  createFee(
+    @Body() input: CreateAdminFeeInput,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+
     const amount = Number(input.amount);
     const nextFee: AdminFeeListItem = {
       id: `fee-${Date.now()}`,
@@ -488,7 +543,10 @@ export class AppController {
   updateFeePayment(
     @Param("feeId") feeId: string,
     @Body() input: UpdateAdminFeePaymentInput,
+    @Headers("x-crewith-role") role: string | undefined,
   ) {
+    assertOperatorRole(role);
+
     const fee = findFee(feeId);
     const member = findMember(input.memberId);
 
@@ -512,7 +570,10 @@ export class AppController {
   updateEventAttendance(
     @Param("eventId") eventId: string,
     @Body() input: UpdateAdminAttendanceInput,
+    @Headers("x-crewith-role") role: string | undefined,
   ) {
+    assertOperatorRole(role);
+
     const event = findEvent(eventId);
     const member = findMember(input.memberId);
 
@@ -532,14 +593,21 @@ export class AppController {
   }
 
   @Get("clubs/:clubId/events")
-  getEvents() {
+  getEvents(@Headers("x-crewith-role") role: string | undefined) {
+    assertOperatorRole(role);
+
     return {
       data: buildEvents(),
     };
   }
 
   @Post("clubs/:clubId/events")
-  createEvent(@Body() input: CreateAdminEventInput) {
+  createEvent(
+    @Body() input: CreateAdminEventInput,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+
     const nextEvent: AdminEventListItem = {
       id: `event-${Date.now()}`,
       title: input.title.trim(),
@@ -547,6 +615,7 @@ export class AppController {
       locationName: input.locationName.trim(),
       locationAddress: input.locationAddress?.trim(),
       responseDeadline: input.responseDeadline,
+      visibility: isResourceVisibility(input.visibility) ? input.visibility : "all_members",
       attendingCount: 0,
       notAttendingCount: 0,
       presentCount: 0,
@@ -587,14 +656,21 @@ export class AppController {
   }
 
   @Get("clubs/:clubId/notices")
-  getNotices() {
+  getNotices(@Headers("x-crewith-role") role: string | undefined) {
+    assertOperatorRole(role);
+
     return {
       data: buildNotices(),
     };
   }
 
   @Post("clubs/:clubId/notices")
-  createNotice(@Body() input: CreateAdminNoticeInput) {
+  createNotice(
+    @Body() input: CreateAdminNoticeInput,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+
     const nextNotice: AdminNoticeListItem = {
       id: `notice-${Date.now()}`,
       title: input.title.trim(),
