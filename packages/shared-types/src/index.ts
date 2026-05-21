@@ -119,6 +119,8 @@ export interface AdminNotificationLogItem {
   targetCount: number;
   sentAt: string;
   channel: "app_push";
+  deliveredCount?: number;
+  skippedCount?: number;
 }
 
 export interface AdminJoinRequestListItem {

@@ -19,6 +19,7 @@ import {
   type CreateInviteLinkInput,
   type CreateJoinRequestInput,
   type FeePaymentStatus,
+  type RegisterDeviceInput,
   type ReviewJoinRequestInput,
   type SendReminderInput,
   type ToggleAdminNoticeReactionInput,
@@ -65,6 +66,7 @@ import {
   isMemberStatus,
   isResourceVisibility,
   joinRequests,
+  memberDevices,
   members,
   normalizePhoneNumber,
   noticeComments,
@@ -75,6 +77,7 @@ import {
   otpCodes,
   persistStore,
   profileImages,
+  registerMemberDevice,
   visibleMembers,
 } from "./mvp.store";
 
@@ -85,6 +88,7 @@ export abstract class MvpRepository {
     meta: { mode: "development" };
   };
   abstract verifyOtp(input: AuthOtpVerifyInput): unknown;
+  abstract registerDevice(input: RegisterDeviceInput): ReturnType<typeof registerMemberDevice>;
   abstract getMemberProfile(memberId: string): ReturnType<typeof buildProfile>;
   abstract updateMemberProfile(memberId: string, input: UpdateMemberProfileInput): ReturnType<typeof buildProfile>;
   abstract getMemberAppOverview(clubId: string, memberId: string): ReturnType<typeof buildMemberAppOverview>;
@@ -172,6 +176,10 @@ export class JsonMvpRepository implements MvpRepository {
     };
   }
 
+  registerDevice(input: RegisterDeviceInput) {
+    return registerMemberDevice(input);
+  }
+
   getMemberProfile(memberId: string) {
     return buildProfile(findMember(memberId));
   }
@@ -217,6 +225,11 @@ export class JsonMvpRepository implements MvpRepository {
       throw new NotFoundException("Reminder target not found");
     }
 
+    const targetMemberIds = new Set(reminder.targets.map((target) => target.memberId));
+    const deliveredCount = memberDevices.filter(
+      (device) => !device.disabled && targetMemberIds.has(device.memberId),
+    ).length;
+
     const log: AdminNotificationLogItem = {
       id: `notification-${Date.now()}`,
       type: reminder.type,
@@ -224,6 +237,8 @@ export class JsonMvpRepository implements MvpRepository {
       targetCount: reminder.targetCount,
       sentAt: new Date().toISOString(),
       channel: "app_push",
+      deliveredCount,
+      skippedCount: Math.max(reminder.targetCount - deliveredCount, 0),
     };
 
     notificationLogs.unshift(log);

@@ -21,6 +21,7 @@ import {
   type CreateInviteLinkInput,
   type CreateJoinRequestInput,
   type FeePaymentStatus,
+  type RegisterDeviceInput,
   type ReviewJoinRequestInput,
   type SendReminderInput,
   type ToggleAdminNoticeReactionInput,
@@ -71,6 +72,11 @@ export class AppController {
   @Post("auth/otp/verify")
   verifyOtp(@Body() input: AuthOtpVerifyInput) {
     return { data: this.repository.verifyOtp(input) };
+  }
+
+  @Post("me/devices")
+  registerDevice(@Body() input: RegisterDeviceInput) {
+    return { data: this.repository.registerDevice(input) };
   }
 
   @Get("members/:memberId/profile")

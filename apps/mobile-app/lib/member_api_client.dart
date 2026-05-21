@@ -90,6 +90,22 @@ class MemberApiClient {
     );
   }
 
+  Future<bool> registerDevice({
+    required String memberId,
+    required String fcmToken,
+    String platform = 'android',
+  }) {
+    return _sendJson(
+      'POST',
+      Uri.parse('$apiBaseUrl/me/devices'),
+      {
+        'memberId': memberId,
+        'platform': platform,
+        'fcmToken': fcmToken,
+      },
+    );
+  }
+
   Future<bool> updateEventResponse({
     required String clubId,
     required String eventId,

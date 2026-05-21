@@ -101,6 +101,28 @@ test("API serves overview and persists member app actions", async (t) => {
     ["club-seoul-runners", "club-seoul-riders"],
   );
 
+  const deviceRegistration = await fetch(`${baseUrl}/me/devices`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      memberId: session.memberId,
+      platform: "android",
+      fcmToken: `test-fcm-${session.memberId}`,
+    }),
+  });
+  assert.equal(deviceRegistration.status, 201);
+  assert.equal((await deviceRegistration.json()).data.memberId, session.memberId);
+
+  const reminderSend = await fetch(`${baseUrl}/clubs/club-seoul-runners/reminders/send`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({ reminderId: "fee:fee-2026-05" }),
+  });
+  assert.equal(reminderSend.status, 201);
+  const reminderLog = (await reminderSend.json()).data;
+  assert.equal(reminderLog.targetCount, 1);
+  assert.equal(reminderLog.deliveredCount, 1);
+
   const secondClubOverview = await fetch(`${baseUrl}/clubs/club-seoul-riders/member-app/member-03`);
   assert.equal(secondClubOverview.status, 200);
   const secondClubOverviewJson = await secondClubOverview.json();

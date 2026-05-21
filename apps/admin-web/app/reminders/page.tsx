@@ -56,7 +56,7 @@ export default async function RemindersPage() {
             <div className="notificationLog" key={log.id}>
               <strong>{log.title}</strong>
               <span>
-                {formatDate(log.sentAt)} · {log.targetCount}명 · {log.channel === "app_push" ? "앱 푸시" : log.channel}
+                {formatDate(log.sentAt)} · 대상 {log.targetCount}명 · 등록 기기 {log.deliveredCount ?? 0}개 · 제외 {log.skippedCount ?? 0}명
               </span>
             </div>
           ))}

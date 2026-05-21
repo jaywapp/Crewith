@@ -126,6 +126,11 @@ class _HomeShellState extends State<HomeShell> {
         _activeClubId = nextClubId;
         _overviewFuture = _fetchOverview(session.memberId);
       });
+
+      await _api.registerDevice(
+        memberId: session.memberId,
+        fcmToken: 'dev-fcm-token-${session.memberId}',
+      );
     }
 
     return true;

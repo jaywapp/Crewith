@@ -1,4 +1,4 @@
-import { NotFoundException } from "@nestjs/common";
+import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 export type FeePaymentStatus = "unpaid" | "paid" | "exempt";
@@ -191,6 +191,18 @@ export interface AdminNotificationLogItem {
   targetCount: number;
   sentAt: string;
   channel: "app_push";
+  deliveredCount?: number;
+  skippedCount?: number;
+}
+
+export interface MemberDeviceItem {
+  id: string;
+  memberId: string;
+  platform: "android" | "ios" | "web";
+  fcmToken: string;
+  registeredAt: string;
+  lastSeenAt: string;
+  disabled: boolean;
 }
 
 export interface MemberProfile {
@@ -219,9 +231,16 @@ export interface SendReminderInput {
   reminderId: string;
 }
 
+export interface RegisterDeviceInput {
+  memberId: string;
+  platform: "android" | "ios" | "web";
+  fcmToken: string;
+}
+
 export interface MvpStore {
   members: AdminMemberListItem[];
   clubMemberships: ClubMembershipItem[];
+  memberDevices: MemberDeviceItem[];
   fees: AdminFeeListItem[];
   feePayments: Record<string, Record<string, FeePaymentStatus>>;
   events: AdminEventListItem[];
@@ -668,6 +687,7 @@ export const inviteLinks: AdminInviteLinkListItem[] = [
 ];
 
 export const notificationLogs: AdminNotificationLogItem[] = [];
+export const memberDevices: MemberDeviceItem[] = [];
 export const otpCodes = new Map<string, { code: string; expiresAt: string }>();
 export const profileImages = new Map<string, string>();
 export const dataFilePath = process.env.CREWITH_DATA_FILE ?? join(process.cwd(), "data", "mvp-store.json");
@@ -714,6 +734,7 @@ export function persistStore() {
   const store: MvpStore = {
     members,
     clubMemberships,
+    memberDevices,
     fees,
     feePayments,
     events,
@@ -744,6 +765,7 @@ export function hydrateStore() {
 
     replaceArray(members, store.members);
     replaceArray(clubMemberships, store.clubMemberships);
+    replaceArray(memberDevices, store.memberDevices);
     replaceArray(fees, store.fees);
     replaceRecord(feePayments, store.feePayments);
     replaceArray(events, store.events);
@@ -885,6 +907,42 @@ export function findMember(memberId: string) {
   }
 
   return member;
+}
+
+export function registerMemberDevice(input: RegisterDeviceInput): MemberDeviceItem {
+  const member = findMember(input.memberId);
+  const fcmToken = `${input.fcmToken ?? ""}`.trim();
+  const platform = input.platform === "ios" || input.platform === "web" ? input.platform : "android";
+
+  if (!fcmToken) {
+    throw new BadRequestException("Device token is required");
+  }
+
+  const now = new Date().toISOString();
+  const existingDevice = memberDevices.find((device) => device.fcmToken === fcmToken);
+
+  if (existingDevice) {
+    existingDevice.memberId = member.id;
+    existingDevice.platform = platform;
+    existingDevice.lastSeenAt = now;
+    existingDevice.disabled = false;
+    persistStore();
+    return existingDevice;
+  }
+
+  const nextDevice: MemberDeviceItem = {
+    id: `device-${Date.now()}`,
+    memberId: member.id,
+    platform,
+    fcmToken,
+    registeredAt: now,
+    lastSeenAt: now,
+    disabled: false,
+  };
+
+  memberDevices.unshift(nextDevice);
+  persistStore();
+  return nextDevice;
 }
 
 export function findFee(feeId: string) {
