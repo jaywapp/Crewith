@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:crewith_mobile/main.dart';
@@ -18,5 +19,26 @@ void main() {
     expect(find.text('일정'), findsOneWidget);
     expect(find.text('공지'), findsOneWidget);
     expect(find.text('회비'), findsOneWidget);
+
+    await tester.tap(find.text('일정'));
+    await tester.pumpAndSettle();
+    expect(find.text('참석'), findsOneWidget);
+    expect(find.text('불참'), findsOneWidget);
+
+    await tester.tap(find.text('공지'));
+    await tester.pumpAndSettle();
+    expect(find.text('확인 처리'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.menu_outlined));
+    await tester.pumpAndSettle();
+    expect(find.text('내 모임 정보와 가입 신청'), findsOneWidget);
+
+    await tester.drag(find.byType(ListView).last, const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text('가입 신청'), findsAtLeastNWidgets(1));
+
+    await tester.drag(find.byType(ListView).last, const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text('초대 코드 확인'), findsOneWidget);
   });
 }

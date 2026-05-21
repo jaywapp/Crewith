@@ -98,6 +98,35 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
+  Future<bool> _sendJson(
+      String method, Uri uri, Map<String, Object?> body) async {
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
+
+    try {
+      final request = switch (method) {
+        'PATCH' => await client.patchUrl(uri),
+        'POST' => await client.postUrl(uri),
+        _ => await client.postUrl(uri),
+      };
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode(body));
+      final response =
+          await request.close().timeout(const Duration(seconds: 3));
+
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  void _refreshOverview() {
+    setState(() {
+      _overviewFuture = _fetchOverview(_activeMemberId);
+    });
+  }
+
   Future<String?> _requestOtp(String phoneNumber) async {
     if (phoneNumber.trim().isEmpty) {
       return '휴대폰 번호를 입력하세요.';
@@ -200,6 +229,90 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
+  Future<String?> _updateEventResponse(String eventId, String response) async {
+    _replaceOverview((value) => value.updateEventResponse(eventId, response));
+
+    final saved = await _sendJson(
+      'PATCH',
+      Uri.parse('$_apiBaseUrl/clubs/$_clubId/events/$eventId/responses'),
+      {
+        'memberId': _activeMemberId,
+        'response': response,
+      },
+    );
+
+    if (saved) {
+      _refreshOverview();
+      return '참석 의사를 저장했습니다.';
+    }
+
+    return '오프라인 미리보기로 반영했습니다.';
+  }
+
+  Future<String?> _markNoticeRead(String noticeId) async {
+    _replaceOverview((value) => value.markNoticeRead(noticeId));
+
+    final saved = await _sendJson(
+      'PATCH',
+      Uri.parse('$_apiBaseUrl/clubs/$_clubId/notices/$noticeId/read'),
+      {'memberId': _activeMemberId},
+    );
+
+    if (saved) {
+      _refreshOverview();
+      return '공지 확인 상태를 저장했습니다.';
+    }
+
+    return '오프라인 미리보기로 확인 처리했습니다.';
+  }
+
+  Future<String> _createJoinRequest(
+      String name, String phoneNumber, String greeting) async {
+    if (name.trim().isEmpty ||
+        phoneNumber.trim().isEmpty ||
+        greeting.trim().isEmpty) {
+      return '이름, 휴대폰 번호, 가입 인사를 입력하세요.';
+    }
+
+    final saved = await _sendJson(
+      'POST',
+      Uri.parse('$_apiBaseUrl/clubs/$_clubId/join-requests'),
+      {
+        'applicantName': name,
+        'applicantPhone': phoneNumber,
+        'greeting': greeting,
+      },
+    );
+
+    return saved ? '가입 신청을 접수했습니다.' : '가입 신청 저장에 실패했습니다.';
+  }
+
+  Future<String> _acceptInvite(
+      String token, String name, String phoneNumber) async {
+    if (token.trim().isEmpty ||
+        name.trim().isEmpty ||
+        phoneNumber.trim().isEmpty) {
+      return '초대 코드, 이름, 휴대폰 번호를 입력하세요.';
+    }
+
+    final saved = await _sendJson(
+      'POST',
+      Uri.parse(
+          '$_apiBaseUrl/clubs/$_clubId/invite-links/${token.trim()}/accept'),
+      {
+        'applicantName': name,
+        'applicantPhone': phoneNumber,
+      },
+    );
+
+    if (saved) {
+      _refreshOverview();
+      return '초대 코드로 가입했습니다.';
+    }
+
+    return '초대 코드 확인에 실패했습니다.';
+  }
+
   void _replaceOverview(
       MemberAppOverview Function(MemberAppOverview value) update) {
     setState(() {
@@ -224,21 +337,18 @@ class _HomeShellState extends State<HomeShell> {
           _HomePage(overview: overview),
           _EventsPage(
             overview: overview,
-            onResponseChanged: (eventId, response) {
-              _replaceOverview(
-                  (value) => value.updateEventResponse(eventId, response));
-            },
+            onResponseChanged: _updateEventResponse,
           ),
           _NoticesPage(
             overview: overview,
-            onRead: (noticeId) {
-              _replaceOverview((value) => value.markNoticeRead(noticeId));
-            },
+            onRead: _markNoticeRead,
           ),
           _FeesPage(overview: overview),
           _MorePage(
             overview: overview,
             onProfileSaved: _updateProfile,
+            onJoinRequested: _createJoinRequest,
+            onInviteAccepted: _acceptInvite,
           ),
         ];
 
@@ -453,7 +563,8 @@ class _EventsPage extends StatelessWidget {
   });
 
   final MemberAppOverview overview;
-  final void Function(String eventId, String response) onResponseChanged;
+  final Future<String?> Function(String eventId, String response)
+      onResponseChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -476,8 +587,15 @@ class _EventsPage extends StatelessWidget {
                   ButtonSegment(value: 'not_attending', label: Text('불참')),
                 ],
                 selected: {event.response},
-                onSelectionChanged: (value) =>
-                    onResponseChanged(event.id, value.first),
+                onSelectionChanged: (value) async {
+                  final message =
+                      await onResponseChanged(event.id, value.first);
+                  if (context.mounted && message != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(message)),
+                    );
+                  }
+                },
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -505,7 +623,7 @@ class _NoticesPage extends StatelessWidget {
   });
 
   final MemberAppOverview overview;
-  final void Function(String noticeId) onRead;
+  final Future<String?> Function(String noticeId) onRead;
 
   @override
   Widget build(BuildContext context) {
@@ -535,7 +653,16 @@ class _NoticesPage extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               FilledButton(
-                onPressed: notice.read ? null : () => onRead(notice.id),
+                onPressed: notice.read
+                    ? null
+                    : () async {
+                        final message = await onRead(notice.id);
+                        if (context.mounted && message != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(message)),
+                          );
+                        }
+                      },
                 child: Text(notice.read ? '확인됨' : '확인 처리'),
               ),
             ],
@@ -577,11 +704,17 @@ class _MorePage extends StatefulWidget {
   const _MorePage({
     required this.overview,
     required this.onProfileSaved,
+    required this.onJoinRequested,
+    required this.onInviteAccepted,
   });
 
   final MemberAppOverview overview;
   final Future<String> Function(String name, String profileImageUrl)
       onProfileSaved;
+  final Future<String> Function(
+      String name, String phoneNumber, String greeting) onJoinRequested;
+  final Future<String> Function(String token, String name, String phoneNumber)
+      onInviteAccepted;
 
   @override
   State<_MorePage> createState() => _MorePageState();
@@ -598,6 +731,8 @@ class _MorePageState extends State<_MorePage> {
   final _inviteCodeController = TextEditingController(text: 'CREWITH-RUN-30');
   String? _resultMessage;
   bool _profileSaving = false;
+  bool _joinSaving = false;
+  bool _inviteSaving = false;
 
   @override
   void initState() {
@@ -678,12 +813,24 @@ class _MorePageState extends State<_MorePage> {
               _TextInput(controller: _joinGreetingController, label: '가입 인사'),
               const SizedBox(height: 12),
               FilledButton(
-                onPressed: () {
-                  setState(() {
-                    _resultMessage =
-                        '${_joinNameController.text.isEmpty ? '신청자' : _joinNameController.text}님의 가입 신청을 접수했습니다.';
-                  });
-                },
+                onPressed: _joinSaving
+                    ? null
+                    : () async {
+                        setState(() => _joinSaving = true);
+                        final message = await widget.onJoinRequested(
+                          _joinNameController.text,
+                          _joinPhoneController.text,
+                          _joinGreetingController.text,
+                        );
+                        if (!mounted) {
+                          return;
+                        }
+
+                        setState(() {
+                          _resultMessage = message;
+                          _joinSaving = false;
+                        });
+                      },
                 child: const Text('가입 신청'),
               ),
             ],
@@ -699,12 +846,24 @@ class _MorePageState extends State<_MorePage> {
               _TextInput(controller: _inviteCodeController, label: '초대 코드'),
               const SizedBox(height: 12),
               FilledButton(
-                onPressed: () {
-                  setState(() {
-                    _resultMessage =
-                        '${_inviteCodeController.text} 초대 코드를 확인했습니다.';
-                  });
-                },
+                onPressed: _inviteSaving
+                    ? null
+                    : () async {
+                        setState(() => _inviteSaving = true);
+                        final message = await widget.onInviteAccepted(
+                          _inviteCodeController.text,
+                          _inviteNameController.text,
+                          _invitePhoneController.text,
+                        );
+                        if (!mounted) {
+                          return;
+                        }
+
+                        setState(() {
+                          _resultMessage = message;
+                          _inviteSaving = false;
+                        });
+                      },
                 child: const Text('초대 코드 확인'),
               ),
             ],
