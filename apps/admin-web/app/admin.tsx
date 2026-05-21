@@ -68,6 +68,15 @@ const fallbackOverview: AdminClubOverview = {
     attendanceConversionRate: 0,
     monthlyFeeCollectionRate: 0,
   },
+  feeSettings: {
+    clubId: defaultClubId,
+    amount: 30000,
+    dueDay: 25,
+    intervalType: "monthly",
+    gracePeriodDays: 3,
+    autoReminderEnabled: true,
+    reminderDaysAfterDue: [1, 3, 7],
+  },
   members: [],
   fees: [],
   events: [],
@@ -202,6 +211,32 @@ export async function createFeeAction(formData: FormData) {
       feeType: formData.get("feeType"),
       amount: Number(formData.get("amount")),
       dueDate: formData.get("dueDate"),
+    }),
+  });
+
+  revalidateAdmin();
+}
+
+export async function updateFeeSettingsAction(formData: FormData) {
+  "use server";
+
+  const clubId = await getActiveClubId();
+  const reminderDaysAfterDue = `${formData.get("reminderDaysAfterDue") ?? ""}`
+    .split(",")
+    .map((value) => Number(value.trim()))
+    .filter((value) => Number.isInteger(value) && value >= 0);
+
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/fee-settings`, {
+    method: "PUT",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({
+      amount: Number(formData.get("amount")),
+      dueDay: Number(formData.get("dueDay")),
+      intervalType: formData.get("intervalType"),
+      customIntervalDays: Number(formData.get("customIntervalDays")),
+      gracePeriodDays: Number(formData.get("gracePeriodDays")),
+      autoReminderEnabled: formData.get("autoReminderEnabled") === "on",
+      reminderDaysAfterDue,
     }),
   });
 

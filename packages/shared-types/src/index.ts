@@ -85,6 +85,7 @@ export interface AdminClubOverview {
     trialEndsAt: string;
   };
   dashboard: DashboardSummary;
+  feeSettings: ClubFeeSettingsItem;
   members: AdminMemberListItem[];
   fees: AdminFeeListItem[];
   events: AdminEventListItem[];
@@ -94,6 +95,17 @@ export interface AdminClubOverview {
   reminderTargets: AdminReminderTargetGroup[];
   notificationLogs: AdminNotificationLogItem[];
   tasks: AdminTaskItem[];
+}
+
+export interface ClubFeeSettingsItem {
+  clubId: string;
+  amount: number;
+  dueDay: number;
+  intervalType: FeeIntervalType;
+  customIntervalDays?: number;
+  gracePeriodDays: number;
+  autoReminderEnabled: boolean;
+  reminderDaysAfterDue: number[];
 }
 
 export interface AdminReminderTargetGroup {
@@ -283,6 +295,16 @@ export interface CreateAdminFeeInput {
   feeType: FeeType;
   amount: number;
   dueDate: string;
+}
+
+export interface UpdateClubFeeSettingsInput {
+  amount?: number;
+  dueDay?: number;
+  intervalType?: FeeIntervalType;
+  customIntervalDays?: number;
+  gracePeriodDays?: number;
+  autoReminderEnabled?: boolean;
+  reminderDaysAfterDue?: number[];
 }
 
 export interface UpdateAdminFeePaymentInput {

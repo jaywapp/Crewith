@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
 } from "@nestjs/common";
 import {
@@ -30,6 +31,7 @@ import {
   type UpdateAdminAttendanceInput,
   type UpdateAdminEventResponseInput,
   type UpdateAdminFeePaymentInput,
+  type UpdateClubFeeSettingsInput,
   type UpdateAdminMemberInput,
   type UpdateAdminNoticeReadInput,
   type UpdateMemberProfileInput,
@@ -118,6 +120,25 @@ export class AppController {
   @Get("clubs/:clubId/reminders")
   getReminderTargets(@Param("clubId") clubId: string) {
     return { data: this.repository.getReminderTargets(clubId) };
+  }
+
+  @Get("clubs/:clubId/fee-settings")
+  getFeeSettings(
+    @Param("clubId") clubId: string,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+    return { data: this.repository.getFeeSettings(clubId) };
+  }
+
+  @Put("clubs/:clubId/fee-settings")
+  updateFeeSettings(
+    @Param("clubId") clubId: string,
+    @Body() input: UpdateClubFeeSettingsInput,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+    return { data: this.repository.updateFeeSettings(clubId, input) };
   }
 
   @Post("clubs/:clubId/reminders/send")

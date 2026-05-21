@@ -22,6 +22,7 @@ import {
   type FeePaymentStatus,
   type ImportAdminMembersInput,
   type ImportAdminMembersResult,
+  type UpdateClubFeeSettingsInput,
   type RegisterDeviceInput,
   type ReviewJoinRequestInput,
   type SendReminderInput,
@@ -47,6 +48,7 @@ import {
   createMemberFromProfile,
   ensureClub,
   ensureEventTargets,
+  ensureFeeSettings,
   ensureFeeTargets,
   eventAttendance,
   eventResponses,
@@ -66,6 +68,7 @@ import {
   isEventResponse,
   isFeePaymentStatus,
   isFeeType,
+  feeSettings,
   isMemberStatus,
   isResourceVisibility,
   joinRequests,
@@ -100,6 +103,8 @@ export abstract class MvpRepository {
   abstract markMemberNotificationRead(memberId: string, notificationId: string): MemberNotificationItem;
   abstract getReminderTargets(clubId: string): ReturnType<typeof buildReminderTargets>;
   abstract sendReminder(clubId: string, input: SendReminderInput): AdminNotificationLogItem;
+  abstract getFeeSettings(clubId: string): ReturnType<typeof ensureFeeSettings>;
+  abstract updateFeeSettings(clubId: string, input: UpdateClubFeeSettingsInput): ReturnType<typeof ensureFeeSettings>;
   abstract getMembers(clubId: string): AdminMemberListItem[];
   abstract getJoinRequests(clubId: string): AdminJoinRequestListItem[];
   abstract createJoinRequest(clubId: string, input: CreateJoinRequestInput): AdminJoinRequestListItem;
@@ -285,6 +290,62 @@ export class JsonMvpRepository implements MvpRepository {
 
     persistStore();
     return log;
+  }
+
+  getFeeSettings(clubId: string) {
+    return ensureFeeSettings(clubId);
+  }
+
+  updateFeeSettings(clubId: string, input: UpdateClubFeeSettingsInput) {
+    const settings = ensureFeeSettings(clubId);
+
+    const amount = Number(input.amount);
+    if (Number.isFinite(amount) && amount >= 0) {
+      settings.amount = amount;
+    }
+
+    const dueDay = Number(input.dueDay);
+    if (Number.isInteger(dueDay) && dueDay >= 1 && dueDay <= 31) {
+      settings.dueDay = dueDay;
+    }
+
+    if (
+      input.intervalType === "weekly" ||
+      input.intervalType === "biweekly" ||
+      input.intervalType === "monthly" ||
+      input.intervalType === "quarterly" ||
+      input.intervalType === "yearly" ||
+      input.intervalType === "custom"
+    ) {
+      settings.intervalType = input.intervalType;
+    }
+
+    const customIntervalDays = Number(input.customIntervalDays);
+    if (Number.isInteger(customIntervalDays) && customIntervalDays > 0) {
+      settings.customIntervalDays = customIntervalDays;
+    } else if (settings.intervalType !== "custom") {
+      delete settings.customIntervalDays;
+    }
+
+    const gracePeriodDays = Number(input.gracePeriodDays);
+    if (Number.isInteger(gracePeriodDays) && gracePeriodDays >= 0) {
+      settings.gracePeriodDays = gracePeriodDays;
+    }
+
+    if (typeof input.autoReminderEnabled === "boolean") {
+      settings.autoReminderEnabled = input.autoReminderEnabled;
+    }
+
+    if (Array.isArray(input.reminderDaysAfterDue)) {
+      settings.reminderDaysAfterDue = input.reminderDaysAfterDue
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value >= 0)
+        .slice(0, 10);
+    }
+
+    feeSettings[clubId] = settings;
+    persistStore();
+    return settings;
   }
 
   getMembers(clubId: string) {

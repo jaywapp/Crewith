@@ -76,7 +76,27 @@ test("API serves overview and persists member app actions", async (t) => {
     headers: { "x-crewith-role": "operator" },
   });
   assert.equal(adminOverview.status, 200);
-  assert.equal((await adminOverview.json()).data.club.name, "서울 러너스");
+  const adminOverviewJson = (await adminOverview.json()).data;
+  assert.equal(adminOverviewJson.club.name, "서울 러너스");
+  assert.equal(adminOverviewJson.feeSettings.dueDay, 25);
+
+  const feeSettingsUpdate = await fetch(`${baseUrl}/clubs/club-seoul-runners/fee-settings`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({
+      amount: 35000,
+      dueDay: 10,
+      intervalType: "monthly",
+      gracePeriodDays: 5,
+      autoReminderEnabled: true,
+      reminderDaysAfterDue: [1, 3],
+    }),
+  });
+  assert.equal(feeSettingsUpdate.status, 200);
+  const feeSettings = (await feeSettingsUpdate.json()).data;
+  assert.equal(feeSettings.amount, 35000);
+  assert.equal(feeSettings.dueDay, 10);
+  assert.deepEqual(feeSettings.reminderDaysAfterDue, [1, 3]);
 
   const createdInvite = await fetch(`${baseUrl}/clubs/club-seoul-runners/invite-links`, {
     method: "POST",

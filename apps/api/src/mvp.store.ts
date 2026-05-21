@@ -49,6 +49,7 @@ export interface AdminClubOverview {
     trialEndsAt: string;
   };
   dashboard: DashboardSummary;
+  feeSettings: ClubFeeSettingsItem;
   members: AdminMemberListItem[];
   fees: AdminFeeListItem[];
   events: AdminEventListItem[];
@@ -195,6 +196,17 @@ export interface AdminNotificationLogItem {
   skippedCount?: number;
 }
 
+export interface ClubFeeSettingsItem {
+  clubId: string;
+  amount: number;
+  dueDay: number;
+  intervalType: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly" | "custom";
+  customIntervalDays?: number;
+  gracePeriodDays: number;
+  autoReminderEnabled: boolean;
+  reminderDaysAfterDue: number[];
+}
+
 export interface MemberNotificationItem {
   id: string;
   memberId: string;
@@ -252,6 +264,7 @@ export interface MvpStore {
   members: AdminMemberListItem[];
   clubMemberships: ClubMembershipItem[];
   memberDevices: MemberDeviceItem[];
+  feeSettings: Record<string, ClubFeeSettingsItem>;
   fees: AdminFeeListItem[];
   feePayments: Record<string, Record<string, FeePaymentStatus>>;
   events: AdminEventListItem[];
@@ -358,6 +371,16 @@ export interface CreateAdminEventInput {
   locationAddress?: string;
   responseDeadline?: string;
   visibility?: ResourceVisibility;
+}
+
+export interface UpdateClubFeeSettingsInput {
+  amount?: number;
+  dueDay?: number;
+  intervalType?: ClubFeeSettingsItem["intervalType"];
+  customIntervalDays?: number;
+  gracePeriodDays?: number;
+  autoReminderEnabled?: boolean;
+  reminderDaysAfterDue?: number[];
 }
 
 export interface UpdateAdminEventResponseInput {
@@ -516,6 +539,42 @@ export const clubMemberships: ClubMembershipItem[] = [
     joinedAt: "2026-04-10",
   },
 ];
+
+export const feeSettings: Record<string, ClubFeeSettingsItem> = {
+  "club-seoul-runners": {
+    clubId: "club-seoul-runners",
+    amount: 30000,
+    dueDay: 25,
+    intervalType: "monthly",
+    gracePeriodDays: 3,
+    autoReminderEnabled: true,
+    reminderDaysAfterDue: [1, 3, 7],
+  },
+  "club-seoul-riders": {
+    clubId: "club-seoul-riders",
+    amount: 20000,
+    dueDay: 10,
+    intervalType: "monthly",
+    gracePeriodDays: 5,
+    autoReminderEnabled: false,
+    reminderDaysAfterDue: [3],
+  },
+};
+
+export function ensureFeeSettings(clubId: string): ClubFeeSettingsItem {
+  ensureClub(clubId);
+  feeSettings[clubId] ??= {
+    clubId,
+    amount: 30000,
+    dueDay: 25,
+    intervalType: "monthly",
+    gracePeriodDays: 3,
+    autoReminderEnabled: true,
+    reminderDaysAfterDue: [1, 3, 7],
+  };
+
+  return feeSettings[clubId];
+}
 
 export const fees: AdminFeeListItem[] = [
   {
@@ -765,6 +824,7 @@ export function persistStore() {
     members,
     clubMemberships,
     memberDevices,
+    feeSettings,
     fees,
     feePayments,
     events,
@@ -797,6 +857,7 @@ export function hydrateStore() {
     replaceArray(members, store.members);
     replaceArray(clubMemberships, store.clubMemberships);
     replaceArray(memberDevices, store.memberDevices);
+    replaceRecord(feeSettings, store.feeSettings);
     replaceArray(fees, store.fees);
     replaceRecord(feePayments, store.feePayments);
     replaceArray(events, store.events);
@@ -1287,6 +1348,7 @@ export function buildOverview(clubId = club.id): AdminClubOverview {
   return {
     club: currentClub,
     dashboard,
+    feeSettings: ensureFeeSettings(clubId),
     members: visibleMembers(clubId),
     fees: buildFees(clubId),
     events: buildEvents(clubId),

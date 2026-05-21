@@ -372,9 +372,14 @@ h2 {
   border-radius: var(--radius-card);
   display: grid;
   gap: 12px;
-  grid-template-columns: 1.3fr 100px 100px 130px auto;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   margin-bottom: 18px;
   padding: 16px;
+}
+
+.checkboxField {
+  align-items: center;
+  grid-template-columns: auto 1fr;
 }
 
 .eventCreateForm {
