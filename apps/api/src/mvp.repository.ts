@@ -40,6 +40,7 @@ import {
   buildReminderTargets,
   club,
   createMemberFromProfile,
+  ensureClub,
   ensureEventTargets,
   ensureFeeTargets,
   eventAttendance,
@@ -85,44 +86,38 @@ export abstract class MvpRepository {
   abstract verifyOtp(input: AuthOtpVerifyInput): unknown;
   abstract getMemberProfile(memberId: string): ReturnType<typeof buildProfile>;
   abstract updateMemberProfile(memberId: string, input: UpdateMemberProfileInput): ReturnType<typeof buildProfile>;
-  abstract getMemberAppOverview(memberId: string): ReturnType<typeof buildMemberAppOverview>;
-  abstract getReminderTargets(): ReturnType<typeof buildReminderTargets>;
-  abstract sendReminder(input: SendReminderInput): AdminNotificationLogItem;
-  abstract getMembers(): AdminMemberListItem[];
-  abstract getJoinRequests(): AdminJoinRequestListItem[];
-  abstract createJoinRequest(input: CreateJoinRequestInput): AdminJoinRequestListItem;
-  abstract reviewJoinRequest(requestId: string, input: ReviewJoinRequestInput): AdminJoinRequestListItem;
-  abstract getInviteLinks(): AdminInviteLinkListItem[];
-  abstract createInviteLink(input: CreateInviteLinkInput): AdminInviteLinkListItem;
-  abstract acceptInvite(token: string, input: AcceptInviteInput): AdminMemberListItem;
-  abstract createMember(input: CreateAdminMemberInput): AdminMemberListItem;
-  abstract updateMember(memberId: string, input: UpdateAdminMemberInput): AdminMemberListItem;
-  abstract updateMemberFeeStatus(memberId: string, status: FeePaymentStatus): AdminMemberListItem;
-  abstract removeMember(memberId: string): AdminMemberListItem;
-  abstract getFees(): AdminFeeListItem[];
-  abstract createFee(input: CreateAdminFeeInput): AdminFeeListItem;
-  abstract updateFeePayment(feeId: string, input: UpdateAdminFeePaymentInput): AdminFeeListItem;
-  abstract updateEventAttendance(eventId: string, input: UpdateAdminAttendanceInput): AdminEventListItem;
-  abstract getEvents(): AdminEventListItem[];
-  abstract createEvent(input: CreateAdminEventInput): AdminEventListItem;
-  abstract updateEventResponse(eventId: string, input: UpdateAdminEventResponseInput): AdminEventListItem;
-  abstract getNotices(): AdminNoticeListItem[];
-  abstract createNotice(input: CreateAdminNoticeInput): AdminNoticeListItem;
-  abstract markNoticeRead(noticeId: string, input: UpdateAdminNoticeReadInput): AdminNoticeListItem;
-  abstract toggleNoticeReaction(noticeId: string, input: ToggleAdminNoticeReactionInput): AdminNoticeListItem;
-  abstract createNoticeComment(noticeId: string, input: CreateAdminNoticeCommentInput): AdminNoticeListItem;
+  abstract getMemberAppOverview(clubId: string, memberId: string): ReturnType<typeof buildMemberAppOverview>;
+  abstract getReminderTargets(clubId: string): ReturnType<typeof buildReminderTargets>;
+  abstract sendReminder(clubId: string, input: SendReminderInput): AdminNotificationLogItem;
+  abstract getMembers(clubId: string): AdminMemberListItem[];
+  abstract getJoinRequests(clubId: string): AdminJoinRequestListItem[];
+  abstract createJoinRequest(clubId: string, input: CreateJoinRequestInput): AdminJoinRequestListItem;
+  abstract reviewJoinRequest(clubId: string, requestId: string, input: ReviewJoinRequestInput): AdminJoinRequestListItem;
+  abstract getInviteLinks(clubId: string): AdminInviteLinkListItem[];
+  abstract createInviteLink(clubId: string, input: CreateInviteLinkInput): AdminInviteLinkListItem;
+  abstract acceptInvite(clubId: string, token: string, input: AcceptInviteInput): AdminMemberListItem;
+  abstract createMember(clubId: string, input: CreateAdminMemberInput): AdminMemberListItem;
+  abstract updateMember(clubId: string, memberId: string, input: UpdateAdminMemberInput): AdminMemberListItem;
+  abstract updateMemberFeeStatus(clubId: string, memberId: string, status: FeePaymentStatus): AdminMemberListItem;
+  abstract removeMember(clubId: string, memberId: string): AdminMemberListItem;
+  abstract getFees(clubId: string): AdminFeeListItem[];
+  abstract createFee(clubId: string, input: CreateAdminFeeInput): AdminFeeListItem;
+  abstract updateFeePayment(clubId: string, feeId: string, input: UpdateAdminFeePaymentInput): AdminFeeListItem;
+  abstract updateEventAttendance(clubId: string, eventId: string, input: UpdateAdminAttendanceInput): AdminEventListItem;
+  abstract getEvents(clubId: string): AdminEventListItem[];
+  abstract createEvent(clubId: string, input: CreateAdminEventInput): AdminEventListItem;
+  abstract updateEventResponse(clubId: string, eventId: string, input: UpdateAdminEventResponseInput): AdminEventListItem;
+  abstract getNotices(clubId: string): AdminNoticeListItem[];
+  abstract createNotice(clubId: string, input: CreateAdminNoticeInput): AdminNoticeListItem;
+  abstract markNoticeRead(clubId: string, noticeId: string, input: UpdateAdminNoticeReadInput): AdminNoticeListItem;
+  abstract toggleNoticeReaction(clubId: string, noticeId: string, input: ToggleAdminNoticeReactionInput): AdminNoticeListItem;
+  abstract createNoticeComment(clubId: string, noticeId: string, input: CreateAdminNoticeCommentInput): AdminNoticeListItem;
 }
 
 @Injectable()
 export class JsonMvpRepository implements MvpRepository {
   getAdminOverview(clubId: string) {
-    return {
-      ...buildOverview(),
-      club: {
-        ...club,
-        id: clubId,
-      },
-    };
+    return buildOverview(clubId);
   }
 
   requestOtp(input: AuthOtpRequestInput) {
@@ -212,15 +207,17 @@ export class JsonMvpRepository implements MvpRepository {
     return buildProfile(member);
   }
 
-  getMemberAppOverview(memberId: string) {
-    return buildMemberAppOverview(memberId);
+  getMemberAppOverview(clubId: string, memberId: string) {
+    return buildMemberAppOverview(clubId, memberId);
   }
 
-  getReminderTargets() {
+  getReminderTargets(clubId: string) {
+    ensureClub(clubId);
     return buildReminderTargets();
   }
 
-  sendReminder(input: SendReminderInput) {
+  sendReminder(clubId: string, input: SendReminderInput) {
+    ensureClub(clubId);
     const reminder = buildReminderTargets().find((item) => item.id === input.reminderId);
 
     if (!reminder) {
@@ -241,15 +238,18 @@ export class JsonMvpRepository implements MvpRepository {
     return log;
   }
 
-  getMembers() {
+  getMembers(clubId: string) {
+    ensureClub(clubId);
     return visibleMembers();
   }
 
-  getJoinRequests() {
+  getJoinRequests(clubId: string) {
+    ensureClub(clubId);
     return joinRequests;
   }
 
-  createJoinRequest(input: CreateJoinRequestInput) {
+  createJoinRequest(clubId: string, input: CreateJoinRequestInput) {
+    ensureClub(clubId);
     const nextRequest: AdminJoinRequestListItem = {
       id: `join-${Date.now()}`,
       applicantName: input.applicantName.trim(),
@@ -264,7 +264,8 @@ export class JsonMvpRepository implements MvpRepository {
     return nextRequest;
   }
 
-  reviewJoinRequest(requestId: string, input: ReviewJoinRequestInput) {
+  reviewJoinRequest(clubId: string, requestId: string, input: ReviewJoinRequestInput) {
+    ensureClub(clubId);
     const request = findJoinRequest(requestId);
 
     if (input.status === "approved" || input.status === "rejected") {
@@ -282,11 +283,13 @@ export class JsonMvpRepository implements MvpRepository {
     return request;
   }
 
-  getInviteLinks() {
+  getInviteLinks(clubId: string) {
+    ensureClub(clubId);
     return inviteLinks;
   }
 
-  createInviteLink(input: CreateInviteLinkInput) {
+  createInviteLink(clubId: string, input: CreateInviteLinkInput) {
+    ensureClub(clubId);
     const expiresInDays = Number(input.expiresInDays) || 30;
     const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const nextInvite: AdminInviteLinkListItem = {
@@ -302,7 +305,8 @@ export class JsonMvpRepository implements MvpRepository {
     return nextInvite;
   }
 
-  acceptInvite(token: string, input: AcceptInviteInput) {
+  acceptInvite(clubId: string, token: string, input: AcceptInviteInput) {
+    ensureClub(clubId);
     findInviteByToken(token);
 
     const member: AdminMemberListItem = {
@@ -322,7 +326,8 @@ export class JsonMvpRepository implements MvpRepository {
     return member;
   }
 
-  createMember(input: CreateAdminMemberInput) {
+  createMember(clubId: string, input: CreateAdminMemberInput) {
+    ensureClub(clubId);
     const nextMember: AdminMemberListItem = {
       id: `member-${Date.now()}`,
       name: input.name.trim(),
@@ -340,7 +345,8 @@ export class JsonMvpRepository implements MvpRepository {
     return nextMember;
   }
 
-  updateMember(memberId: string, input: UpdateAdminMemberInput) {
+  updateMember(clubId: string, memberId: string, input: UpdateAdminMemberInput) {
+    ensureClub(clubId);
     const member = findMember(memberId);
 
     if (typeof input.name === "string" && input.name.trim()) {
@@ -368,7 +374,8 @@ export class JsonMvpRepository implements MvpRepository {
     return member;
   }
 
-  updateMemberFeeStatus(memberId: string, status: FeePaymentStatus) {
+  updateMemberFeeStatus(clubId: string, memberId: string, status: FeePaymentStatus) {
+    ensureClub(clubId);
     const member = findMember(memberId);
 
     if (isFeePaymentStatus(status)) {
@@ -379,18 +386,21 @@ export class JsonMvpRepository implements MvpRepository {
     return member;
   }
 
-  removeMember(memberId: string) {
+  removeMember(clubId: string, memberId: string) {
+    ensureClub(clubId);
     const member = findMember(memberId);
     member.memberStatus = "removed";
     persistStore();
     return member;
   }
 
-  getFees() {
+  getFees(clubId: string) {
+    ensureClub(clubId);
     return buildFees();
   }
 
-  createFee(input: CreateAdminFeeInput) {
+  createFee(clubId: string, input: CreateAdminFeeInput) {
+    ensureClub(clubId);
     const amount = Number(input.amount);
     const nextFee: AdminFeeListItem = {
       id: `fee-${Date.now()}`,
@@ -412,7 +422,8 @@ export class JsonMvpRepository implements MvpRepository {
     return buildFeeItem(nextFee);
   }
 
-  updateFeePayment(feeId: string, input: UpdateAdminFeePaymentInput) {
+  updateFeePayment(clubId: string, feeId: string, input: UpdateAdminFeePaymentInput) {
+    ensureClub(clubId);
     const fee = findFee(feeId);
     const member = findMember(input.memberId);
 
@@ -429,7 +440,8 @@ export class JsonMvpRepository implements MvpRepository {
     return buildFeeItem(fee);
   }
 
-  updateEventAttendance(eventId: string, input: UpdateAdminAttendanceInput) {
+  updateEventAttendance(clubId: string, eventId: string, input: UpdateAdminAttendanceInput) {
+    ensureClub(clubId);
     const event = findEvent(eventId);
     const member = findMember(input.memberId);
 
@@ -445,11 +457,13 @@ export class JsonMvpRepository implements MvpRepository {
     return buildEventItem(event);
   }
 
-  getEvents() {
+  getEvents(clubId: string) {
+    ensureClub(clubId);
     return buildEvents();
   }
 
-  createEvent(input: CreateAdminEventInput) {
+  createEvent(clubId: string, input: CreateAdminEventInput) {
+    ensureClub(clubId);
     const nextEvent: AdminEventListItem = {
       id: `event-${Date.now()}`,
       title: input.title.trim(),
@@ -474,7 +488,8 @@ export class JsonMvpRepository implements MvpRepository {
     return buildEventItem(nextEvent);
   }
 
-  updateEventResponse(eventId: string, input: UpdateAdminEventResponseInput) {
+  updateEventResponse(clubId: string, eventId: string, input: UpdateAdminEventResponseInput) {
+    ensureClub(clubId);
     const event = findEvent(eventId);
     const member = findMember(input.memberId);
 
@@ -487,11 +502,13 @@ export class JsonMvpRepository implements MvpRepository {
     return buildEventItem(event);
   }
 
-  getNotices() {
+  getNotices(clubId: string) {
+    ensureClub(clubId);
     return buildNotices();
   }
 
-  createNotice(input: CreateAdminNoticeInput) {
+  createNotice(clubId: string, input: CreateAdminNoticeInput) {
+    ensureClub(clubId);
     const nextNotice: AdminNoticeListItem = {
       id: `notice-${Date.now()}`,
       title: input.title.trim(),
@@ -514,7 +531,8 @@ export class JsonMvpRepository implements MvpRepository {
     return buildNoticeItem(nextNotice);
   }
 
-  markNoticeRead(noticeId: string, input: UpdateAdminNoticeReadInput) {
+  markNoticeRead(clubId: string, noticeId: string, input: UpdateAdminNoticeReadInput) {
+    ensureClub(clubId);
     const notice = findNotice(noticeId);
     const member = findMember(input.memberId);
     noticeReads[noticeId] ??= new Set();
@@ -523,7 +541,8 @@ export class JsonMvpRepository implements MvpRepository {
     return buildNoticeItem(notice);
   }
 
-  toggleNoticeReaction(noticeId: string, input: ToggleAdminNoticeReactionInput) {
+  toggleNoticeReaction(clubId: string, noticeId: string, input: ToggleAdminNoticeReactionInput) {
+    ensureClub(clubId);
     const notice = findNotice(noticeId);
     const member = findMember(input.memberId);
     noticeLikes[noticeId] ??= new Set();
@@ -538,7 +557,8 @@ export class JsonMvpRepository implements MvpRepository {
     return buildNoticeItem(notice);
   }
 
-  createNoticeComment(noticeId: string, input: CreateAdminNoticeCommentInput) {
+  createNoticeComment(clubId: string, noticeId: string, input: CreateAdminNoticeCommentInput) {
+    ensureClub(clubId);
     const notice = findNotice(noticeId);
     const member = findMember(input.memberId);
     const comment: AdminNoticeCommentListItem = {

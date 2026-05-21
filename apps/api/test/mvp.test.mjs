@@ -67,6 +67,11 @@ test("API serves overview and persists member app actions", async (t) => {
   const deniedOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/admin/overview`);
   assert.equal(deniedOverview.status, 403);
 
+  const unknownClubOverview = await fetch(`${baseUrl}/clubs/unknown-club/admin/overview`, {
+    headers: { "x-crewith-role": "operator" },
+  });
+  assert.equal(unknownClubOverview.status, 404);
+
   const adminOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/admin/overview`, {
     headers: { "x-crewith-role": "operator" },
   });
@@ -76,6 +81,9 @@ test("API serves overview and persists member app actions", async (t) => {
   const memberOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/member-03`);
   assert.equal(memberOverview.status, 200);
   assert.equal((await memberOverview.json()).data.member.name, "박도윤");
+
+  const unknownClubMemberOverview = await fetch(`${baseUrl}/clubs/unknown-club/member-app/member-03`);
+  assert.equal(unknownClubMemberOverview.status, 404);
 
   const responseUpdate = await fetch(`${baseUrl}/clubs/club-seoul-runners/events/event-01/responses`, {
     method: "PATCH",

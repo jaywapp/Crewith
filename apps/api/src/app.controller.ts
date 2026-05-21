@@ -87,206 +87,247 @@ export class AppController {
   }
 
   @Get("clubs/:clubId/member-app/:memberId")
-  getMemberAppOverview(@Param("memberId") memberId: string) {
-    return { data: this.repository.getMemberAppOverview(memberId) };
+  getMemberAppOverview(
+    @Param("clubId") clubId: string,
+    @Param("memberId") memberId: string,
+  ) {
+    return { data: this.repository.getMemberAppOverview(clubId, memberId) };
   }
 
   @Get("clubs/:clubId/reminders")
-  getReminderTargets() {
-    return { data: this.repository.getReminderTargets() };
+  getReminderTargets(@Param("clubId") clubId: string) {
+    return { data: this.repository.getReminderTargets(clubId) };
   }
 
   @Post("clubs/:clubId/reminders/send")
   sendReminder(
+    @Param("clubId") clubId: string,
     @Body() input: SendReminderInput,
     @Headers("x-crewith-role") role: string | undefined,
   ) {
     assertOperatorRole(role);
-    return { data: this.repository.sendReminder(input) };
+    return { data: this.repository.sendReminder(clubId, input) };
   }
 
   @Get("clubs/:clubId/members")
-  getMembers(@Headers("x-crewith-role") role: string | undefined) {
+  getMembers(
+    @Param("clubId") clubId: string,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
     assertOperatorRole(role);
-    return { data: this.repository.getMembers() };
+    return { data: this.repository.getMembers(clubId) };
   }
 
   @Get("clubs/:clubId/join-requests")
-  getJoinRequests(@Headers("x-crewith-role") role: string | undefined) {
+  getJoinRequests(
+    @Param("clubId") clubId: string,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
     assertOperatorRole(role);
-    return { data: this.repository.getJoinRequests() };
+    return { data: this.repository.getJoinRequests(clubId) };
   }
 
   @Post("clubs/:clubId/join-requests")
-  createJoinRequest(@Body() input: CreateJoinRequestInput) {
-    return { data: this.repository.createJoinRequest(input) };
+  createJoinRequest(
+    @Param("clubId") clubId: string,
+    @Body() input: CreateJoinRequestInput,
+  ) {
+    return { data: this.repository.createJoinRequest(clubId, input) };
   }
 
   @Patch("clubs/:clubId/join-requests/:requestId")
   reviewJoinRequest(
+    @Param("clubId") clubId: string,
     @Param("requestId") requestId: string,
     @Body() input: ReviewJoinRequestInput,
     @Headers("x-crewith-role") role: string | undefined,
   ) {
     assertOperatorRole(role);
-    return { data: this.repository.reviewJoinRequest(requestId, input) };
+    return { data: this.repository.reviewJoinRequest(clubId, requestId, input) };
   }
 
   @Get("clubs/:clubId/invite-links")
-  getInviteLinks(@Headers("x-crewith-role") role: string | undefined) {
+  getInviteLinks(
+    @Param("clubId") clubId: string,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
     assertOperatorRole(role);
-    return { data: this.repository.getInviteLinks() };
+    return { data: this.repository.getInviteLinks(clubId) };
   }
 
   @Post("clubs/:clubId/invite-links")
   createInviteLink(
+    @Param("clubId") clubId: string,
     @Body() input: CreateInviteLinkInput,
     @Headers("x-crewith-role") role: string | undefined,
   ) {
     assertOperatorRole(role);
-    return { data: this.repository.createInviteLink(input) };
+    return { data: this.repository.createInviteLink(clubId, input) };
   }
 
   @Post("clubs/:clubId/invite-links/:token/accept")
   acceptInvite(
+    @Param("clubId") clubId: string,
     @Param("token") token: string,
     @Body() input: AcceptInviteInput,
   ) {
-    return { data: this.repository.acceptInvite(token, input) };
+    return { data: this.repository.acceptInvite(clubId, token, input) };
   }
 
   @Post("clubs/:clubId/members")
   createMember(
+    @Param("clubId") clubId: string,
     @Body() input: CreateAdminMemberInput,
     @Headers("x-crewith-role") role: string | undefined,
   ) {
     assertOperatorRole(role);
-    return { data: this.repository.createMember(input) };
+    return { data: this.repository.createMember(clubId, input) };
   }
 
   @Patch("clubs/:clubId/members/:memberId")
   updateMember(
+    @Param("clubId") clubId: string,
     @Param("memberId") memberId: string,
     @Body() input: UpdateAdminMemberInput,
     @Headers("x-crewith-role") role: string | undefined,
   ) {
     assertOperatorRole(role);
-    return { data: this.repository.updateMember(memberId, input) };
+    return { data: this.repository.updateMember(clubId, memberId, input) };
   }
 
   @Patch("clubs/:clubId/members/:memberId/fee-status")
   updateMemberFeeStatus(
+    @Param("clubId") clubId: string,
     @Param("memberId") memberId: string,
     @Body("status") status: FeePaymentStatus,
     @Headers("x-crewith-role") role: string | undefined,
   ) {
     assertOperatorRole(role);
-    return { data: this.repository.updateMemberFeeStatus(memberId, status) };
+    return { data: this.repository.updateMemberFeeStatus(clubId, memberId, status) };
   }
 
   @Delete("clubs/:clubId/members/:memberId")
   removeMember(
+    @Param("clubId") clubId: string,
     @Param("memberId") memberId: string,
     @Headers("x-crewith-role") role: string | undefined,
   ) {
     assertOperatorRole(role);
-    return { data: this.repository.removeMember(memberId) };
+    return { data: this.repository.removeMember(clubId, memberId) };
   }
 
   @Get("clubs/:clubId/fees")
-  getFees(@Headers("x-crewith-role") role: string | undefined) {
+  getFees(
+    @Param("clubId") clubId: string,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
     assertOperatorRole(role);
-    return { data: this.repository.getFees() };
+    return { data: this.repository.getFees(clubId) };
   }
 
   @Post("clubs/:clubId/fees")
   createFee(
+    @Param("clubId") clubId: string,
     @Body() input: CreateAdminFeeInput,
     @Headers("x-crewith-role") role: string | undefined,
   ) {
     assertOperatorRole(role);
-    return { data: this.repository.createFee(input) };
+    return { data: this.repository.createFee(clubId, input) };
   }
 
   @Patch("clubs/:clubId/fees/:feeId/payments")
   updateFeePayment(
+    @Param("clubId") clubId: string,
     @Param("feeId") feeId: string,
     @Body() input: UpdateAdminFeePaymentInput,
     @Headers("x-crewith-role") role: string | undefined,
   ) {
     assertOperatorRole(role);
-    return { data: this.repository.updateFeePayment(feeId, input) };
+    return { data: this.repository.updateFeePayment(clubId, feeId, input) };
   }
 
   @Patch("clubs/:clubId/events/:eventId/attendance")
   updateEventAttendance(
+    @Param("clubId") clubId: string,
     @Param("eventId") eventId: string,
     @Body() input: UpdateAdminAttendanceInput,
     @Headers("x-crewith-role") role: string | undefined,
   ) {
     assertOperatorRole(role);
-    return { data: this.repository.updateEventAttendance(eventId, input) };
+    return { data: this.repository.updateEventAttendance(clubId, eventId, input) };
   }
 
   @Get("clubs/:clubId/events")
-  getEvents(@Headers("x-crewith-role") role: string | undefined) {
+  getEvents(
+    @Param("clubId") clubId: string,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
     assertOperatorRole(role);
-    return { data: this.repository.getEvents() };
+    return { data: this.repository.getEvents(clubId) };
   }
 
   @Post("clubs/:clubId/events")
   createEvent(
+    @Param("clubId") clubId: string,
     @Body() input: CreateAdminEventInput,
     @Headers("x-crewith-role") role: string | undefined,
   ) {
     assertOperatorRole(role);
-    return { data: this.repository.createEvent(input) };
+    return { data: this.repository.createEvent(clubId, input) };
   }
 
   @Patch("clubs/:clubId/events/:eventId/responses")
   updateEventResponse(
+    @Param("clubId") clubId: string,
     @Param("eventId") eventId: string,
     @Body() input: UpdateAdminEventResponseInput,
   ) {
-    return { data: this.repository.updateEventResponse(eventId, input) };
+    return { data: this.repository.updateEventResponse(clubId, eventId, input) };
   }
 
   @Get("clubs/:clubId/notices")
-  getNotices(@Headers("x-crewith-role") role: string | undefined) {
+  getNotices(
+    @Param("clubId") clubId: string,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
     assertOperatorRole(role);
-    return { data: this.repository.getNotices() };
+    return { data: this.repository.getNotices(clubId) };
   }
 
   @Post("clubs/:clubId/notices")
   createNotice(
+    @Param("clubId") clubId: string,
     @Body() input: CreateAdminNoticeInput,
     @Headers("x-crewith-role") role: string | undefined,
   ) {
     assertOperatorRole(role);
-    return { data: this.repository.createNotice(input) };
+    return { data: this.repository.createNotice(clubId, input) };
   }
 
   @Patch("clubs/:clubId/notices/:noticeId/read")
   markNoticeRead(
+    @Param("clubId") clubId: string,
     @Param("noticeId") noticeId: string,
     @Body() input: UpdateAdminNoticeReadInput,
   ) {
-    return { data: this.repository.markNoticeRead(noticeId, input) };
+    return { data: this.repository.markNoticeRead(clubId, noticeId, input) };
   }
 
   @Patch("clubs/:clubId/notices/:noticeId/reactions")
   toggleNoticeReaction(
+    @Param("clubId") clubId: string,
     @Param("noticeId") noticeId: string,
     @Body() input: ToggleAdminNoticeReactionInput,
   ) {
-    return { data: this.repository.toggleNoticeReaction(noticeId, input) };
+    return { data: this.repository.toggleNoticeReaction(clubId, noticeId, input) };
   }
 
   @Post("clubs/:clubId/notices/:noticeId/comments")
   createNoticeComment(
+    @Param("clubId") clubId: string,
     @Param("noticeId") noticeId: string,
     @Body() input: CreateAdminNoticeCommentInput,
   ) {
-    return { data: this.repository.createNoticeComment(noticeId, input) };
+    return { data: this.repository.createNoticeComment(clubId, noticeId, input) };
   }
 }

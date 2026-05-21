@@ -352,6 +352,14 @@ export const club = {
   trialEndsAt: "2026-06-20",
 };
 
+export function ensureClub(clubId: string) {
+  if (clubId !== club.id) {
+    throw new NotFoundException("Club not found");
+  }
+
+  return club;
+}
+
 export const members: AdminMemberListItem[] = [
   {
     id: "member-01",
@@ -1070,12 +1078,13 @@ export function buildDashboard(): DashboardSummary {
   };
 }
 
-export function buildOverview(): AdminClubOverview {
+export function buildOverview(clubId = club.id): AdminClubOverview {
+  const currentClub = ensureClub(clubId);
   const dashboard = buildDashboard();
   const reminderTargets = buildReminderTargets();
 
   return {
-    club,
+    club: currentClub,
     dashboard,
     members: visibleMembers(),
     fees: buildFees(),
@@ -1114,14 +1123,15 @@ export function buildOverview(): AdminClubOverview {
   };
 }
 
-export function buildMemberAppOverview(memberId: string): MemberAppOverview {
+export function buildMemberAppOverview(clubId: string, memberId: string): MemberAppOverview {
+  const currentClub = ensureClub(clubId);
   const member = findMember(memberId);
 
   return {
     club: {
-      id: club.id,
-      name: club.name,
-      sportType: club.sportType,
+      id: currentClub.id,
+      name: currentClub.name,
+      sportType: currentClub.sportType,
     },
     member: {
       id: member.id,
