@@ -29,6 +29,41 @@ export interface ClubSummary {
   memberStatus: MemberStatus;
 }
 
+export interface MemberProfile {
+  memberId: string;
+  name: string;
+  phoneNumber: string;
+  profileImageUrl?: string;
+}
+
+export interface AuthOtpRequestInput {
+  phoneNumber: string;
+}
+
+export interface AuthOtpRequestResult {
+  phoneNumber: string;
+  code: string;
+  expiresAt: string;
+}
+
+export interface AuthOtpVerifyInput {
+  phoneNumber: string;
+  code: string;
+}
+
+export interface AuthSession {
+  token: string;
+  memberId: string;
+  profile: MemberProfile;
+  clubs: ClubSummary[];
+}
+
+export interface UpdateMemberProfileInput {
+  name?: string;
+  phoneNumber?: string;
+  profileImageUrl?: string;
+}
+
 export interface DashboardSummary {
   totalMemberCount: number;
   activeMemberCount: number;

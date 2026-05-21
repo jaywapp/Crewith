@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -153,6 +154,28 @@ interface AdminTaskItem {
   label: string;
   value: string;
   severity: "info" | "warning" | "danger";
+}
+
+interface MemberProfile {
+  memberId: string;
+  name: string;
+  phoneNumber: string;
+  profileImageUrl?: string;
+}
+
+interface AuthOtpRequestInput {
+  phoneNumber: string;
+}
+
+interface AuthOtpVerifyInput {
+  phoneNumber: string;
+  code: string;
+}
+
+interface UpdateMemberProfileInput {
+  name?: string;
+  phoneNumber?: string;
+  profileImageUrl?: string;
 }
 
 interface MemberAppOverview {
@@ -535,6 +558,38 @@ const inviteLinks: AdminInviteLinkListItem[] = [
   },
 ];
 
+const otpCodes = new Map<string, { code: string; expiresAt: string }>();
+const profileImages = new Map<string, string>();
+
+function normalizePhoneNumber(value: string) {
+  return value.trim().replace(/\s+/g, "");
+}
+
+function buildProfile(member: AdminMemberListItem): MemberProfile {
+  return {
+    memberId: member.id,
+    name: member.name,
+    phoneNumber: member.phoneNumber,
+    profileImageUrl: profileImages.get(member.id),
+  };
+}
+
+function createMemberFromProfile(name: string, phoneNumber: string): AdminMemberListItem {
+  const nextMember: AdminMemberListItem = {
+    id: `member-${Date.now()}`,
+    name,
+    phoneNumber,
+    role: "member",
+    memberStatus: "active",
+    joinedAt: new Date().toISOString().slice(0, 10),
+    lastFeeStatus: "unpaid",
+    attendanceRate: 0,
+  };
+
+  members.push(nextMember);
+  return nextMember;
+}
+
 function activeMembers() {
   return members.filter((member) => member.memberStatus === "active");
 }
@@ -886,6 +941,100 @@ export class AppController {
           id: clubId,
         },
       },
+    };
+  }
+
+  @Post("auth/otp/request")
+  requestOtp(@Body() input: AuthOtpRequestInput) {
+    const phoneNumber = normalizePhoneNumber(input.phoneNumber ?? "");
+
+    if (!phoneNumber) {
+      throw new BadRequestException("Phone number is required");
+    }
+
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    const code = "123456";
+    otpCodes.set(phoneNumber, { code, expiresAt });
+
+    return {
+      data: {
+        phoneNumber,
+        code,
+        expiresAt,
+      },
+      meta: {
+        mode: "development",
+      },
+    };
+  }
+
+  @Post("auth/otp/verify")
+  verifyOtp(@Body() input: AuthOtpVerifyInput) {
+    const phoneNumber = normalizePhoneNumber(input.phoneNumber ?? "");
+    const code = `${input.code ?? ""}`.trim();
+    const otp = otpCodes.get(phoneNumber);
+
+    if (!otp || otp.code !== code || Date.parse(otp.expiresAt) < Date.now()) {
+      throw new BadRequestException("Invalid or expired OTP code");
+    }
+
+    otpCodes.delete(phoneNumber);
+
+    const member =
+      members.find((item) => normalizePhoneNumber(item.phoneNumber) === phoneNumber && item.memberStatus !== "removed") ??
+      createMemberFromProfile(`회원 ${phoneNumber.slice(-4)}`, phoneNumber);
+
+    return {
+      data: {
+        token: `dev-token-${member.id}`,
+        memberId: member.id,
+        profile: buildProfile(member),
+        clubs: [
+          {
+            clubId: club.id,
+            name: club.name,
+            sportType: club.sportType,
+            role: member.role,
+            memberStatus: member.memberStatus,
+          },
+        ],
+      },
+    };
+  }
+
+  @Get("members/:memberId/profile")
+  getMemberProfile(@Param("memberId") memberId: string) {
+    return {
+      data: buildProfile(findMember(memberId)),
+    };
+  }
+
+  @Patch("members/:memberId/profile")
+  updateMemberProfile(
+    @Param("memberId") memberId: string,
+    @Body() input: UpdateMemberProfileInput,
+  ) {
+    const member = findMember(memberId);
+
+    if (input.name?.trim()) {
+      member.name = input.name.trim();
+    }
+
+    if (input.phoneNumber?.trim()) {
+      member.phoneNumber = normalizePhoneNumber(input.phoneNumber);
+    }
+
+    if (typeof input.profileImageUrl === "string") {
+      const nextImageUrl = input.profileImageUrl.trim();
+      if (nextImageUrl) {
+        profileImages.set(member.id, nextImageUrl);
+      } else {
+        profileImages.delete(member.id);
+      }
+    }
+
+    return {
+      data: buildProfile(member),
     };
   }
 
