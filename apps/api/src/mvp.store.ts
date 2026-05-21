@@ -291,8 +291,10 @@ export interface MemberAppOverview {
     body: string;
     visibility: ResourceVisibility;
     read: boolean;
+    liked: boolean;
     likeCount: number;
     commentCount: number;
+    comments: AdminNoticeCommentListItem[];
   }>;
 }
 
@@ -1367,8 +1369,10 @@ export function buildMemberAppOverview(clubId: string, memberId: string): Member
         body: notice.body,
         visibility: notice.visibility,
         read: notice.readers.find((reader) => reader.memberId === member.id)?.read ?? false,
+        liked: noticeLikes[notice.id]?.has(member.id) ?? false,
         likeCount: notice.likeCount,
         commentCount: notice.commentCount,
+        comments: notice.comments,
       })),
   };
 }

@@ -186,6 +186,51 @@ class _HomeShellState extends State<HomeShell> {
     return '오프라인 미리보기로 확인 처리했습니다.';
   }
 
+  Future<String?> _toggleNoticeReaction(String noticeId) async {
+    _replaceOverview((value) => value.toggleNoticeReaction(noticeId));
+
+    final saved = await _api.toggleNoticeReaction(
+      clubId: _activeClubId,
+      noticeId: noticeId,
+      memberId: _activeMemberId,
+    );
+
+    if (saved) {
+      _refreshOverview();
+      return '좋아요를 저장했습니다.';
+    }
+
+    return '오프라인 미리보기로 좋아요를 반영했습니다.';
+  }
+
+  Future<String?> _createNoticeComment(String noticeId, String body) async {
+    if (body.trim().isEmpty) {
+      return null;
+    }
+
+    _replaceOverview(
+      (value) => value.addNoticeComment(
+        noticeId,
+        value.memberName,
+        body.trim(),
+      ),
+    );
+
+    final saved = await _api.createNoticeComment(
+      clubId: _activeClubId,
+      noticeId: noticeId,
+      memberId: _activeMemberId,
+      body: body.trim(),
+    );
+
+    if (saved) {
+      _refreshOverview();
+      return '댓글을 등록했습니다.';
+    }
+
+    return '오프라인 미리보기로 댓글을 반영했습니다.';
+  }
+
   Future<String> _createJoinRequest(
     String name,
     String phoneNumber,
@@ -284,6 +329,8 @@ class _HomeShellState extends State<HomeShell> {
           NoticesPage(
             overview: overview,
             onRead: _markNoticeRead,
+            onReactionToggled: _toggleNoticeReaction,
+            onCommentCreated: _createNoticeComment,
           ),
           FeesPage(overview: overview),
           MorePage(

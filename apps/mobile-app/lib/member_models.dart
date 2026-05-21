@@ -120,8 +120,17 @@ class MemberAppOverview {
           body: '5월 월회비 납부일은 5월 25일입니다.',
           visibility: 'all_members',
           read: false,
+          liked: false,
           likeCount: 2,
           commentCount: 1,
+          comments: [
+            MemberNoticeComment(
+              id: 'comment-01',
+              memberName: '이서연',
+              body: '입금 확인했습니다.',
+              createdAt: '2026-05-18T10:20:00+09:00',
+            ),
+          ],
         ),
       ],
     );
@@ -142,16 +151,43 @@ class MemberAppOverview {
   }
 
   MemberAppOverview markNoticeRead(String noticeId) {
-    return MemberAppOverview(
-      clubName: clubName,
-      sportType: sportType,
-      memberName: memberName,
-      fees: fees,
-      events: events,
-      notices: notices
-          .map((notice) =>
-              notice.id == noticeId ? notice.copyWith(read: true) : notice)
-          .toList(),
+    return _updateNotice(
+      noticeId,
+      (notice) => notice.copyWith(read: true),
+    );
+  }
+
+  MemberAppOverview toggleNoticeReaction(String noticeId) {
+    return _updateNotice(
+      noticeId,
+      (notice) => notice.copyWith(
+        liked: !notice.liked,
+        likeCount: notice.liked
+            ? (notice.likeCount - 1).clamp(0, 9999)
+            : notice.likeCount + 1,
+      ),
+    );
+  }
+
+  MemberAppOverview addNoticeComment(
+    String noticeId,
+    String memberName,
+    String body,
+  ) {
+    return _updateNotice(
+      noticeId,
+      (notice) => notice.copyWith(
+        commentCount: notice.commentCount + 1,
+        comments: [
+          ...notice.comments,
+          MemberNoticeComment(
+            id: 'local-${DateTime.now().millisecondsSinceEpoch}',
+            memberName: memberName,
+            body: body,
+            createdAt: DateTime.now().toIso8601String(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -163,6 +199,22 @@ class MemberAppOverview {
       fees: fees,
       events: events,
       notices: notices,
+    );
+  }
+
+  MemberAppOverview _updateNotice(
+    String noticeId,
+    MemberNotice Function(MemberNotice notice) update,
+  ) {
+    return MemberAppOverview(
+      clubName: clubName,
+      sportType: sportType,
+      memberName: memberName,
+      fees: fees,
+      events: events,
+      notices: notices
+          .map((notice) => notice.id == noticeId ? update(notice) : notice)
+          .toList(),
     );
   }
 }
@@ -248,8 +300,10 @@ class MemberNotice {
     required this.body,
     required this.visibility,
     required this.read,
+    required this.liked,
     required this.likeCount,
     required this.commentCount,
+    required this.comments,
   });
 
   final String id;
@@ -257,8 +311,10 @@ class MemberNotice {
   final String body;
   final String visibility;
   final bool read;
+  final bool liked;
   final int likeCount;
   final int commentCount;
+  final List<MemberNoticeComment> comments;
 
   factory MemberNotice.fromJson(Map<String, dynamic> json) {
     return MemberNotice(
@@ -267,20 +323,56 @@ class MemberNotice {
       body: json['body'] as String,
       visibility: json['visibility'] as String,
       read: json['read'] as bool,
+      liked: json['liked'] as bool? ?? false,
       likeCount: json['likeCount'] as int,
       commentCount: json['commentCount'] as int,
+      comments: (json['comments'] as List<dynamic>? ?? [])
+          .map((item) =>
+              MemberNoticeComment.fromJson(item as Map<String, dynamic>))
+          .toList(),
     );
   }
 
-  MemberNotice copyWith({bool? read}) {
+  MemberNotice copyWith({
+    bool? read,
+    bool? liked,
+    int? likeCount,
+    int? commentCount,
+    List<MemberNoticeComment>? comments,
+  }) {
     return MemberNotice(
       id: id,
       title: title,
       body: body,
       visibility: visibility,
       read: read ?? this.read,
-      likeCount: likeCount,
-      commentCount: commentCount,
+      liked: liked ?? this.liked,
+      likeCount: likeCount ?? this.likeCount,
+      commentCount: commentCount ?? this.commentCount,
+      comments: comments ?? this.comments,
+    );
+  }
+}
+
+class MemberNoticeComment {
+  const MemberNoticeComment({
+    required this.id,
+    required this.memberName,
+    required this.body,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String memberName;
+  final String body;
+  final String createdAt;
+
+  factory MemberNoticeComment.fromJson(Map<String, dynamic> json) {
+    return MemberNoticeComment(
+      id: json['id'] as String,
+      memberName: json['memberName'] as String,
+      body: json['body'] as String,
+      createdAt: json['createdAt'] as String,
     );
   }
 }

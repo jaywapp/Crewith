@@ -186,4 +186,28 @@ test("API serves overview and persists member app actions", async (t) => {
   });
   assert.equal(noticeRead.status, 200);
   assert.equal((await noticeRead.json()).data.unreadCount, 2);
+
+  const noticeReaction = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/notice-01/reactions`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ memberId: "member-03" }),
+  });
+  assert.equal(noticeReaction.status, 200);
+  assert.equal((await noticeReaction.json()).data.likeCount, 3);
+
+  const noticeComment = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/notice-01/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ memberId: "member-03", body: "앱에서 확인했습니다." }),
+  });
+  assert.equal(noticeComment.status, 201);
+  const noticeCommentJson = (await noticeComment.json()).data;
+  assert.equal(noticeCommentJson.commentCount, 2);
+
+  const memberOverviewAfterNoticeActions = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/member-03`);
+  assert.equal(memberOverviewAfterNoticeActions.status, 200);
+  const noticeSummary = (await memberOverviewAfterNoticeActions.json()).data.notices[0];
+  assert.equal(noticeSummary.read, true);
+  assert.equal(noticeSummary.liked, true);
+  assert.equal(noticeSummary.comments.at(-1).body, "앱에서 확인했습니다.");
 });

@@ -134,6 +134,34 @@ class MemberApiClient {
     );
   }
 
+  Future<bool> toggleNoticeReaction({
+    required String clubId,
+    required String noticeId,
+    required String memberId,
+  }) {
+    return _sendJson(
+      'PATCH',
+      Uri.parse('$apiBaseUrl/clubs/$clubId/notices/$noticeId/reactions'),
+      {'memberId': memberId},
+    );
+  }
+
+  Future<bool> createNoticeComment({
+    required String clubId,
+    required String noticeId,
+    required String memberId,
+    required String body,
+  }) {
+    return _sendJson(
+      'POST',
+      Uri.parse('$apiBaseUrl/clubs/$clubId/notices/$noticeId/comments'),
+      {
+        'memberId': memberId,
+        'body': body,
+      },
+    );
+  }
+
   Future<bool> createJoinRequest({
     required String clubId,
     required String name,

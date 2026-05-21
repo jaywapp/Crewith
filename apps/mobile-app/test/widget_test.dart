@@ -28,6 +28,8 @@ void main() {
     await tester.tap(find.text('공지'));
     await tester.pumpAndSettle();
     expect(find.text('확인 처리'), findsOneWidget);
+    expect(find.text('좋아요'), findsOneWidget);
+    expect(find.text('댓글 등록'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.menu_outlined));
     await tester.pumpAndSettle();

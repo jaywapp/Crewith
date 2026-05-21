@@ -224,6 +224,13 @@ export interface AdminNoticeCommentListItem {
   createdAt: string;
 }
 
+export interface MemberNoticeCommentListItem {
+  id: string;
+  memberName: string;
+  body: string;
+  createdAt: string;
+}
+
 export interface AdminTaskItem {
   id: string;
   label: string;
