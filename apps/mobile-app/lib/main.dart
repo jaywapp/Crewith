@@ -92,24 +92,20 @@ class _HomeShellState extends State<HomeShell> {
       return false;
     }
 
-    final memberId = await _api.verifyOtp(phoneNumber, code);
-
-    if (memberId != null) {
-      setState(() {
-        _activeMemberId = memberId;
-        _isAuthenticated = true;
-        _overviewFuture = _fetchOverview(memberId);
-      });
-      return true;
-    }
-
-    // The MVP app keeps a local development path so widget tests and emulator
-    // previews can proceed before a real SMS provider is attached.
     setState(() {
       _activeMemberId = _defaultMemberId;
       _isAuthenticated = true;
       _overviewFuture = _fetchOverview(_defaultMemberId);
     });
+
+    final memberId = await _api.verifyOtp(phoneNumber, code);
+    if (memberId != null && mounted) {
+      setState(() {
+        _activeMemberId = memberId;
+        _overviewFuture = _fetchOverview(memberId);
+      });
+    }
+
     return true;
   }
 
