@@ -362,6 +362,18 @@ export async function createInviteLinkAction(formData: FormData) {
   revalidateAdmin();
 }
 
+export async function disableInviteLinkAction(inviteId: string) {
+  "use server";
+
+  const clubId = await getActiveClubId();
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/invite-links/${inviteId}/disable`, {
+    method: "PATCH",
+    headers: adminRoleHeaders,
+  });
+
+  revalidateAdmin();
+}
+
 export async function sendReminderAction(formData: FormData) {
   "use server";
 

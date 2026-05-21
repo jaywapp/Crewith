@@ -3,6 +3,7 @@ import {
   PageTitle,
   UnauthorizedPanel,
   createInviteLinkAction,
+  disableInviteLinkAction,
   getOverview,
   reviewJoinRequestAction,
 } from "../admin";
@@ -18,7 +19,7 @@ export default async function JoinPage() {
 
   return (
     <AdminShell active="/join" overview={overview}>
-      <PageTitle title="가입/초대" description="공개 모임 가입 신청과 비공개 모임 초대 링크를 관리합니다." />
+      <PageTitle title="가입 초대" description="공개 모임 가입 신청과 비공개 모임 초대 링크를 관리합니다." />
 
       <section className="pageGrid">
         <article className="panel">
@@ -43,7 +44,14 @@ export default async function JoinPage() {
             {overview.inviteLinks.map((invite) => (
               <div className="inviteRow" key={invite.id}>
                 <strong>{invite.token}</strong>
-                <span>{invite.expiresAt}까지</span>
+                <span>
+                  {invite.expiresAt}까지 · {invite.disabled ? "비활성" : "활성"}
+                </span>
+                <form action={disableInviteLinkAction.bind(null, invite.id)}>
+                  <button className="danger compact" disabled={invite.disabled} type="submit">
+                    비활성화
+                  </button>
+                </form>
               </div>
             ))}
           </div>
@@ -64,12 +72,12 @@ export default async function JoinPage() {
                 </div>
                 <strong className={`joinStatus ${request.status}`}>{request.status}</strong>
                 <form action={reviewJoinRequestAction.bind(null, request.id, "approved")}>
-                  <button className="secondary compact" type="submit">
+                  <button className="secondary compact" disabled={request.status !== "pending"} type="submit">
                     승인
                   </button>
                 </form>
                 <form action={reviewJoinRequestAction.bind(null, request.id, "rejected")}>
-                  <button className="danger compact" type="submit">
+                  <button className="danger compact" disabled={request.status !== "pending"} type="submit">
                     거절
                   </button>
                 </form>

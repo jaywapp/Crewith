@@ -102,6 +102,7 @@ export abstract class MvpRepository {
   abstract reviewJoinRequest(clubId: string, requestId: string, input: ReviewJoinRequestInput): AdminJoinRequestListItem;
   abstract getInviteLinks(clubId: string): AdminInviteLinkListItem[];
   abstract createInviteLink(clubId: string, input: CreateInviteLinkInput): AdminInviteLinkListItem;
+  abstract disableInviteLink(clubId: string, inviteId: string): AdminInviteLinkListItem;
   abstract acceptInvite(clubId: string, token: string, input: AcceptInviteInput): AdminMemberListItem;
   abstract createMember(clubId: string, input: CreateAdminMemberInput): AdminMemberListItem;
   abstract importMembers(clubId: string, input: ImportAdminMembersInput): ImportAdminMembersResult;
@@ -325,9 +326,25 @@ export class JsonMvpRepository implements MvpRepository {
     return nextInvite;
   }
 
+  disableInviteLink(clubId: string, inviteId: string) {
+    ensureClub(clubId);
+    const invite = inviteLinks.find((item) => item.id === inviteId);
+
+    if (!invite) {
+      throw new NotFoundException("Invite link not found");
+    }
+
+    invite.disabled = true;
+    persistStore();
+    return invite;
+  }
+
   acceptInvite(clubId: string, token: string, input: AcceptInviteInput) {
     ensureClub(clubId);
-    findInviteByToken(token);
+    const invite = findInviteByToken(token);
+    if (Date.parse(`${invite.expiresAt}T23:59:59+09:00`) < Date.now()) {
+      throw new NotFoundException("Invite link expired");
+    }
 
     const member: AdminMemberListItem = {
       id: `member-${Date.now()}`,

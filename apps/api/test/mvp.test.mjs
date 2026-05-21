@@ -78,6 +78,29 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(adminOverview.status, 200);
   assert.equal((await adminOverview.json()).data.club.name, "서울 러너스");
 
+  const createdInvite = await fetch(`${baseUrl}/clubs/club-seoul-runners/invite-links`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({ expiresInDays: 30 }),
+  });
+  assert.equal(createdInvite.status, 201);
+  const invite = (await createdInvite.json()).data;
+  assert.equal(invite.disabled, false);
+
+  const disabledInvite = await fetch(`${baseUrl}/clubs/club-seoul-runners/invite-links/${invite.id}/disable`, {
+    method: "PATCH",
+    headers: { "x-crewith-role": "operator" },
+  });
+  assert.equal(disabledInvite.status, 200);
+  assert.equal((await disabledInvite.json()).data.disabled, true);
+
+  const disabledInviteAccept = await fetch(`${baseUrl}/clubs/club-seoul-runners/invite-links/${invite.token}/accept`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ applicantName: "Invite Blocked", applicantPhone: "010-9999-0001" }),
+  });
+  assert.equal(disabledInviteAccept.status, 404);
+
   const importMembers = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/imports`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },

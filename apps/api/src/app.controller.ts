@@ -172,6 +172,16 @@ export class AppController {
     return { data: this.repository.createInviteLink(clubId, input) };
   }
 
+  @Patch("clubs/:clubId/invite-links/:inviteId/disable")
+  disableInviteLink(
+    @Param("clubId") clubId: string,
+    @Param("inviteId") inviteId: string,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+    return { data: this.repository.disableInviteLink(clubId, inviteId) };
+  }
+
   @Post("clubs/:clubId/invite-links/:token/accept")
   acceptInvite(
     @Param("clubId") clubId: string,
