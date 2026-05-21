@@ -9,6 +9,8 @@ import {
   Patch,
   Post,
 } from "@nestjs/common";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 type FeePaymentStatus = "unpaid" | "paid" | "exempt";
 type FeeType = "recurring" | "one_time";
@@ -176,6 +178,22 @@ interface UpdateMemberProfileInput {
   name?: string;
   phoneNumber?: string;
   profileImageUrl?: string;
+}
+
+interface MvpStore {
+  members: AdminMemberListItem[];
+  fees: AdminFeeListItem[];
+  feePayments: Record<string, Record<string, FeePaymentStatus>>;
+  events: AdminEventListItem[];
+  eventResponses: Record<string, Record<string, EventResponseValue>>;
+  eventAttendance: Record<string, Record<string, { status: AttendanceStatus; companionCount: number }>>;
+  notices: AdminNoticeListItem[];
+  noticeReads: Record<string, string[]>;
+  noticeLikes: Record<string, string[]>;
+  noticeComments: Record<string, AdminNoticeCommentListItem[]>;
+  joinRequests: AdminJoinRequestListItem[];
+  inviteLinks: AdminInviteLinkListItem[];
+  profileImages: Record<string, string>;
 }
 
 interface MemberAppOverview {
@@ -560,6 +578,93 @@ const inviteLinks: AdminInviteLinkListItem[] = [
 
 const otpCodes = new Map<string, { code: string; expiresAt: string }>();
 const profileImages = new Map<string, string>();
+const dataFilePath = process.env.CREWITH_DATA_FILE ?? join(process.cwd(), "data", "mvp-store.json");
+
+function replaceArray<T>(target: T[], next: T[] | undefined) {
+  if (!Array.isArray(next)) {
+    return;
+  }
+
+  target.splice(0, target.length, ...next);
+}
+
+function replaceRecord<T>(target: Record<string, T>, next: Record<string, T> | undefined) {
+  if (!next || typeof next !== "object") {
+    return;
+  }
+
+  for (const key of Object.keys(target)) {
+    delete target[key];
+  }
+
+  Object.assign(target, next);
+}
+
+function serializeSetRecord(source: Record<string, Set<string>>) {
+  return Object.fromEntries(Object.entries(source).map(([key, value]) => [key, [...value]]));
+}
+
+function hydrateSetRecord(target: Record<string, Set<string>>, source: Record<string, string[]> | undefined) {
+  if (!source || typeof source !== "object") {
+    return;
+  }
+
+  for (const key of Object.keys(target)) {
+    delete target[key];
+  }
+
+  for (const [key, value] of Object.entries(source)) {
+    target[key] = new Set(Array.isArray(value) ? value : []);
+  }
+}
+
+function persistStore() {
+  const store: MvpStore = {
+    members,
+    fees,
+    feePayments,
+    events,
+    eventResponses,
+    eventAttendance,
+    notices,
+    noticeReads: serializeSetRecord(noticeReads),
+    noticeLikes: serializeSetRecord(noticeLikes),
+    noticeComments,
+    joinRequests,
+    inviteLinks,
+    profileImages: Object.fromEntries(profileImages),
+  };
+
+  mkdirSync(dirname(dataFilePath), { recursive: true });
+  writeFileSync(dataFilePath, `${JSON.stringify(store, null, 2)}\n`, "utf8");
+}
+
+function hydrateStore() {
+  if (!existsSync(dataFilePath)) {
+    persistStore();
+    return;
+  }
+
+  const store = JSON.parse(readFileSync(dataFilePath, "utf8")) as Partial<MvpStore>;
+
+  replaceArray(members, store.members);
+  replaceArray(fees, store.fees);
+  replaceRecord(feePayments, store.feePayments);
+  replaceArray(events, store.events);
+  replaceRecord(eventResponses, store.eventResponses);
+  replaceRecord(eventAttendance, store.eventAttendance);
+  replaceArray(notices, store.notices);
+  hydrateSetRecord(noticeReads, store.noticeReads);
+  hydrateSetRecord(noticeLikes, store.noticeLikes);
+  replaceRecord(noticeComments, store.noticeComments);
+  replaceArray(joinRequests, store.joinRequests);
+  replaceArray(inviteLinks, store.inviteLinks);
+  profileImages.clear();
+
+  for (const [memberId, imageUrl] of Object.entries(store.profileImages ?? {})) {
+    profileImages.set(memberId, imageUrl);
+  }
+}
 
 function normalizePhoneNumber(value: string) {
   return value.trim().replace(/\s+/g, "");
@@ -572,6 +677,24 @@ function buildProfile(member: AdminMemberListItem): MemberProfile {
     phoneNumber: member.phoneNumber,
     profileImageUrl: profileImages.get(member.id),
   };
+}
+
+function initializeMemberState(member: AdminMemberListItem) {
+  for (const fee of fees) {
+    feePayments[fee.id] ??= {};
+    feePayments[fee.id][member.id] ??= "unpaid";
+  }
+
+  for (const event of events) {
+    eventResponses[event.id] ??= {};
+    eventAttendance[event.id] ??= {};
+    eventResponses[event.id][member.id] ??= "not_attending";
+    eventAttendance[event.id][member.id] ??= { status: "absent", companionCount: 0 };
+  }
+
+  for (const notice of notices) {
+    noticeReads[notice.id] ??= new Set();
+  }
 }
 
 function createMemberFromProfile(name: string, phoneNumber: string): AdminMemberListItem {
@@ -587,8 +710,11 @@ function createMemberFromProfile(name: string, phoneNumber: string): AdminMember
   };
 
   members.push(nextMember);
+  initializeMemberState(nextMember);
   return nextMember;
 }
+
+hydrateStore();
 
 function activeMembers() {
   return members.filter((member) => member.memberStatus === "active");
@@ -980,9 +1106,14 @@ export class AppController {
 
     otpCodes.delete(phoneNumber);
 
-    const member =
-      members.find((item) => normalizePhoneNumber(item.phoneNumber) === phoneNumber && item.memberStatus !== "removed") ??
-      createMemberFromProfile(`회원 ${phoneNumber.slice(-4)}`, phoneNumber);
+    let member = members.find(
+      (item) => normalizePhoneNumber(item.phoneNumber) === phoneNumber && item.memberStatus !== "removed",
+    );
+
+    if (!member) {
+      member = createMemberFromProfile(`회원 ${phoneNumber.slice(-4)}`, phoneNumber);
+      persistStore();
+    }
 
     return {
       data: {
@@ -1033,6 +1164,8 @@ export class AppController {
       }
     }
 
+    persistStore();
+
     return {
       data: buildProfile(member),
     };
@@ -1071,6 +1204,7 @@ export class AppController {
     };
 
     joinRequests.unshift(nextRequest);
+    persistStore();
 
     return {
       data: nextRequest,
@@ -1091,18 +1225,11 @@ export class AppController {
     if (request.status === "approved") {
       const exists = members.some((member) => member.phoneNumber === request.applicantPhone);
       if (!exists) {
-        members.push({
-          id: `member-${Date.now()}`,
-          name: request.applicantName,
-          phoneNumber: request.applicantPhone,
-          role: "member",
-          memberStatus: "active",
-          joinedAt: new Date().toISOString().slice(0, 10),
-          lastFeeStatus: "unpaid",
-          attendanceRate: 0,
-        });
+        createMemberFromProfile(request.applicantName, request.applicantPhone);
       }
     }
+
+    persistStore();
 
     return {
       data: request,
@@ -1129,6 +1256,7 @@ export class AppController {
     };
 
     inviteLinks.unshift(nextInvite);
+    persistStore();
 
     return {
       data: nextInvite,
@@ -1154,6 +1282,8 @@ export class AppController {
     };
 
     members.push(member);
+    initializeMemberState(member);
+    persistStore();
 
     return {
       data: member,
@@ -1174,21 +1304,8 @@ export class AppController {
     };
 
     members.push(nextMember);
-    for (const fee of fees) {
-      feePayments[fee.id] ??= {};
-      feePayments[fee.id][nextMember.id] = "unpaid";
-    }
-    for (const event of events) {
-      eventResponses[event.id] ??= {};
-      eventAttendance[event.id] ??= {};
-      eventResponses[event.id][nextMember.id] = "not_attending";
-      eventAttendance[event.id][nextMember.id] = { status: "absent", companionCount: 0 };
-    }
-    for (const notice of notices) {
-      if (notice.visibility === "all_members") {
-        noticeReads[notice.id] ??= new Set();
-      }
-    }
+    initializeMemberState(nextMember);
+    persistStore();
 
     return {
       data: nextMember,
@@ -1223,6 +1340,8 @@ export class AppController {
       feePayments[fees[0].id][member.id] = input.lastFeeStatus;
     }
 
+    persistStore();
+
     return {
       data: member,
     };
@@ -1239,6 +1358,8 @@ export class AppController {
       member.lastFeeStatus = status;
     }
 
+    persistStore();
+
     return {
       data: member,
     };
@@ -1248,6 +1369,7 @@ export class AppController {
   removeMember(@Param("memberId") memberId: string) {
     const member = findMember(memberId);
     member.memberStatus = "removed";
+    persistStore();
 
     return {
       data: member,
@@ -1280,6 +1402,7 @@ export class AppController {
 
     fees.unshift(nextFee);
     ensureFeeTargets(nextFee.id);
+    persistStore();
 
     return {
       data: buildFeeItem(nextFee),
@@ -1303,6 +1426,8 @@ export class AppController {
       }
     }
 
+    persistStore();
+
     return {
       data: buildFeeItem(fee),
     };
@@ -1323,6 +1448,8 @@ export class AppController {
         companionCount: Number(input.companionCount) || 0,
       };
     }
+
+    persistStore();
 
     return {
       data: buildEventItem(event),
@@ -1357,6 +1484,7 @@ export class AppController {
 
     events.unshift(nextEvent);
     ensureEventTargets(nextEvent.id);
+    persistStore();
 
     return {
       data: buildEventItem(nextEvent),
@@ -1375,6 +1503,8 @@ export class AppController {
       eventResponses[eventId] ??= {};
       eventResponses[eventId][member.id] = input.response;
     }
+
+    persistStore();
 
     return {
       data: buildEventItem(event),
@@ -1408,6 +1538,7 @@ export class AppController {
     noticeReads[nextNotice.id] = new Set();
     noticeLikes[nextNotice.id] = new Set();
     noticeComments[nextNotice.id] = [];
+    persistStore();
 
     return {
       data: buildNoticeItem(nextNotice),
@@ -1423,6 +1554,7 @@ export class AppController {
     const member = findMember(input.memberId);
     noticeReads[noticeId] ??= new Set();
     noticeReads[noticeId].add(member.id);
+    persistStore();
 
     return {
       data: buildNoticeItem(notice),
@@ -1443,6 +1575,8 @@ export class AppController {
     } else {
       noticeLikes[noticeId].add(member.id);
     }
+
+    persistStore();
 
     return {
       data: buildNoticeItem(notice),
@@ -1465,6 +1599,7 @@ export class AppController {
 
     noticeComments[noticeId] ??= [];
     noticeComments[noticeId].push(comment);
+    persistStore();
 
     return {
       data: buildNoticeItem(notice),
