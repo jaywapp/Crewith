@@ -190,6 +190,19 @@ flutter test
 | Flutter 인증 상태 관리 | 구현 확인 필요 |
 | Flutter API 클라이언트 | 구현 확인 필요 |
 | 인프라 (Railway, Vercel, Firebase) | 미완성 |
+| OTP 인증 API (`POST /auth/otp/request`, `/verify`) | 완료 |
+| 모임 생성/목록/상세 API | 완료 |
+| 회원 초대·가입 API (초대코드, 공개 모임) | 완료 |
+| 일정 생성/조회/수정/삭제 API | 완료 |
+| 공지 작성/조회/수정/삭제 API | 완료 |
+| 회비 항목·납부 기록 API | 완료 |
+| 출석 기록 API | 완료 |
+| 리마인더 대상 산정 (`/reminders`) | 완료 |
+| 개인정보 공개 설정 API (`GET/PUT /clubs/:clubId/privacy-settings`) | 완료 |
+| 알림 설정 API (`GET/PUT /clubs/:clubId/notification-settings`) | 완료 |
+| 구성원 목록 API (`GET /clubs/:clubId/member-app/:memberId/members`) | 완료 |
+| 관리자 웹 설정 화면 (개인정보·알림 설정) | 완료 |
+| FCM 실발송 / 자동 스케줄러 | 추후 구현 |
 
 ---
 

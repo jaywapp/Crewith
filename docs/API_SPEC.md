@@ -999,7 +999,7 @@ Response:
 | 회원 삭제 | `DELETE /clubs/{clubId}/members/{memberId}` | |
 | 회원 회비상태 변경 | `PATCH /clubs/{clubId}/members/{memberId}/fee-status` | |
 | Excel 업로드 | `POST /clubs/{clubId}/members/imports` | |
-| 개인정보 공개 설정 | — | 추후 구현 (`/privacy-settings`) |
+| 개인정보 공개 설정 | `GET /clubs/{clubId}/privacy-settings`, `PUT /clubs/{clubId}/privacy-settings` | |
 | 회비 현황 | `GET /clubs/{clubId}/fees` | 초안 `/fee-items`에서 변경 |
 | 회비 생성 | `POST /clubs/{clubId}/fees` | 초안 `/fee-items`에서 변경 |
 | 월회비 설정 | `GET /clubs/{clubId}/fee-settings`, `PUT /clubs/{clubId}/fee-settings` | |
@@ -1007,12 +1007,14 @@ Response:
 | 미납자 목록 | — | 추후 구현 (`/fee-payments/overdue`); 현재 `/fees` 응답에서 클라이언트 필터링 |
 | 일정 목록 | `GET /clubs/{clubId}/events` | |
 | 일정 생성 | `POST /clubs/{clubId}/events` | |
-| 일정 수정/삭제 | — | 추후 구현 (`PATCH/DELETE /clubs/{clubId}/events/{eventId}`) |
+| 일정 수정 | `PATCH /clubs/{clubId}/events/{eventId}` | |
+| 일정 삭제 | `DELETE /clubs/{clubId}/events/{eventId}` | |
 | 참석 의사 현황 | `PATCH /clubs/{clubId}/events/{eventId}/responses` | GET은 추후 구현 |
 | 출석부 저장 | `PATCH /clubs/{clubId}/events/{eventId}/attendance` | GET은 추후 구현; 초안 PUT에서 변경 |
 | 공지 목록 | `GET /clubs/{clubId}/notices` | |
 | 공지 작성 | `POST /clubs/{clubId}/notices` | |
-| 공지 수정/삭제 | — | 추후 구현 (`PATCH/DELETE /clubs/{clubId}/notices/{noticeId}`) |
+| 공지 수정 | `PATCH /clubs/{clubId}/notices/{noticeId}` | |
+| 공지 삭제 | `DELETE /clubs/{clubId}/notices/{noticeId}` | |
 | 공지 확인 처리 | `PATCH /clubs/{clubId}/notices/{noticeId}/read` | |
 | 공지 좋아요 | `PATCH /clubs/{clubId}/notices/{noticeId}/reactions` | |
 | 공지 댓글 | `POST /clubs/{clubId}/notices/{noticeId}/comments` | |
@@ -1022,7 +1024,7 @@ Response:
 | 초대 링크 생성 | `POST /clubs/{clubId}/invite-links` | |
 | 초대 링크 비활성화 | `PATCH /clubs/{clubId}/invite-links/{inviteId}/disable` | 초안 `/deactivate`에서 변경 |
 | 리마인더 발송 | `GET /clubs/{clubId}/reminders`, `POST /clubs/{clubId}/reminders/send` | 초안 `/reminders/targets`에서 변경 |
-| 알림 설정 | — | 추후 구현 (`/notification-settings`) |
+| 알림 설정 | `GET /clubs/{clubId}/notification-settings`, `PUT /clubs/{clubId}/notification-settings` | |
 
 ### 회원 앱
 
@@ -1038,7 +1040,7 @@ Response:
 | 공지 확인 처리 | `PATCH /clubs/{clubId}/notices/{noticeId}/read` | |
 | 댓글/좋아요 | `POST /clubs/{clubId}/notices/{noticeId}/comments`, `PATCH .../reactions` | |
 | 내 회비 | — | 추후 구현 (`GET /clubs/{clubId}/my/fee-payments`); 현재 member-app overview에 포함 |
-| 구성원 목록 | — | 추후 구현 |
+| 구성원 목록 | `GET /clubs/{clubId}/member-app/{memberId}/members` | 공개 설정 반영 필드 제한 |
 | 알림 목록 | `GET /me/notifications` | |
 | 알림 읽음 처리 | `PATCH /me/notifications/{notificationId}/read` | |
 | 디바이스 등록 | `POST /me/devices` | |

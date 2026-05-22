@@ -479,14 +479,14 @@
 | 2.5 월회비 설정 | `GET /clubs/{clubId}/fee-settings` | `PUT /clubs/{clubId}/fee-settings` |
 | 2.6 일회성 비용 생성 | — | `POST /clubs/{clubId}/fees` |
 | 2.7 일정 목록 | `GET /clubs/{clubId}/events` | — |
-| 2.8 일정 생성 | — | `POST /clubs/{clubId}/events` (수정/삭제는 추후 구현) |
+| 2.8 일정 생성/수정/삭제 | `GET /clubs/{clubId}/events` | `POST /clubs/{clubId}/events`, `PATCH .../events/{eventId}`, `DELETE .../events/{eventId}` |
 | 2.9 출석부 | — (추후 구현) | `PATCH /clubs/{clubId}/events/{eventId}/attendance` |
 | 2.10 공지 목록 | `GET /clubs/{clubId}/notices` | — |
-| 2.11 공지 작성 | — | `POST /clubs/{clubId}/notices` (수정/삭제는 추후 구현) |
+| 2.11 공지 작성/수정/삭제 | `GET /clubs/{clubId}/notices` | `POST /clubs/{clubId}/notices`, `PATCH .../notices/{noticeId}`, `DELETE .../notices/{noticeId}` |
 | 2.12 공지 확인 현황 | — (추후 구현) | `PATCH .../read`, `POST /clubs/{clubId}/reminders/send` |
 | 2.13 가입 신청 | `GET /clubs/{clubId}/join-requests` | `PATCH /clubs/{clubId}/join-requests/{requestId}` |
 | 2.14 초대 링크 관리 | `GET /clubs/{clubId}/invite-links` | `POST /clubs/{clubId}/invite-links`, `PATCH .../disable` |
-| 2.15 설정 | — | 추후 구현 (`/privacy-settings`, `/notification-settings`) |
+| 2.15 설정 | `GET /clubs/{clubId}/privacy-settings`, `GET /clubs/{clubId}/notification-settings` | `PUT /clubs/{clubId}/privacy-settings`, `PUT /clubs/{clubId}/notification-settings` |
 
 ### 6.2 회원 앱
 
@@ -501,7 +501,7 @@
 | 3.7 공지 목록 | `GET /clubs/{clubId}/notices` | — |
 | 3.8 공지 상세 | — (목록 데이터 재사용) | `PATCH .../read`, `PATCH .../reactions`, `POST .../comments` |
 | 3.9 내 회비 | — (member-app overview에 포함) | — |
-| 3.10 구성원 | — | 추후 구현 |
+| 3.10 구성원 | `GET /clubs/{clubId}/member-app/{memberId}/members` | — |
 | 3.11 알림 | `GET /me/notifications` | `PATCH /me/notifications/{id}/read` |
 
 ### 6.3 운영진 앱 모드 (추후 구현)
