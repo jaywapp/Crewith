@@ -465,56 +465,59 @@
 
 > API 전체 목록과 세부 계약은 [API_SPEC.md §17 화면별 API 매핑](./API_SPEC.md)을 참조한다. 이 섹션은 각 화면이 어떤 API 호출에 의존하는지 요약한다.
 
+> MVP 실제 구현 코드 기준 경로를 사용한다. "추후 구현" 표시는 MVP 코드에 없는 항목이다.
+> 전체 불일치 요약은 [API_SPEC.md §17](./API_SPEC.md)을 참조한다.
+
 ### 6.1 관리자 웹
 
-| 화면 | 초기 로드 API | 주요 액션 API |
+| 화면 | 초기 로드 API (MVP) | 주요 액션 API (MVP) |
 |---|---|---|
-| 2.1 대시보드 | `GET /clubs/{clubId}/dashboard/summary` | — |
-| 2.2 회원 목록 | `GET /clubs/{clubId}/members` | `PATCH .../status`, `PATCH .../role` |
+| 2.1 대시보드 | `GET /clubs/{clubId}/admin/overview` | — |
+| 2.2 회원 목록 | `GET /clubs/{clubId}/members` | `PATCH /clubs/{clubId}/members/{memberId}` |
 | 2.3 Excel 업로드 | — | `POST /clubs/{clubId}/members/imports` |
-| 2.4 회비 현황 | `GET /clubs/{clubId}/fee-items`, `GET .../payments` | `PATCH /clubs/{clubId}/fee-payments/{id}` |
+| 2.4 회비 현황 | `GET /clubs/{clubId}/fees` | `PATCH /clubs/{clubId}/fees/{feeId}/payments` |
 | 2.5 월회비 설정 | `GET /clubs/{clubId}/fee-settings` | `PUT /clubs/{clubId}/fee-settings` |
-| 2.6 일회성 비용 생성 | — | `POST /clubs/{clubId}/fee-items` |
+| 2.6 일회성 비용 생성 | — | `POST /clubs/{clubId}/fees` |
 | 2.7 일정 목록 | `GET /clubs/{clubId}/events` | — |
-| 2.8 일정 생성/수정 | `GET /clubs/{clubId}/events/{eventId}` (수정 시) | `POST/PATCH/DELETE /clubs/{clubId}/events/{eventId}` |
-| 2.9 출석부 | `GET /clubs/{clubId}/events/{eventId}/attendance` | `PUT /clubs/{clubId}/events/{eventId}/attendance` |
+| 2.8 일정 생성 | — | `POST /clubs/{clubId}/events` (수정/삭제는 추후 구현) |
+| 2.9 출석부 | — (추후 구현) | `PATCH /clubs/{clubId}/events/{eventId}/attendance` |
 | 2.10 공지 목록 | `GET /clubs/{clubId}/notices` | — |
-| 2.11 공지 작성/수정 | `GET /clubs/{clubId}/notices/{noticeId}` (수정 시) | `POST/PATCH/DELETE /clubs/{clubId}/notices/{noticeId}` |
-| 2.12 공지 확인 현황 | `GET /clubs/{clubId}/notices/{noticeId}/reads` | `POST /clubs/{clubId}/reminders/send` |
-| 2.13 가입 신청 | `GET /clubs/{clubId}/join-requests?status=pending` | `POST .../approve`, `POST .../reject` |
-| 2.14 초대 링크 관리 | `GET /clubs/{clubId}/invite-links` | `POST /clubs/{clubId}/invite-links`, `PATCH .../deactivate` |
-| 2.15 설정 | `GET /clubs/{clubId}/privacy-settings`, `GET /clubs/{clubId}/notification-settings` | `PUT` 동일 경로 |
+| 2.11 공지 작성 | — | `POST /clubs/{clubId}/notices` (수정/삭제는 추후 구현) |
+| 2.12 공지 확인 현황 | — (추후 구현) | `PATCH .../read`, `POST /clubs/{clubId}/reminders/send` |
+| 2.13 가입 신청 | `GET /clubs/{clubId}/join-requests` | `PATCH /clubs/{clubId}/join-requests/{requestId}` |
+| 2.14 초대 링크 관리 | `GET /clubs/{clubId}/invite-links` | `POST /clubs/{clubId}/invite-links`, `PATCH .../disable` |
+| 2.15 설정 | — | 추후 구현 (`/privacy-settings`, `/notification-settings`) |
 
 ### 6.2 회원 앱
 
-| 화면 | 초기 로드 API | 주요 액션 API |
+| 화면 | 초기 로드 API (MVP) | 주요 액션 API (MVP) |
 |---|---|---|
-| 3.1 로그인 | — | `POST /auth/sms/request`, `POST /auth/sms/verify` |
-| 3.2 프로필 입력 | — | `PATCH /me` |
-| 3.3 모임 선택 | `GET /me/clubs` | — |
-| 3.4 홈 | `GET /clubs/{clubId}/dashboard/member-summary` *(구현 확인 필요)* | — |
+| 3.1 로그인 | — | `POST /auth/otp/request`, `POST /auth/otp/verify` |
+| 3.2 프로필 입력 | `GET /members/{memberId}/profile` | `PATCH /members/{memberId}/profile` |
+| 3.3 모임 선택 | — (추후 구현) | — |
+| 3.4 홈 | `GET /clubs/{clubId}/member-app/{memberId}` | — |
 | 3.5 일정 목록 | `GET /clubs/{clubId}/events` | — |
-| 3.6 일정 상세 | `GET /clubs/{clubId}/events/{eventId}` | `PUT /clubs/{clubId}/events/{eventId}/response` |
+| 3.6 일정 상세 | — (목록 데이터 재사용) | `PATCH /clubs/{clubId}/events/{eventId}/responses` |
 | 3.7 공지 목록 | `GET /clubs/{clubId}/notices` | — |
-| 3.8 공지 상세 | `GET /clubs/{clubId}/notices/{noticeId}` (자동 확인 처리) | `POST .../comments`, `PUT .../reaction` |
-| 3.9 내 회비 | `GET /clubs/{clubId}/my/fee-payments` | — |
-| 3.10 구성원 | `GET /clubs/{clubId}/members` | — |
-| 3.11 알림 | `GET /me/notifications` | — |
+| 3.8 공지 상세 | — (목록 데이터 재사용) | `PATCH .../read`, `PATCH .../reactions`, `POST .../comments` |
+| 3.9 내 회비 | — (member-app overview에 포함) | — |
+| 3.10 구성원 | — | 추후 구현 |
+| 3.11 알림 | `GET /me/notifications` | `PATCH /me/notifications/{id}/read` |
 
 ### 6.3 운영진 앱 모드 (추후 구현)
 
 | 화면 | 초기 로드 API | 주요 액션 API |
 |---|---|---|
-| 4.1 운영 홈 | `GET /clubs/{clubId}/dashboard/summary` | — |
-| 4.2 모바일 회비 체크 | `GET /clubs/{clubId}/fee-items/{id}/payments` | `PATCH /clubs/{clubId}/fee-payments/{id}` |
-| 4.3 모바일 출석부 | `GET /clubs/{clubId}/events/{eventId}/attendance` | `PUT /clubs/{clubId}/events/{eventId}/attendance` |
-| 4.4 모바일 공지 작성 | — | `POST/PATCH /clubs/{clubId}/notices/{noticeId}` |
-| 4.5 모바일 가입 승인 | `GET /clubs/{clubId}/join-requests?status=pending` | `POST .../approve`, `POST .../reject` |
+| 4.1 운영 홈 | `GET /clubs/{clubId}/admin/overview` | — |
+| 4.2 모바일 회비 체크 | `GET /clubs/{clubId}/fees` | `PATCH /clubs/{clubId}/fees/{feeId}/payments` |
+| 4.3 모바일 출석부 | — | `PATCH /clubs/{clubId}/events/{eventId}/attendance` |
+| 4.4 모바일 공지 작성 | — | `POST /clubs/{clubId}/notices` |
+| 4.5 모바일 가입 승인 | `GET /clubs/{clubId}/join-requests` | `PATCH /clubs/{clubId}/join-requests/{requestId}` |
 
 ### 6.4 API 의존성 규칙
 
 - 모든 모임 리소스 API 경로는 `/clubs/{clubId}/` 로 시작하며, `clubId`가 없거나 접근 불가한 경우 `404 CLUB_NOT_FOUND` 또는 `403 NOT_CLUB_MEMBER` 를 반환한다.
 - `operators_only` 리소스는 일반 `member` 역할에게 목록과 상세 모두 숨긴다.
-- 일반 회원은 본인 회비 데이터만 조회한다 (`GET /clubs/{clubId}/my/fee-payments`).
-- `owner` 권한이 필요한 역할 변경 API (`PATCH .../role`)는 `operator` 호출 시 `403 INSUFFICIENT_ROLE` 반환.
+- 역할/상태 변경은 단일 `PATCH /clubs/{clubId}/members/{memberId}` 엔드포인트로 처리한다.
 - 리마인더 발송 API (`POST /clubs/{clubId}/reminders/send`)는 `operator` 이상 권한 필요.
+- MVP 인증 방식: `x-crewith-role` 헤더 (Firebase Auth 연동 후 Bearer JWT 전환 예정).

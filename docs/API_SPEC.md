@@ -73,11 +73,15 @@ Authorization: Bearer <accessToken>
 
 ## 3. 인증 API
 
-### SMS 인증 요청
+> **MVP 구현 주의**: MVP 구현에서는 Bearer JWT 대신 `x-crewith-role` 헤더로 역할을 전달한다. Firebase Auth 연동 후 Bearer JWT로 전환 예정.
+
+### OTP 인증 요청
 
 ```http
-POST /auth/sms/request
+POST /auth/otp/request
 ```
+
+> MVP 실제 경로: `/auth/otp/request` (API_SPEC 초안 `/auth/sms/request`에서 변경됨)
 
 Request:
 
@@ -98,11 +102,13 @@ Response:
 }
 ```
 
-### SMS 인증 확인 및 로그인
+### OTP 인증 확인 및 로그인
 
 ```http
-POST /auth/sms/verify
+POST /auth/otp/verify
 ```
+
+> MVP 실제 경로: `/auth/otp/verify` (API_SPEC 초안 `/auth/sms/verify`에서 변경됨)
 
 Request:
 
@@ -146,16 +152,20 @@ POST /auth/logout
 ### 내 프로필 조회
 
 ```http
-GET /me
+GET /members/{memberId}/profile
 ```
+
+> MVP 실제 경로: `/members/{memberId}/profile` (초안 `/me`에서 변경됨)
 
 권한: 로그인 사용자
 
 ### 내 프로필 수정
 
 ```http
-PATCH /me
+PATCH /members/{memberId}/profile
 ```
+
+> MVP 실제 경로: `/members/{memberId}/profile` (초안 `/me`에서 변경됨)
 
 Request:
 
@@ -976,63 +986,89 @@ Response:
 
 ## 17. 화면별 API 매핑
 
+> MVP 실제 구현 코드 기준으로 작성한다. "추후 구현" 표시 항목은 MVP 코드에 없는 엔드포인트다.
+
 ### 관리자 웹
 
-| 화면 | 사용하는 API |
-|---|---|
-| 대시보드 | `GET /clubs/{clubId}/dashboard/summary` |
-| 회원 목록 | `GET /clubs/{clubId}/members` |
-| 회원 상세/수정 | `GET /clubs/{clubId}/members/{memberId}`, `PATCH /clubs/{clubId}/members/{memberId}` |
-| 회원 상태 변경 | `PATCH /clubs/{clubId}/members/{memberId}/status` |
-| 회원 역할 변경 | `PATCH /clubs/{clubId}/members/{memberId}/role` |
-| Excel 업로드 | `POST /clubs/{clubId}/members/imports` |
-| 개인정보 공개 설정 | `GET/PUT /clubs/{clubId}/privacy-settings` |
-| 회비 현황 | `GET /clubs/{clubId}/fee-items`, `GET /clubs/{clubId}/fee-items/{id}/payments` |
-| 월회비 설정 | `GET/PUT /clubs/{clubId}/fee-settings` |
-| 일회성 비용 생성 | `POST /clubs/{clubId}/fee-items` |
-| 납부 상태 토글 | `PATCH /clubs/{clubId}/fee-payments/{paymentId}` |
-| 미납자 목록 | `GET /clubs/{clubId}/fee-payments/overdue` |
-| 일정 목록 | `GET /clubs/{clubId}/events` |
-| 일정 생성/수정/삭제 | `POST/PATCH/DELETE /clubs/{clubId}/events/{eventId}` |
-| 참석 의사 현황 | `GET /clubs/{clubId}/events/{eventId}/responses` |
-| 출석부 조회/저장 | `GET/PUT /clubs/{clubId}/events/{eventId}/attendance` |
-| 공지 목록 | `GET /clubs/{clubId}/notices` |
-| 공지 작성/수정/삭제 | `POST/PATCH/DELETE /clubs/{clubId}/notices/{noticeId}` |
-| 공지 확인 현황 | `GET /clubs/{clubId}/notices/{noticeId}/reads` |
-| 가입 신청 목록 | `GET /clubs/{clubId}/join-requests?status=pending` |
-| 가입 신청 승인/거절 | `POST /clubs/{clubId}/join-requests/{id}/approve`, `.../reject` |
-| 초대 링크 관리 | `POST/GET /clubs/{clubId}/invite-links` |
-| 리마인더 | `GET/POST /clubs/{clubId}/reminders/targets`, `.../send` |
-| 알림 설정 | `GET/PUT /clubs/{clubId}/notification-settings` |
+| 화면 | MVP 구현 API | 비고 |
+|---|---|---|
+| 대시보드 | `GET /clubs/{clubId}/admin/overview` | 초안 `/dashboard/summary`에서 변경 |
+| 회원 목록 | `GET /clubs/{clubId}/members` | |
+| 회원 등록 | `POST /clubs/{clubId}/members` | |
+| 회원 수정 (상태/역할 포함) | `PATCH /clubs/{clubId}/members/{memberId}` | 상태·역할 단일 PATCH로 처리 |
+| 회원 삭제 | `DELETE /clubs/{clubId}/members/{memberId}` | |
+| 회원 회비상태 변경 | `PATCH /clubs/{clubId}/members/{memberId}/fee-status` | |
+| Excel 업로드 | `POST /clubs/{clubId}/members/imports` | |
+| 개인정보 공개 설정 | — | 추후 구현 (`/privacy-settings`) |
+| 회비 현황 | `GET /clubs/{clubId}/fees` | 초안 `/fee-items`에서 변경 |
+| 회비 생성 | `POST /clubs/{clubId}/fees` | 초안 `/fee-items`에서 변경 |
+| 월회비 설정 | `GET /clubs/{clubId}/fee-settings`, `PUT /clubs/{clubId}/fee-settings` | |
+| 납부 상태 토글 | `PATCH /clubs/{clubId}/fees/{feeId}/payments` | 초안 `/fee-payments/{id}`에서 변경 |
+| 미납자 목록 | — | 추후 구현 (`/fee-payments/overdue`); 현재 `/fees` 응답에서 클라이언트 필터링 |
+| 일정 목록 | `GET /clubs/{clubId}/events` | |
+| 일정 생성 | `POST /clubs/{clubId}/events` | |
+| 일정 수정/삭제 | — | 추후 구현 (`PATCH/DELETE /clubs/{clubId}/events/{eventId}`) |
+| 참석 의사 현황 | `PATCH /clubs/{clubId}/events/{eventId}/responses` | GET은 추후 구현 |
+| 출석부 저장 | `PATCH /clubs/{clubId}/events/{eventId}/attendance` | GET은 추후 구현; 초안 PUT에서 변경 |
+| 공지 목록 | `GET /clubs/{clubId}/notices` | |
+| 공지 작성 | `POST /clubs/{clubId}/notices` | |
+| 공지 수정/삭제 | — | 추후 구현 (`PATCH/DELETE /clubs/{clubId}/notices/{noticeId}`) |
+| 공지 확인 처리 | `PATCH /clubs/{clubId}/notices/{noticeId}/read` | |
+| 공지 좋아요 | `PATCH /clubs/{clubId}/notices/{noticeId}/reactions` | |
+| 공지 댓글 | `POST /clubs/{clubId}/notices/{noticeId}/comments` | |
+| 가입 신청 목록 | `GET /clubs/{clubId}/join-requests` | |
+| 가입 신청 승인/거절 | `PATCH /clubs/{clubId}/join-requests/{requestId}` | 초안 approve/reject 별도 POST에서 변경 |
+| 초대 링크 목록 | `GET /clubs/{clubId}/invite-links` | |
+| 초대 링크 생성 | `POST /clubs/{clubId}/invite-links` | |
+| 초대 링크 비활성화 | `PATCH /clubs/{clubId}/invite-links/{inviteId}/disable` | 초안 `/deactivate`에서 변경 |
+| 리마인더 발송 | `GET /clubs/{clubId}/reminders`, `POST /clubs/{clubId}/reminders/send` | 초안 `/reminders/targets`에서 변경 |
+| 알림 설정 | — | 추후 구현 (`/notification-settings`) |
 
 ### 회원 앱
 
-| 화면 | 사용하는 API |
-|---|---|
-| 로그인 | `POST /auth/sms/request`, `POST /auth/sms/verify` |
-| 프로필 입력/수정 | `GET/PATCH /me` |
-| 모임 목록 | `GET /me/clubs` |
-| 홈 (회원 앱) | `GET /clubs/{clubId}/dashboard/member-summary` *(계약상 필요, 구현 확인 필요)* |
-| 일정 목록 | `GET /clubs/{clubId}/events` |
-| 일정 상세 | `GET /clubs/{clubId}/events/{eventId}` |
-| 참석 의사 응답 | `PUT /clubs/{clubId}/events/{eventId}/response` |
-| 공지 목록 | `GET /clubs/{clubId}/notices` |
-| 공지 상세 (확인 처리) | `GET /clubs/{clubId}/notices/{noticeId}` (자동 확인) |
-| 댓글/좋아요 | `POST /clubs/{clubId}/notices/{noticeId}/comments`, `PUT .../reaction` |
-| 내 회비 | `GET /clubs/{clubId}/my/fee-payments` |
-| 구성원 목록 | `GET /clubs/{clubId}/members` |
-| 알림 목록 | `GET /me/notifications` |
-| 디바이스 등록 | `POST /me/devices` |
-| 공개 모임 가입 신청 | `POST /clubs/{clubId}/join-requests` |
-| 초대 링크 가입 | `POST /invite-links/{token}/join` |
-| 프로필 사진 | `POST /files/presigned-upload`, `PATCH /me/profile-image` |
+| 화면 | MVP 구현 API | 비고 |
+|---|---|---|
+| 로그인 | `POST /auth/otp/request`, `POST /auth/otp/verify` | 초안 `/auth/sms/`에서 변경 |
+| 프로필 입력/수정 | `GET /members/{memberId}/profile`, `PATCH /members/{memberId}/profile` | 초안 `/me`에서 변경 |
+| 모임 목록 | — | 추후 구현 (`GET /me/clubs`); 현재 로그인 응답에 포함 |
+| 홈 (회원 앱) | `GET /clubs/{clubId}/member-app/{memberId}` | 초안 `/dashboard/member-summary`에서 변경 |
+| 일정 목록 | `GET /clubs/{clubId}/events` | |
+| 참석 의사 응답 | `PATCH /clubs/{clubId}/events/{eventId}/responses` | 초안 PUT에서 변경 |
+| 공지 목록 | `GET /clubs/{clubId}/notices` | |
+| 공지 확인 처리 | `PATCH /clubs/{clubId}/notices/{noticeId}/read` | |
+| 댓글/좋아요 | `POST /clubs/{clubId}/notices/{noticeId}/comments`, `PATCH .../reactions` | |
+| 내 회비 | — | 추후 구현 (`GET /clubs/{clubId}/my/fee-payments`); 현재 member-app overview에 포함 |
+| 구성원 목록 | — | 추후 구현 |
+| 알림 목록 | `GET /me/notifications` | |
+| 알림 읽음 처리 | `PATCH /me/notifications/{notificationId}/read` | |
+| 디바이스 등록 | `POST /me/devices` | |
+| 공개 모임 가입 신청 | `POST /clubs/{clubId}/join-requests` | |
+| 초대 링크 가입 | `POST /clubs/{clubId}/invite-links/{token}/accept` | 초안 `/invite-links/{token}/join`에서 변경 |
+| 프로필 사진 | — | 추후 구현 (Storage 연동 필요) |
 
 ---
 
-세부 규칙:
+### 계약 vs MVP 구현 불일치 요약
+
+| 항목 | API_SPEC 초안 경로 | MVP 실제 경로 |
+|---|---|---|
+| OTP 인증 | `/auth/sms/request`, `/auth/sms/verify` | `/auth/otp/request`, `/auth/otp/verify` |
+| 프로필 | `/me` | `/members/{memberId}/profile` |
+| 관리자 대시보드 | `/clubs/{id}/dashboard/summary` | `/clubs/{id}/admin/overview` |
+| 회원 앱 홈 | `/clubs/{id}/dashboard/member-summary` | `/clubs/{id}/member-app/{memberId}` |
+| 회비 목록 | `/clubs/{id}/fee-items` | `/clubs/{id}/fees` |
+| 납부 토글 | `/clubs/{id}/fee-payments/{id}` | `/clubs/{id}/fees/{feeId}/payments` |
+| 가입 승인/거절 | `POST .../approve`, `POST .../reject` | `PATCH .../join-requests/{id}` |
+| 초대 비활성화 | `PATCH .../deactivate` | `PATCH .../disable` |
+| 초대 수락 | `POST /invite-links/{token}/join` | `POST /clubs/{id}/invite-links/{token}/accept` |
+| 출석부 저장 | `PUT .../attendance` | `PATCH .../attendance` |
+| 리마인더 대상 조회 | `GET .../reminders/targets` | `GET .../reminders` |
+
+### 세부 권한 규칙
 
 - `owner`만 다른 사용자의 역할을 변경할 수 있다.
 - `operator`는 자신보다 높은 권한을 부여할 수 없다.
 - `operators_only` 리소스는 일반 회원에게 목록과 상세 모두 숨긴다.
 - 일반 회원은 본인에게 부과된 회비만 조회한다.
 - 일반 회원은 본인이 속한 모임 리소스만 접근할 수 있다.
+- MVP 인증: `x-crewith-role` 헤더로 역할 전달 (Firebase Auth 연동 후 Bearer JWT로 전환 예정).
