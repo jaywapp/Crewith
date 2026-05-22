@@ -3,11 +3,21 @@ import {
   PageTitle,
   UnauthorizedPanel,
   createEventAction,
+  deleteEventAction,
   formatDate,
   getOverview,
   updateAttendanceAction,
+  updateEventAction,
   updateEventResponseAction,
 } from "../admin";
+
+function toDateTimeLocal(value: string | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  return value.slice(0, 16);
+}
 
 export default async function EventsPage() {
   const { overview, authorized } = await getOverview();
@@ -72,6 +82,50 @@ export default async function EventsPage() {
               </div>
               <strong>{event.presentCount + event.lateCount}명</strong>
             </div>
+
+            <form action={updateEventAction.bind(null, event.id)} className="eventEditForm">
+              <label>
+                일정명
+                <input name="title" defaultValue={event.title} required />
+              </label>
+              <label>
+                일시
+                <input name="startsAt" type="datetime-local" defaultValue={toDateTimeLocal(event.startsAt)} required />
+              </label>
+              <label>
+                장소
+                <input name="locationName" defaultValue={event.locationName} required />
+              </label>
+              <label>
+                주소
+                <input name="locationAddress" defaultValue={event.locationAddress ?? ""} />
+              </label>
+              <label>
+                응답 마감
+                <input
+                  name="responseDeadline"
+                  type="datetime-local"
+                  defaultValue={toDateTimeLocal(event.responseDeadline)}
+                />
+              </label>
+              <label>
+                공개 범위
+                <select name="visibility" defaultValue={event.visibility}>
+                  <option value="all_members">전체 회원</option>
+                  <option value="operators_only">운영진만</option>
+                </select>
+              </label>
+              <button className="secondary compact" type="submit">
+                수정
+              </button>
+            </form>
+
+            <form action={deleteEventAction.bind(null, event.id)} className="deleteRow">
+              <button className="danger compact" type="submit">
+                일정 삭제
+              </button>
+            </form>
+
             <div className="feeMeta">
               <span>참석 예정 {event.attendingCount}명</span>
               <span>불참 예정 {event.notAttendingCount}명</span>

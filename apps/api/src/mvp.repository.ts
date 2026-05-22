@@ -30,10 +30,12 @@ import {
   type SendReminderInput,
   type ToggleAdminNoticeReactionInput,
   type UpdateAdminAttendanceInput,
+  type UpdateAdminEventInput,
   type UpdateAdminEventResponseInput,
   type UpdateAdminFeePaymentInput,
   type UpdateAdminMemberInput,
   type UpdateAdminNoticeReadInput,
+  type UpdateAdminNoticeInput,
   type UpdateMemberProfileInput,
   buildEventItem,
   buildFeeItem,
@@ -136,9 +138,13 @@ export abstract class MvpRepository {
   abstract updateEventAttendance(clubId: string, eventId: string, input: UpdateAdminAttendanceInput): AdminEventListItem;
   abstract getEvents(clubId: string): AdminEventListItem[];
   abstract createEvent(clubId: string, input: CreateAdminEventInput): AdminEventListItem;
+  abstract updateEvent(clubId: string, eventId: string, input: UpdateAdminEventInput): AdminEventListItem;
+  abstract deleteEvent(clubId: string, eventId: string): { id: string; deleted: true };
   abstract updateEventResponse(clubId: string, eventId: string, input: UpdateAdminEventResponseInput): AdminEventListItem;
   abstract getNotices(clubId: string): AdminNoticeListItem[];
   abstract createNotice(clubId: string, input: CreateAdminNoticeInput): AdminNoticeListItem;
+  abstract updateNotice(clubId: string, noticeId: string, input: UpdateAdminNoticeInput): AdminNoticeListItem;
+  abstract deleteNotice(clubId: string, noticeId: string): { id: string; deleted: true };
   abstract markNoticeRead(clubId: string, noticeId: string, input: UpdateAdminNoticeReadInput): AdminNoticeListItem;
   abstract toggleNoticeReaction(clubId: string, noticeId: string, input: ToggleAdminNoticeReactionInput): AdminNoticeListItem;
   abstract createNoticeComment(clubId: string, noticeId: string, input: CreateAdminNoticeCommentInput): AdminNoticeListItem;
@@ -735,6 +741,53 @@ export class JsonMvpRepository implements MvpRepository {
     return buildEventItem(nextEvent, clubId);
   }
 
+  updateEvent(clubId: string, eventId: string, input: UpdateAdminEventInput) {
+    ensureClub(clubId);
+    const event = findEvent(eventId);
+
+    if (typeof input.title === "string" && input.title.trim()) {
+      event.title = input.title.trim();
+    }
+
+    if (typeof input.startsAt === "string" && input.startsAt.trim()) {
+      event.startsAt = input.startsAt;
+    }
+
+    if (typeof input.locationName === "string" && input.locationName.trim()) {
+      event.locationName = input.locationName.trim();
+    }
+
+    if (typeof input.locationAddress === "string") {
+      event.locationAddress = input.locationAddress.trim() || undefined;
+    }
+
+    if (typeof input.responseDeadline === "string") {
+      event.responseDeadline = input.responseDeadline.trim() || undefined;
+    }
+
+    if (isResourceVisibility(input.visibility)) {
+      event.visibility = input.visibility;
+    }
+
+    persistStore();
+    return buildEventItem(event, clubId);
+  }
+
+  deleteEvent(clubId: string, eventId: string) {
+    ensureClub(clubId);
+    const eventIndex = events.findIndex((item) => item.id === eventId);
+
+    if (eventIndex < 0) {
+      throw new NotFoundException("Event not found");
+    }
+
+    events.splice(eventIndex, 1);
+    delete eventResponses[eventId];
+    delete eventAttendance[eventId];
+    persistStore();
+    return { id: eventId, deleted: true as const };
+  }
+
   updateEventResponse(clubId: string, eventId: string, input: UpdateAdminEventResponseInput) {
     ensureClub(clubId);
     const event = findEvent(eventId);
@@ -776,6 +829,42 @@ export class JsonMvpRepository implements MvpRepository {
     noticeComments[nextNotice.id] = [];
     persistStore();
     return buildNoticeItem(nextNotice, clubId);
+  }
+
+  updateNotice(clubId: string, noticeId: string, input: UpdateAdminNoticeInput) {
+    ensureClub(clubId);
+    const notice = findNotice(noticeId);
+
+    if (typeof input.title === "string" && input.title.trim()) {
+      notice.title = input.title.trim();
+    }
+
+    if (typeof input.body === "string" && input.body.trim()) {
+      notice.body = input.body.trim();
+    }
+
+    if (isResourceVisibility(input.visibility)) {
+      notice.visibility = input.visibility;
+    }
+
+    persistStore();
+    return buildNoticeItem(notice, clubId);
+  }
+
+  deleteNotice(clubId: string, noticeId: string) {
+    ensureClub(clubId);
+    const noticeIndex = notices.findIndex((item) => item.id === noticeId);
+
+    if (noticeIndex < 0) {
+      throw new NotFoundException("Notice not found");
+    }
+
+    notices.splice(noticeIndex, 1);
+    delete noticeReads[noticeId];
+    delete noticeLikes[noticeId];
+    delete noticeComments[noticeId];
+    persistStore();
+    return { id: noticeId, deleted: true as const };
   }
 
   markNoticeRead(clubId: string, noticeId: string, input: UpdateAdminNoticeReadInput) {

@@ -351,6 +351,15 @@ export interface CreateAdminEventInput {
   visibility?: ResourceVisibility;
 }
 
+export interface UpdateAdminEventInput {
+  title?: string;
+  startsAt?: string;
+  locationName?: string;
+  locationAddress?: string;
+  responseDeadline?: string;
+  visibility?: ResourceVisibility;
+}
+
 export interface UpdateAdminEventResponseInput {
   memberId: string;
   response: EventResponse;
@@ -366,6 +375,12 @@ export interface CreateAdminNoticeInput {
   title: string;
   body: string;
   visibility: ResourceVisibility;
+}
+
+export interface UpdateAdminNoticeInput {
+  title?: string;
+  body?: string;
+  visibility?: ResourceVisibility;
 }
 
 export interface UpdateAdminNoticeReadInput {

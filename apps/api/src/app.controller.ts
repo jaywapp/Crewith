@@ -29,12 +29,14 @@ import {
   type SendReminderInput,
   type ToggleAdminNoticeReactionInput,
   type UpdateAdminAttendanceInput,
+  type UpdateAdminEventInput,
   type UpdateAdminEventResponseInput,
   type UpdateAdminFeePaymentInput,
   type UpdateClubFeeSettingsInput,
   type UpdateClubPrivacySettingsInput,
   type UpdateAdminMemberInput,
   type UpdateAdminNoticeReadInput,
+  type UpdateAdminNoticeInput,
   type UpdateMemberProfileInput,
 } from "./mvp.store";
 import { MvpRepository } from "./mvp.repository";
@@ -366,6 +368,27 @@ export class AppController {
     return { data: this.repository.createEvent(clubId, input) };
   }
 
+  @Patch("clubs/:clubId/events/:eventId")
+  updateEvent(
+    @Param("clubId") clubId: string,
+    @Param("eventId") eventId: string,
+    @Body() input: UpdateAdminEventInput,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+    return { data: this.repository.updateEvent(clubId, eventId, input) };
+  }
+
+  @Delete("clubs/:clubId/events/:eventId")
+  deleteEvent(
+    @Param("clubId") clubId: string,
+    @Param("eventId") eventId: string,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+    return { data: this.repository.deleteEvent(clubId, eventId) };
+  }
+
   @Patch("clubs/:clubId/events/:eventId/responses")
   updateEventResponse(
     @Param("clubId") clubId: string,
@@ -392,6 +415,27 @@ export class AppController {
   ) {
     assertOperatorRole(role);
     return { data: this.repository.createNotice(clubId, input) };
+  }
+
+  @Patch("clubs/:clubId/notices/:noticeId")
+  updateNotice(
+    @Param("clubId") clubId: string,
+    @Param("noticeId") noticeId: string,
+    @Body() input: UpdateAdminNoticeInput,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+    return { data: this.repository.updateNotice(clubId, noticeId, input) };
+  }
+
+  @Delete("clubs/:clubId/notices/:noticeId")
+  deleteNotice(
+    @Param("clubId") clubId: string,
+    @Param("noticeId") noticeId: string,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+    return { data: this.repository.deleteNotice(clubId, noticeId) };
   }
 
   @Patch("clubs/:clubId/notices/:noticeId/read")

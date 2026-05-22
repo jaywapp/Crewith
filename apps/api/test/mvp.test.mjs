@@ -266,6 +266,38 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(responseUpdate.status, 200);
   assert.equal((await responseUpdate.json()).data.notAttendingCount, 2);
 
+  const createdEvent = await fetch(`${baseUrl}/clubs/club-seoul-runners/events`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({
+      title: "테스트 일정",
+      startsAt: "2026-06-01T19:00:00+09:00",
+      locationName: "테스트 장소",
+      locationAddress: "서울 테스트구",
+      responseDeadline: "2026-06-01T18:00:00+09:00",
+      visibility: "all_members",
+    }),
+  });
+  assert.equal(createdEvent.status, 201);
+  const createdEventJson = (await createdEvent.json()).data;
+
+  const updatedEvent = await fetch(`${baseUrl}/clubs/club-seoul-runners/events/${createdEventJson.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({ title: "수정된 테스트 일정", visibility: "operators_only" }),
+  });
+  assert.equal(updatedEvent.status, 200);
+  const updatedEventJson = (await updatedEvent.json()).data;
+  assert.equal(updatedEventJson.title, "수정된 테스트 일정");
+  assert.equal(updatedEventJson.visibility, "operators_only");
+
+  const deletedEvent = await fetch(`${baseUrl}/clubs/club-seoul-runners/events/${createdEventJson.id}`, {
+    method: "DELETE",
+    headers: { "x-crewith-role": "operator" },
+  });
+  assert.equal(deletedEvent.status, 200);
+  assert.equal((await deletedEvent.json()).data.deleted, true);
+
   const noticeRead = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/notice-01/read`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -298,4 +330,37 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(noticeSummary.read, true);
   assert.equal(noticeSummary.liked, true);
   assert.equal(noticeSummary.comments.at(-1).body, commentBody);
+
+  const createdNotice = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({
+      title: "테스트 공지",
+      body: "테스트 공지 본문",
+      visibility: "all_members",
+    }),
+  });
+  assert.equal(createdNotice.status, 201);
+  const createdNoticeJson = (await createdNotice.json()).data;
+
+  const updatedNotice = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/${createdNoticeJson.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({
+      title: "수정된 테스트 공지",
+      body: "수정된 공지 본문",
+      visibility: "operators_only",
+    }),
+  });
+  assert.equal(updatedNotice.status, 200);
+  const updatedNoticeJson = (await updatedNotice.json()).data;
+  assert.equal(updatedNoticeJson.title, "수정된 테스트 공지");
+  assert.equal(updatedNoticeJson.visibility, "operators_only");
+
+  const deletedNotice = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/${createdNoticeJson.id}`, {
+    method: "DELETE",
+    headers: { "x-crewith-role": "operator" },
+  });
+  assert.equal(deletedNotice.status, 200);
+  assert.equal((await deletedNotice.json()).data.deleted, true);
 });

@@ -413,6 +413,16 @@ h2 {
   padding: 16px;
 }
 
+.eventEditForm {
+  align-items: end;
+  border-top: 1px solid var(--color-hairline);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 150px 1fr 1fr 150px 120px auto;
+  margin: 8px 0 12px;
+  padding-top: 16px;
+}
+
 .noticeCreateForm {
   align-items: end;
   background: var(--color-gold-lightest);
@@ -425,12 +435,30 @@ h2 {
   padding: 16px;
 }
 
+.noticeEditForm {
+  align-items: end;
+  border-top: 1px solid var(--color-hairline);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(160px, 1fr) 130px auto;
+  margin: 8px 0 12px;
+  padding-top: 16px;
+}
+
+.deleteRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
 .memberCreateForm label,
 .memberImportForm label,
 .memberRow label,
 .feeCreateForm label,
 .eventCreateForm label,
-.noticeCreateForm label {
+.eventEditForm label,
+.noticeCreateForm label,
+.noticeEditForm label {
   color: var(--color-text-black-soft);
   display: grid;
   font-size: 12px;
@@ -881,8 +909,10 @@ textarea:focus {
   .memberRow,
   .feeCreateForm,
   .eventCreateForm,
+  .eventEditForm,
   .eventParticipantRow,
   .noticeCreateForm,
+  .noticeEditForm,
   .noticeReaderRow,
   .noticeCommentForm,
   .inviteCreateForm,
@@ -925,6 +955,7 @@ textarea:focus {
   .feeCreateForm,
   .feePaymentRow,
   .eventCreateForm,
+  .eventEditForm,
   .eventParticipantRow,
   .eventParticipantRow form,
   .eventParticipantRow form:last-child {
@@ -932,6 +963,7 @@ textarea:focus {
   }
 
   .noticeCreateForm,
+  .noticeEditForm,
   .noticeReaderRow,
   .noticeCommentForm,
   .inviteCreateForm,

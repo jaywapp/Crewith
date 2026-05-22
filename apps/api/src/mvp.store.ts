@@ -398,6 +398,15 @@ export interface CreateAdminEventInput {
   visibility?: ResourceVisibility;
 }
 
+export interface UpdateAdminEventInput {
+  title?: string;
+  startsAt?: string;
+  locationName?: string;
+  locationAddress?: string;
+  responseDeadline?: string;
+  visibility?: ResourceVisibility;
+}
+
 export interface UpdateClubFeeSettingsInput {
   amount?: number;
   dueDay?: number;
@@ -428,6 +437,12 @@ export interface UpdateAdminAttendanceInput {
 export interface CreateAdminNoticeInput {
   title: string;
   body: string;
+  visibility?: ResourceVisibility;
+}
+
+export interface UpdateAdminNoticeInput {
+  title?: string;
+  body?: string;
   visibility?: ResourceVisibility;
 }
 

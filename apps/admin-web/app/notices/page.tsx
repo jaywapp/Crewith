@@ -4,9 +4,11 @@ import {
   UnauthorizedPanel,
   createNoticeAction,
   createNoticeCommentAction,
+  deleteNoticeAction,
   getOverview,
   markNoticeReadAction,
   toggleNoticeReactionAction,
+  updateNoticeAction,
 } from "../admin";
 
 export default async function NoticesPage() {
@@ -23,7 +25,7 @@ export default async function NoticesPage() {
       <article className="panel">
         <div className="panelHeader">
           <h2>공지 작성</h2>
-          <span className="muted">확인률 {overview.dashboard.noticeReadRate}%</span>
+          <span className="muted">확인율 {overview.dashboard.noticeReadRate}%</span>
         </div>
         <form action={createNoticeAction} className="noticeCreateForm">
           <label>
@@ -60,12 +62,42 @@ export default async function NoticesPage() {
               </div>
               <strong>좋아요 {notice.likeCount}</strong>
             </div>
+
+            <form action={updateNoticeAction.bind(null, notice.id)} className="noticeEditForm">
+              <label>
+                제목
+                <input name="title" defaultValue={notice.title} required />
+              </label>
+              <label>
+                권한
+                <select name="visibility" defaultValue={notice.visibility}>
+                  <option value="all_members">전체 회원</option>
+                  <option value="operators_only">운영진만</option>
+                </select>
+              </label>
+              <label className="wideField">
+                내용
+                <textarea name="body" defaultValue={notice.body} required />
+              </label>
+              <button className="secondary compact" type="submit">
+                수정
+              </button>
+            </form>
+
+            <form action={deleteNoticeAction.bind(null, notice.id)} className="deleteRow">
+              <button className="danger compact" type="submit">
+                공지 삭제
+              </button>
+            </form>
+
             <p className="noticeBody">{notice.body}</p>
             <div className="noticeReaderRows">
               {notice.readers.map((reader) => (
                 <div className="noticeReaderRow" key={`${notice.id}-${reader.memberId}`}>
                   <span>{reader.memberName}</span>
-                  <strong className={reader.read ? "readState read" : "readState unread"}>{reader.read ? "확인" : "미확인"}</strong>
+                  <strong className={reader.read ? "readState read" : "readState unread"}>
+                    {reader.read ? "확인" : "미확인"}
+                  </strong>
                   <form action={markNoticeReadAction.bind(null, notice.id)}>
                     <input name="memberId" type="hidden" value={reader.memberId} />
                     <button className="secondary compact" type="submit">

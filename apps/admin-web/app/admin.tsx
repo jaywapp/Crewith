@@ -303,6 +303,38 @@ export async function createEventAction(formData: FormData) {
   revalidateAdmin();
 }
 
+export async function updateEventAction(eventId: string, formData: FormData) {
+  "use server";
+
+  const clubId = await getActiveClubId();
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/events/${eventId}`, {
+    method: "PATCH",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({
+      title: formData.get("title"),
+      startsAt: formData.get("startsAt"),
+      locationName: formData.get("locationName"),
+      locationAddress: formData.get("locationAddress"),
+      responseDeadline: formData.get("responseDeadline"),
+      visibility: formData.get("visibility"),
+    }),
+  });
+
+  revalidateAdmin();
+}
+
+export async function deleteEventAction(eventId: string) {
+  "use server";
+
+  const clubId = await getActiveClubId();
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/events/${eventId}`, {
+    method: "DELETE",
+    headers: adminRoleHeaders,
+  });
+
+  revalidateAdmin();
+}
+
 export async function updateEventResponseAction(eventId: string, formData: FormData) {
   "use server";
 
@@ -348,6 +380,35 @@ export async function createNoticeAction(formData: FormData) {
       body: formData.get("body"),
       visibility: formData.get("visibility"),
     }),
+  });
+
+  revalidateAdmin();
+}
+
+export async function updateNoticeAction(noticeId: string, formData: FormData) {
+  "use server";
+
+  const clubId = await getActiveClubId();
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/notices/${noticeId}`, {
+    method: "PATCH",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({
+      title: formData.get("title"),
+      body: formData.get("body"),
+      visibility: formData.get("visibility"),
+    }),
+  });
+
+  revalidateAdmin();
+}
+
+export async function deleteNoticeAction(noticeId: string) {
+  "use server";
+
+  const clubId = await getActiveClubId();
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/notices/${noticeId}`, {
+    method: "DELETE",
+    headers: adminRoleHeaders,
   });
 
   revalidateAdmin();
