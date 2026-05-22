@@ -50,7 +50,8 @@ class _NoticesPageState extends State<NoticesPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CardHeader(
-                label: notice.visibility == 'operators_only' ? '운영진 공지' : '전체 공지',
+                label:
+                    notice.visibility == 'operators_only' ? '운영진 공지' : '전체 공지',
                 title: notice.title,
               ),
               Text(notice.body),
@@ -84,8 +85,7 @@ class _NoticesPageState extends State<NoticesPage> {
                   ),
                   OutlinedButton.icon(
                     onPressed: () async {
-                      final message =
-                          await widget.onReactionToggled(notice.id);
+                      final message = await widget.onReactionToggled(notice.id);
                       if (context.mounted && message != null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(message)),

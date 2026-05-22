@@ -262,6 +262,33 @@ String formatCurrency(int value) {
   return buffer.toString();
 }
 
+String roleLabel(String role) {
+  return switch (role) {
+    'owner' => '모임장',
+    'operator' => '운영진',
+    _ => '일반회원',
+  };
+}
+
+String memberStatusLabel(String status) {
+  return switch (status) {
+    'active' => '활성',
+    'dormant' => '휴면',
+    'left' => '탈퇴',
+    'removed' => '삭제',
+    _ => status,
+  };
+}
+
+String genderLabel(String? gender) {
+  return switch (gender) {
+        'male' => '남성',
+        'female' => '여성',
+        _ => null,
+      } ??
+      '';
+}
+
 String feeLabel(String status) {
   return switch (status) {
     'paid' => '납부',

@@ -78,7 +78,7 @@ class _MorePageState extends State<MorePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CardHeader(
-                label: _roleLabel(widget.activeClub.role),
+                label: roleLabel(widget.activeClub.role),
                 title: widget.overview.clubName,
               ),
               Text('${widget.overview.memberName}님이 현재 참여 중인 모임입니다.'),
@@ -223,12 +223,4 @@ class _MorePageState extends State<MorePage> {
       ],
     );
   }
-}
-
-String _roleLabel(String role) {
-  return switch (role) {
-    'owner' => '모임장',
-    'operator' => '운영진',
-    _ => '일반회원',
-  };
 }

@@ -134,6 +134,36 @@ class MemberApiClient {
     }
   }
 
+  Future<List<MemberDirectoryItem>> fetchMemberDirectory({
+    required String clubId,
+    required String memberId,
+  }) async {
+    final uri =
+        Uri.parse('$apiBaseUrl/clubs/$clubId/member-app/$memberId/members');
+    final client = _client();
+
+    try {
+      final request = await client.getUrl(uri);
+      final response =
+          await request.close().timeout(const Duration(seconds: 3));
+
+      if (response.statusCode != HttpStatus.ok) {
+        return MemberDirectoryItem.seedItems;
+      }
+
+      final payload = await response.transform(utf8.decoder).join();
+      final json = jsonDecode(payload) as Map<String, dynamic>;
+      return (json['data'] as List<dynamic>)
+          .map((item) =>
+              MemberDirectoryItem.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return MemberDirectoryItem.seedItems;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
   Future<bool> markNotificationRead({
     required String memberId,
     required String notificationId,

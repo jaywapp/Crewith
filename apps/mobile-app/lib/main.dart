@@ -7,6 +7,7 @@ import 'screens/auth_page.dart';
 import 'screens/events_page.dart';
 import 'screens/fees_page.dart';
 import 'screens/home_page.dart';
+import 'screens/members_page.dart';
 import 'screens/more_page.dart';
 import 'screens/notices_page.dart';
 import 'screens/notifications_page.dart';
@@ -72,17 +73,26 @@ class _HomeShellState extends State<HomeShell> {
   List<ClubSummary> _clubs = _defaultClubs;
   final _api = const MemberApiClient();
   late Future<MemberAppOverview> _overviewFuture;
+  late Future<List<MemberDirectoryItem>> _memberDirectoryFuture;
   late Future<List<MemberNotification>> _notificationsFuture;
 
   @override
   void initState() {
     super.initState();
     _overviewFuture = _fetchOverview();
+    _memberDirectoryFuture = _fetchMemberDirectory();
     _notificationsFuture = _fetchNotifications();
   }
 
-  Future<MemberAppOverview> _fetchOverview([String? memberId]) async {
+  Future<MemberAppOverview> _fetchOverview([String? memberId]) {
     return _api.fetchOverview(
+      clubId: _activeClubId,
+      memberId: memberId ?? _activeMemberId,
+    );
+  }
+
+  Future<List<MemberDirectoryItem>> _fetchMemberDirectory([String? memberId]) {
+    return _api.fetchMemberDirectory(
       clubId: _activeClubId,
       memberId: memberId ?? _activeMemberId,
     );
@@ -91,6 +101,7 @@ class _HomeShellState extends State<HomeShell> {
   void _refreshOverview() {
     setState(() {
       _overviewFuture = _fetchOverview(_activeMemberId);
+      _memberDirectoryFuture = _fetchMemberDirectory(_activeMemberId);
     });
   }
 
@@ -124,6 +135,7 @@ class _HomeShellState extends State<HomeShell> {
       _activeMemberId = _defaultMemberId;
       _isAuthenticated = true;
       _overviewFuture = _fetchOverview(_defaultMemberId);
+      _memberDirectoryFuture = _fetchMemberDirectory(_defaultMemberId);
       _notificationsFuture = _fetchNotifications(_defaultMemberId);
     });
 
@@ -139,6 +151,7 @@ class _HomeShellState extends State<HomeShell> {
         _clubs = nextClubs;
         _activeClubId = nextClubId;
         _overviewFuture = _fetchOverview(session.memberId);
+        _memberDirectoryFuture = _fetchMemberDirectory(session.memberId);
         _notificationsFuture = _fetchNotifications(session.memberId);
       });
 
@@ -163,6 +176,7 @@ class _HomeShellState extends State<HomeShell> {
     );
 
     _replaceOverview((value) => value.updateMemberName(name.trim()));
+    _refreshOverview();
     return saved ? '프로필을 저장했습니다.' : '로컬 미리보기 프로필을 저장했습니다.';
   }
 
@@ -335,6 +349,7 @@ class _HomeShellState extends State<HomeShell> {
     setState(() {
       _activeClubId = clubId;
       _overviewFuture = _fetchOverview(_activeMemberId);
+      _memberDirectoryFuture = _fetchMemberDirectory(_activeMemberId);
       _notificationsFuture = _fetchNotifications(_activeMemberId);
       _index = 0;
     });
@@ -375,6 +390,15 @@ class _HomeShellState extends State<HomeShell> {
             onCommentCreated: _createNoticeComment,
           ),
           FeesPage(overview: overview),
+          FutureBuilder<List<MemberDirectoryItem>>(
+            future: _memberDirectoryFuture,
+            builder: (context, directorySnapshot) {
+              return MembersPage(
+                members:
+                    directorySnapshot.data ?? MemberDirectoryItem.seedItems,
+              );
+            },
+          ),
           FutureBuilder<List<MemberNotification>>(
             future: _notificationsFuture,
             builder: (context, notificationSnapshot) {
@@ -416,6 +440,10 @@ class _HomeShellState extends State<HomeShell> {
               NavigationDestination(
                 icon: Icon(Icons.payments_outlined),
                 label: '회비',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.groups_outlined),
+                label: '구성원',
               ),
               NavigationDestination(
                 icon: Icon(Icons.notifications_outlined),

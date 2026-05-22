@@ -76,15 +76,14 @@ class HomePage extends StatelessWidget {
           label: '내 회비',
           title: unpaidCount == 0 ? '미납 없음' : '미납 $unpaidCount건',
           body: unpaidCount == 0
-              ? '현재 확인 필요한 회비가 없습니다.'
+              ? '현재 확인이 필요한 회비가 없습니다.'
               : '운영진이 납부 상태를 확인하면 반영됩니다.',
         ),
         const SizedBox(height: 12),
         SummaryCard(
           label: '미확인 공지',
           title: '$unreadCount건',
-          body:
-              unreadCount == 0 ? '모든 공지를 확인했습니다.' : '공지 탭에서 열람하면 확인 처리됩니다.',
+          body: unreadCount == 0 ? '모든 공지를 확인했습니다.' : '공지 탭에서 열람하면 확인 처리됩니다.',
         ),
       ],
     );

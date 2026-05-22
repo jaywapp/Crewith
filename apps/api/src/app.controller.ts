@@ -105,6 +105,14 @@ export class AppController {
     return { data: this.repository.getMemberAppOverview(clubId, memberId) };
   }
 
+  @Get("clubs/:clubId/member-app/:memberId/members")
+  getMemberDirectory(
+    @Param("clubId") clubId: string,
+    @Param("memberId") memberId: string,
+  ) {
+    return { data: this.repository.getMemberDirectory(clubId, memberId) };
+  }
+
   @Get("me/notifications")
   getMemberNotifications(@Query("memberId") memberId: string) {
     return { data: this.repository.getMemberNotifications(memberId) };

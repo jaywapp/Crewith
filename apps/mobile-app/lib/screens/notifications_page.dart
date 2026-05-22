@@ -20,7 +20,7 @@ class NotificationsPage extends StatelessWidget {
       subtitle: '회비, 일정, 공지 리마인더를 확인하세요.',
       children: [
         if (notifications.isEmpty)
-          const InfoCard(child: Text('아직 수신된 알림이 없습니다.')),
+          const InfoCard(child: Text('아직 수신한 알림이 없습니다.')),
         ...notifications.map(
           (notification) => InfoCard(
             child: Column(

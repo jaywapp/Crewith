@@ -83,6 +83,8 @@ export interface AdminMemberListItem {
   id: string;
   name: string;
   phoneNumber: string;
+  birthDate?: string;
+  gender?: string;
   role: ClubRole;
   memberStatus: MemberStatus;
   joinedAt: string;
@@ -97,6 +99,18 @@ export interface ClubPrivacySettingsItem {
   showPhoneNumberToMembers: boolean;
   showBirthDateToMembers: boolean;
   showGenderToMembers: boolean;
+}
+
+export interface MemberDirectoryItem {
+  id: string;
+  name: string;
+  role: ClubRole;
+  memberStatus: MemberStatus;
+  joinedAt: string;
+  profileImageUrl?: string;
+  phoneNumber?: string;
+  birthDate?: string;
+  gender?: string;
 }
 
 export interface AdminFeeListItem {
@@ -485,6 +499,8 @@ export const members: AdminMemberListItem[] = [
     id: "member-01",
     name: "김민준",
     phoneNumber: "010-1234-1001",
+    birthDate: "1990-03-12",
+    gender: "male",
     role: "owner",
     memberStatus: "active",
     joinedAt: "2025-11-02",
@@ -495,6 +511,8 @@ export const members: AdminMemberListItem[] = [
     id: "member-02",
     name: "이서연",
     phoneNumber: "010-1234-1002",
+    birthDate: "1992-08-21",
+    gender: "female",
     role: "operator",
     memberStatus: "active",
     joinedAt: "2025-12-14",
@@ -505,6 +523,8 @@ export const members: AdminMemberListItem[] = [
     id: "member-03",
     name: "박도윤",
     phoneNumber: "010-1234-1003",
+    birthDate: "1994-01-06",
+    gender: "male",
     role: "member",
     memberStatus: "active",
     joinedAt: "2026-01-06",
@@ -515,6 +535,8 @@ export const members: AdminMemberListItem[] = [
     id: "member-04",
     name: "최하은",
     phoneNumber: "010-1234-1004",
+    birthDate: "1996-11-18",
+    gender: "female",
     role: "member",
     memberStatus: "active",
     joinedAt: "2026-02-18",
@@ -525,6 +547,8 @@ export const members: AdminMemberListItem[] = [
     id: "member-05",
     name: "정우진",
     phoneNumber: "010-1234-1005",
+    birthDate: "1989-06-09",
+    gender: "male",
     role: "member",
     memberStatus: "dormant",
     joinedAt: "2026-03-09",
@@ -1513,4 +1537,36 @@ export function buildMemberAppOverview(clubId: string, memberId: string): Member
         comments: notice.comments,
       })),
   };
+}
+
+export function buildMemberDirectory(clubId: string, viewerMemberId: string): MemberDirectoryItem[] {
+  const viewerMembership = findClubMembership(clubId, viewerMemberId);
+  const settings = ensurePrivacySettings(clubId);
+  const isOperator = viewerMembership.role === "owner" || viewerMembership.role === "operator";
+  const sourceMembers = isOperator ? visibleMembers(clubId) : activeMembers(clubId);
+
+  return sourceMembers.map((member) => {
+    const item: MemberDirectoryItem = {
+      id: member.id,
+      name: member.name,
+      role: member.role,
+      memberStatus: member.memberStatus,
+      joinedAt: member.joinedAt,
+      profileImageUrl: profileImages.get(member.id),
+    };
+
+    if (isOperator || settings.showPhoneNumberToMembers || member.id === viewerMemberId) {
+      item.phoneNumber = member.phoneNumber;
+    }
+
+    if (member.birthDate && (isOperator || settings.showBirthDateToMembers || member.id === viewerMemberId)) {
+      item.birthDate = member.birthDate;
+    }
+
+    if (member.gender && (isOperator || settings.showGenderToMembers || member.id === viewerMemberId)) {
+      item.gender = member.gender;
+    }
+
+    return item;
+  });
 }

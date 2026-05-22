@@ -37,6 +37,18 @@ export interface MemberProfile {
   profileImageUrl?: string;
 }
 
+export interface MemberDirectoryItem {
+  id: string;
+  name: string;
+  role: ClubRole;
+  memberStatus: MemberStatus;
+  joinedAt: string;
+  profileImageUrl?: string;
+  phoneNumber?: string;
+  birthDate?: string;
+  gender?: string;
+}
+
 export interface AuthOtpRequestInput {
   phoneNumber: string;
 }
@@ -175,6 +187,8 @@ export interface AdminMemberListItem {
   id: string;
   name: string;
   phoneNumber: string;
+  birthDate?: string;
+  gender?: string;
   role: ClubRole;
   memberStatus: MemberStatus;
   joinedAt: string;

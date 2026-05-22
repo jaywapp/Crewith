@@ -81,6 +81,15 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(adminOverviewJson.feeSettings.dueDay, 25);
   assert.equal(adminOverviewJson.privacySettings.showPhoneNumberToMembers, false);
 
+  const privateDirectory = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/member-03/members`);
+  assert.equal(privateDirectory.status, 200);
+  const privateDirectoryJson = (await privateDirectory.json()).data;
+  const privateOwner = privateDirectoryJson.find((member) => member.id === "member-01");
+  const privateViewer = privateDirectoryJson.find((member) => member.id === "member-03");
+  assert.equal(privateOwner.phoneNumber, undefined);
+  assert.equal(privateOwner.birthDate, undefined);
+  assert.equal(privateViewer.phoneNumber, "010-1234-1003");
+
   const feeSettingsUpdate = await fetch(`${baseUrl}/clubs/club-seoul-runners/fee-settings`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
@@ -112,6 +121,14 @@ test("API serves overview and persists member app actions", async (t) => {
   const privacySettings = (await privacySettingsUpdate.json()).data;
   assert.equal(privacySettings.showPhoneNumberToMembers, true);
   assert.equal(privacySettings.showGenderToMembers, true);
+
+  const publicDirectory = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/member-03/members`);
+  assert.equal(publicDirectory.status, 200);
+  const publicDirectoryJson = (await publicDirectory.json()).data;
+  const publicOwner = publicDirectoryJson.find((member) => member.id === "member-01");
+  assert.equal(publicOwner.phoneNumber, "010-1234-1001");
+  assert.equal(publicOwner.birthDate, undefined);
+  assert.equal(publicOwner.gender, "male");
 
   const createdInvite = await fetch(`${baseUrl}/clubs/club-seoul-runners/invite-links`, {
     method: "POST",

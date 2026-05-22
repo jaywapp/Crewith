@@ -43,6 +43,80 @@ class ClubSummary {
   }
 }
 
+class MemberDirectoryItem {
+  const MemberDirectoryItem({
+    required this.id,
+    required this.name,
+    required this.role,
+    required this.memberStatus,
+    required this.joinedAt,
+    required this.profileImageUrl,
+    required this.phoneNumber,
+    required this.birthDate,
+    required this.gender,
+  });
+
+  final String id;
+  final String name;
+  final String role;
+  final String memberStatus;
+  final String joinedAt;
+  final String? profileImageUrl;
+  final String? phoneNumber;
+  final String? birthDate;
+  final String? gender;
+
+  factory MemberDirectoryItem.fromJson(Map<String, dynamic> json) {
+    return MemberDirectoryItem(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      role: json['role'] as String,
+      memberStatus: json['memberStatus'] as String,
+      joinedAt: json['joinedAt'] as String,
+      profileImageUrl: json['profileImageUrl'] as String?,
+      phoneNumber: json['phoneNumber'] as String?,
+      birthDate: json['birthDate'] as String?,
+      gender: json['gender'] as String?,
+    );
+  }
+
+  static const seedItems = [
+    MemberDirectoryItem(
+      id: 'member-01',
+      name: '김민준',
+      role: 'owner',
+      memberStatus: 'active',
+      joinedAt: '2025-11-02',
+      profileImageUrl: null,
+      phoneNumber: null,
+      birthDate: null,
+      gender: null,
+    ),
+    MemberDirectoryItem(
+      id: 'member-02',
+      name: '이서연',
+      role: 'operator',
+      memberStatus: 'active',
+      joinedAt: '2025-12-14',
+      profileImageUrl: null,
+      phoneNumber: null,
+      birthDate: null,
+      gender: null,
+    ),
+    MemberDirectoryItem(
+      id: 'member-03',
+      name: '박도윤',
+      role: 'member',
+      memberStatus: 'active',
+      joinedAt: '2026-01-06',
+      profileImageUrl: null,
+      phoneNumber: '010-1234-1003',
+      birthDate: '1994-01-06',
+      gender: 'male',
+    ),
+  ];
+}
+
 class MemberNotification {
   const MemberNotification({
     required this.id,
@@ -201,10 +275,7 @@ class MemberAppOverview {
   }
 
   MemberAppOverview markNoticeRead(String noticeId) {
-    return _updateNotice(
-      noticeId,
-      (notice) => notice.copyWith(read: true),
-    );
+    return _updateNotice(noticeId, (notice) => notice.copyWith(read: true));
   }
 
   MemberAppOverview toggleNoticeReaction(String noticeId) {

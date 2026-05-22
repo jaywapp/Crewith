@@ -25,7 +25,8 @@ class EventsPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CardHeader(label: formatDate(event.startsAt), title: event.title),
-              Text('${event.locationName} · ${event.locationAddress ?? '주소 없음'}'),
+              Text(
+                  '${event.locationName} · ${event.locationAddress ?? '주소 없음'}'),
               const SizedBox(height: 14),
               SegmentedButton<String>(
                 segments: const [
@@ -48,7 +49,9 @@ class EventsPage extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  InfoChip(label: '출석 상태 ${attendanceLabel(event.attendanceStatus)}'),
+                  InfoChip(
+                      label:
+                          '출석 상태 ${attendanceLabel(event.attendanceStatus)}'),
                   InfoChip(label: '동반 ${event.companionCount}명'),
                 ],
               ),

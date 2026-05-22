@@ -10,6 +10,7 @@ import {
   type AdminNoticeListItem,
   type AdminNotificationLogItem,
   type MemberNotificationItem,
+  type MemberDirectoryItem,
   type AuthOtpRequestInput,
   type AuthOtpVerifyInput,
   type CreateAdminEventInput,
@@ -39,6 +40,7 @@ import {
   buildFees,
   buildEvents,
   buildMemberAppOverview,
+  buildMemberDirectory,
   buildNoticeItem,
   buildNotices,
   buildOverview,
@@ -103,6 +105,7 @@ export abstract class MvpRepository {
   abstract getMemberProfile(memberId: string): ReturnType<typeof buildProfile>;
   abstract updateMemberProfile(memberId: string, input: UpdateMemberProfileInput): ReturnType<typeof buildProfile>;
   abstract getMemberAppOverview(clubId: string, memberId: string): ReturnType<typeof buildMemberAppOverview>;
+  abstract getMemberDirectory(clubId: string, memberId: string): MemberDirectoryItem[];
   abstract getMemberNotifications(memberId: string): MemberNotificationItem[];
   abstract markMemberNotificationRead(memberId: string, notificationId: string): MemberNotificationItem;
   abstract getReminderTargets(clubId: string): ReturnType<typeof buildReminderTargets>;
@@ -232,6 +235,10 @@ export class JsonMvpRepository implements MvpRepository {
 
   getMemberAppOverview(clubId: string, memberId: string) {
     return buildMemberAppOverview(clubId, memberId);
+  }
+
+  getMemberDirectory(clubId: string, memberId: string) {
+    return buildMemberDirectory(clubId, memberId);
   }
 
   getMemberNotifications(memberId: string) {
