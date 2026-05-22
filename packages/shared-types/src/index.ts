@@ -86,6 +86,7 @@ export interface AdminClubOverview {
   };
   dashboard: DashboardSummary;
   feeSettings: ClubFeeSettingsItem;
+  privacySettings: ClubPrivacySettingsItem;
   members: AdminMemberListItem[];
   fees: AdminFeeListItem[];
   events: AdminEventListItem[];
@@ -106,6 +107,13 @@ export interface ClubFeeSettingsItem {
   gracePeriodDays: number;
   autoReminderEnabled: boolean;
   reminderDaysAfterDue: number[];
+}
+
+export interface ClubPrivacySettingsItem {
+  clubId: string;
+  showPhoneNumberToMembers: boolean;
+  showBirthDateToMembers: boolean;
+  showGenderToMembers: boolean;
 }
 
 export interface AdminReminderTargetGroup {
@@ -307,6 +315,12 @@ export interface UpdateClubFeeSettingsInput {
   gracePeriodDays?: number;
   autoReminderEnabled?: boolean;
   reminderDaysAfterDue?: number[];
+}
+
+export interface UpdateClubPrivacySettingsInput {
+  showPhoneNumberToMembers?: boolean;
+  showBirthDateToMembers?: boolean;
+  showGenderToMembers?: boolean;
 }
 
 export interface UpdateAdminFeePaymentInput {

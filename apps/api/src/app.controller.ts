@@ -32,6 +32,7 @@ import {
   type UpdateAdminEventResponseInput,
   type UpdateAdminFeePaymentInput,
   type UpdateClubFeeSettingsInput,
+  type UpdateClubPrivacySettingsInput,
   type UpdateAdminMemberInput,
   type UpdateAdminNoticeReadInput,
   type UpdateMemberProfileInput,
@@ -139,6 +140,25 @@ export class AppController {
   ) {
     assertOperatorRole(role);
     return { data: this.repository.updateFeeSettings(clubId, input) };
+  }
+
+  @Get("clubs/:clubId/privacy-settings")
+  getPrivacySettings(
+    @Param("clubId") clubId: string,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+    return { data: this.repository.getPrivacySettings(clubId) };
+  }
+
+  @Put("clubs/:clubId/privacy-settings")
+  updatePrivacySettings(
+    @Param("clubId") clubId: string,
+    @Body() input: UpdateClubPrivacySettingsInput,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+    return { data: this.repository.updatePrivacySettings(clubId, input) };
   }
 
   @Post("clubs/:clubId/reminders/send")

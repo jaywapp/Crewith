@@ -14,7 +14,7 @@ const defaultClubId = "club-seoul-runners";
 const activeClubCookieName = "crewith-admin-club-id";
 const adminRoleHeaders = { "x-crewith-role": "owner" };
 const adminJsonHeaders = { "Content-Type": "application/json", ...adminRoleHeaders };
-const adminPaths = ["/", "/members", "/fees", "/events", "/notices", "/join", "/reminders"];
+const adminPaths = ["/", "/members", "/fees", "/events", "/notices", "/join", "/reminders", "/settings"];
 
 const adminClubs = [
   { id: "club-seoul-runners", name: "서울 러너스", sportType: "러닝" },
@@ -29,6 +29,7 @@ export const navItems = [
   { href: "/notices", label: "공지 관리" },
   { href: "/join", label: "가입/초대" },
   { href: "/reminders", label: "알림" },
+  { href: "/settings", label: "설정" },
 ];
 
 export const roleLabels: Record<ClubRole, string> = {
@@ -76,6 +77,12 @@ const fallbackOverview: AdminClubOverview = {
     gracePeriodDays: 3,
     autoReminderEnabled: true,
     reminderDaysAfterDue: [1, 3, 7],
+  },
+  privacySettings: {
+    clubId: defaultClubId,
+    showPhoneNumberToMembers: false,
+    showBirthDateToMembers: false,
+    showGenderToMembers: false,
   },
   members: [],
   fees: [],
@@ -237,6 +244,23 @@ export async function updateFeeSettingsAction(formData: FormData) {
       gracePeriodDays: Number(formData.get("gracePeriodDays")),
       autoReminderEnabled: formData.get("autoReminderEnabled") === "on",
       reminderDaysAfterDue,
+    }),
+  });
+
+  revalidateAdmin();
+}
+
+export async function updatePrivacySettingsAction(formData: FormData) {
+  "use server";
+
+  const clubId = await getActiveClubId();
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/privacy-settings`, {
+    method: "PUT",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({
+      showPhoneNumberToMembers: formData.get("showPhoneNumberToMembers") === "on",
+      showBirthDateToMembers: formData.get("showBirthDateToMembers") === "on",
+      showGenderToMembers: formData.get("showGenderToMembers") === "on",
     }),
   });
 

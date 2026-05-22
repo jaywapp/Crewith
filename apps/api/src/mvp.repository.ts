@@ -23,6 +23,7 @@ import {
   type ImportAdminMembersInput,
   type ImportAdminMembersResult,
   type UpdateClubFeeSettingsInput,
+  type UpdateClubPrivacySettingsInput,
   type RegisterDeviceInput,
   type ReviewJoinRequestInput,
   type SendReminderInput,
@@ -50,6 +51,7 @@ import {
   ensureClub,
   ensureEventTargets,
   ensureFeeSettings,
+  ensurePrivacySettings,
   ensureFeeTargets,
   eventAttendance,
   eventResponses,
@@ -70,6 +72,7 @@ import {
   isFeePaymentStatus,
   isFeeType,
   feeSettings,
+  privacySettings,
   isMemberStatus,
   isResourceVisibility,
   joinRequests,
@@ -106,6 +109,11 @@ export abstract class MvpRepository {
   abstract sendReminder(clubId: string, input: SendReminderInput): AdminNotificationLogItem;
   abstract getFeeSettings(clubId: string): ReturnType<typeof ensureFeeSettings>;
   abstract updateFeeSettings(clubId: string, input: UpdateClubFeeSettingsInput): ReturnType<typeof ensureFeeSettings>;
+  abstract getPrivacySettings(clubId: string): ReturnType<typeof ensurePrivacySettings>;
+  abstract updatePrivacySettings(
+    clubId: string,
+    input: UpdateClubPrivacySettingsInput,
+  ): ReturnType<typeof ensurePrivacySettings>;
   abstract getMembers(clubId: string): AdminMemberListItem[];
   abstract getJoinRequests(clubId: string): AdminJoinRequestListItem[];
   abstract createJoinRequest(clubId: string, input: CreateJoinRequestInput): AdminJoinRequestListItem;
@@ -345,6 +353,30 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     feeSettings[clubId] = settings;
+    persistStore();
+    return settings;
+  }
+
+  getPrivacySettings(clubId: string) {
+    return ensurePrivacySettings(clubId);
+  }
+
+  updatePrivacySettings(clubId: string, input: UpdateClubPrivacySettingsInput) {
+    const settings = ensurePrivacySettings(clubId);
+
+    if (typeof input.showPhoneNumberToMembers === "boolean") {
+      settings.showPhoneNumberToMembers = input.showPhoneNumberToMembers;
+    }
+
+    if (typeof input.showBirthDateToMembers === "boolean") {
+      settings.showBirthDateToMembers = input.showBirthDateToMembers;
+    }
+
+    if (typeof input.showGenderToMembers === "boolean") {
+      settings.showGenderToMembers = input.showGenderToMembers;
+    }
+
+    privacySettings[clubId] = settings;
     persistStore();
     return settings;
   }

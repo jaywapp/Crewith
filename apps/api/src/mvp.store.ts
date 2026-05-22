@@ -50,6 +50,7 @@ export interface AdminClubOverview {
   };
   dashboard: DashboardSummary;
   feeSettings: ClubFeeSettingsItem;
+  privacySettings: ClubPrivacySettingsItem;
   members: AdminMemberListItem[];
   fees: AdminFeeListItem[];
   events: AdminEventListItem[];
@@ -89,6 +90,13 @@ export interface AdminMemberListItem {
   personalDataDeleteAt?: string;
   lastFeeStatus: FeePaymentStatus;
   attendanceRate: number;
+}
+
+export interface ClubPrivacySettingsItem {
+  clubId: string;
+  showPhoneNumberToMembers: boolean;
+  showBirthDateToMembers: boolean;
+  showGenderToMembers: boolean;
 }
 
 export interface AdminFeeListItem {
@@ -267,6 +275,7 @@ export interface MvpStore {
   clubMemberships: ClubMembershipItem[];
   memberDevices: MemberDeviceItem[];
   feeSettings: Record<string, ClubFeeSettingsItem>;
+  privacySettings: Record<string, ClubPrivacySettingsItem>;
   fees: AdminFeeListItem[];
   feePayments: Record<string, Record<string, FeePaymentStatus>>;
   events: AdminEventListItem[];
@@ -383,6 +392,12 @@ export interface UpdateClubFeeSettingsInput {
   gracePeriodDays?: number;
   autoReminderEnabled?: boolean;
   reminderDaysAfterDue?: number[];
+}
+
+export interface UpdateClubPrivacySettingsInput {
+  showPhoneNumberToMembers?: boolean;
+  showBirthDateToMembers?: boolean;
+  showGenderToMembers?: boolean;
 }
 
 export interface UpdateAdminEventResponseInput {
@@ -576,6 +591,33 @@ export function ensureFeeSettings(clubId: string): ClubFeeSettingsItem {
   };
 
   return feeSettings[clubId];
+}
+
+export const privacySettings: Record<string, ClubPrivacySettingsItem> = {
+  "club-seoul-runners": {
+    clubId: "club-seoul-runners",
+    showPhoneNumberToMembers: false,
+    showBirthDateToMembers: false,
+    showGenderToMembers: false,
+  },
+  "club-seoul-riders": {
+    clubId: "club-seoul-riders",
+    showPhoneNumberToMembers: false,
+    showBirthDateToMembers: false,
+    showGenderToMembers: false,
+  },
+};
+
+export function ensurePrivacySettings(clubId: string): ClubPrivacySettingsItem {
+  ensureClub(clubId);
+  privacySettings[clubId] ??= {
+    clubId,
+    showPhoneNumberToMembers: false,
+    showBirthDateToMembers: false,
+    showGenderToMembers: false,
+  };
+
+  return privacySettings[clubId];
 }
 
 export const fees: AdminFeeListItem[] = [
@@ -827,6 +869,7 @@ export function persistStore() {
     clubMemberships,
     memberDevices,
     feeSettings,
+    privacySettings,
     fees,
     feePayments,
     events,
@@ -860,6 +903,7 @@ export function hydrateStore() {
     replaceArray(clubMemberships, store.clubMemberships);
     replaceArray(memberDevices, store.memberDevices);
     replaceRecord(feeSettings, store.feeSettings);
+    replaceRecord(privacySettings, store.privacySettings);
     replaceArray(fees, store.fees);
     replaceRecord(feePayments, store.feePayments);
     replaceArray(events, store.events);
@@ -1365,6 +1409,7 @@ export function buildOverview(clubId = club.id): AdminClubOverview {
     club: currentClub,
     dashboard,
     feeSettings: ensureFeeSettings(clubId),
+    privacySettings: ensurePrivacySettings(clubId),
     members: visibleMembers(clubId),
     fees: buildFees(clubId),
     events: buildEvents(clubId),

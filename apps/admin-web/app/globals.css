@@ -382,6 +382,25 @@ h2 {
   grid-template-columns: auto 1fr;
 }
 
+.settingsForm {
+  display: grid;
+  gap: 14px;
+}
+
+.settingsSummary {
+  display: grid;
+  gap: 8px;
+}
+
+.settingsSummary strong {
+  color: var(--color-house-green);
+}
+
+.settingsSummary p {
+  color: var(--color-text-black-soft);
+  margin: 0 0 8px;
+}
+
 .eventCreateForm {
   align-items: end;
   background: var(--color-gold-lightest);
