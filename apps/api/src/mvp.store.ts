@@ -51,6 +51,7 @@ export interface AdminClubOverview {
   dashboard: DashboardSummary;
   feeSettings: ClubFeeSettingsItem;
   privacySettings: ClubPrivacySettingsItem;
+  notificationSettings: ClubNotificationSettingsItem;
   members: AdminMemberListItem[];
   fees: AdminFeeListItem[];
   events: AdminEventListItem[];
@@ -99,6 +100,16 @@ export interface ClubPrivacySettingsItem {
   showPhoneNumberToMembers: boolean;
   showBirthDateToMembers: boolean;
   showGenderToMembers: boolean;
+}
+
+export interface ClubNotificationSettingsItem {
+  clubId: string;
+  eventReminderEnabled: boolean;
+  eventReminderHoursBefore: number[];
+  feeReminderEnabled: boolean;
+  feeReminderDaysAfterDue: number[];
+  noticeUnreadReminderEnabled: boolean;
+  noticeUnreadReminderHoursAfter: number[];
 }
 
 export interface MemberDirectoryItem {
@@ -290,6 +301,7 @@ export interface MvpStore {
   memberDevices: MemberDeviceItem[];
   feeSettings: Record<string, ClubFeeSettingsItem>;
   privacySettings: Record<string, ClubPrivacySettingsItem>;
+  notificationSettings: Record<string, ClubNotificationSettingsItem>;
   fees: AdminFeeListItem[];
   feePayments: Record<string, Record<string, FeePaymentStatus>>;
   events: AdminEventListItem[];
@@ -421,6 +433,15 @@ export interface UpdateClubPrivacySettingsInput {
   showPhoneNumberToMembers?: boolean;
   showBirthDateToMembers?: boolean;
   showGenderToMembers?: boolean;
+}
+
+export interface UpdateClubNotificationSettingsInput {
+  eventReminderEnabled?: boolean;
+  eventReminderHoursBefore?: number[];
+  feeReminderEnabled?: boolean;
+  feeReminderDaysAfterDue?: number[];
+  noticeUnreadReminderEnabled?: boolean;
+  noticeUnreadReminderHoursAfter?: number[];
 }
 
 export interface UpdateAdminEventResponseInput {
@@ -657,6 +678,42 @@ export function ensurePrivacySettings(clubId: string): ClubPrivacySettingsItem {
   };
 
   return privacySettings[clubId];
+}
+
+export const notificationSettings: Record<string, ClubNotificationSettingsItem> = {
+  "club-seoul-runners": {
+    clubId: "club-seoul-runners",
+    eventReminderEnabled: true,
+    eventReminderHoursBefore: [24, 3],
+    feeReminderEnabled: true,
+    feeReminderDaysAfterDue: [1, 3, 7],
+    noticeUnreadReminderEnabled: true,
+    noticeUnreadReminderHoursAfter: [24, 48],
+  },
+  "club-seoul-riders": {
+    clubId: "club-seoul-riders",
+    eventReminderEnabled: true,
+    eventReminderHoursBefore: [24],
+    feeReminderEnabled: false,
+    feeReminderDaysAfterDue: [3],
+    noticeUnreadReminderEnabled: true,
+    noticeUnreadReminderHoursAfter: [24],
+  },
+};
+
+export function ensureNotificationSettings(clubId: string): ClubNotificationSettingsItem {
+  ensureClub(clubId);
+  notificationSettings[clubId] ??= {
+    clubId,
+    eventReminderEnabled: true,
+    eventReminderHoursBefore: [24, 3],
+    feeReminderEnabled: true,
+    feeReminderDaysAfterDue: [1, 3, 7],
+    noticeUnreadReminderEnabled: true,
+    noticeUnreadReminderHoursAfter: [24, 48],
+  };
+
+  return notificationSettings[clubId];
 }
 
 export const fees: AdminFeeListItem[] = [
@@ -909,6 +966,7 @@ export function persistStore() {
     memberDevices,
     feeSettings,
     privacySettings,
+    notificationSettings,
     fees,
     feePayments,
     events,
@@ -943,6 +1001,7 @@ export function hydrateStore() {
     replaceArray(memberDevices, store.memberDevices);
     replaceRecord(feeSettings, store.feeSettings);
     replaceRecord(privacySettings, store.privacySettings);
+    replaceRecord(notificationSettings, store.notificationSettings);
     replaceArray(fees, store.fees);
     replaceRecord(feePayments, store.feePayments);
     replaceArray(events, store.events);
@@ -1337,6 +1396,92 @@ export function buildNotices(clubId = club.id) {
 }
 
 export function buildReminderTargets(clubId = club.id): AdminReminderTargetGroup[] {
+  return buildConfiguredReminderTargets(clubId);
+}
+
+export function buildConfiguredReminderTargets(clubId = club.id): AdminReminderTargetGroup[] {
+  const reminderTargets: AdminReminderTargetGroup[] = [];
+  const settings = ensureNotificationSettings(clubId);
+  const latestFee = buildFees(clubId)[0];
+  const upcomingEvent = buildEvents(clubId)[0];
+  const latestNotice = buildNotices(clubId)[0];
+
+  if (latestFee && settings.feeReminderEnabled) {
+    const targets = latestFee.payments
+      .filter((payment) => payment.status === "unpaid")
+      .map((payment) => {
+        const member = findMember(payment.memberId);
+
+        return {
+          memberId: member.id,
+          memberName: member.name,
+          phoneNumber: member.phoneNumber,
+          reason: `${latestFee.title} ${latestFee.dueDate}까지 미납`,
+        };
+      });
+
+    reminderTargets.push({
+      id: `fee:${latestFee.id}`,
+      type: "fee_overdue",
+      title: "회비 미납 리마인더",
+      description: `${latestFee.title} 미납 회원에게 앱 푸시를 보냅니다. 발송 기준: 납부일 후 ${settings.feeReminderDaysAfterDue.join(", ")}일`,
+      targetCount: targets.length,
+      targets,
+    });
+  }
+
+  if (upcomingEvent && settings.eventReminderEnabled) {
+    const targets = upcomingEvent.participants
+      .filter((participant) => participant.response === "not_attending")
+      .map((participant) => {
+        const member = findMember(participant.memberId);
+
+        return {
+          memberId: member.id,
+          memberName: member.name,
+          phoneNumber: member.phoneNumber,
+          reason: `${upcomingEvent.title} 참석 의사 확인 필요`,
+        };
+      });
+
+    reminderTargets.push({
+      id: `event:${upcomingEvent.id}`,
+      type: "event_no_response",
+      title: "일정 참석 확인 리마인더",
+      description: `${upcomingEvent.title} 참석 의사를 다시 요청합니다. 발송 기준: 시작 전 ${settings.eventReminderHoursBefore.join(", ")}시간`,
+      targetCount: targets.length,
+      targets,
+    });
+  }
+
+  if (latestNotice && settings.noticeUnreadReminderEnabled) {
+    const targets = latestNotice.readers
+      .filter((reader) => !reader.read)
+      .map((reader) => {
+        const member = findMember(reader.memberId);
+
+        return {
+          memberId: member.id,
+          memberName: member.name,
+          phoneNumber: member.phoneNumber,
+          reason: `${latestNotice.title} 미확인`,
+        };
+      });
+
+    reminderTargets.push({
+      id: `notice:${latestNotice.id}`,
+      type: "notice_unread",
+      title: "공지 미확인 리마인더",
+      description: `${latestNotice.title} 미확인 회원에게 확인을 요청합니다. 발송 기준: 게시 후 ${settings.noticeUnreadReminderHoursAfter.join(", ")}시간`,
+      targetCount: targets.length,
+      targets,
+    });
+  }
+
+  return reminderTargets;
+}
+
+export function buildLegacyReminderTargets(clubId = club.id): AdminReminderTargetGroup[] {
   const reminderTargets: AdminReminderTargetGroup[] = [];
   const latestFee = buildFees(clubId)[0];
   const upcomingEvent = buildEvents(clubId)[0];
@@ -1449,6 +1594,7 @@ export function buildOverview(clubId = club.id): AdminClubOverview {
     dashboard,
     feeSettings: ensureFeeSettings(clubId),
     privacySettings: ensurePrivacySettings(clubId),
+    notificationSettings: ensureNotificationSettings(clubId),
     members: visibleMembers(clubId),
     fees: buildFees(clubId),
     events: buildEvents(clubId),

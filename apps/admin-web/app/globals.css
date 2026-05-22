@@ -387,6 +387,14 @@ h2 {
   gap: 14px;
 }
 
+.settingsForm label {
+  color: var(--color-text-black-soft);
+  display: grid;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+}
+
 .settingsSummary {
   display: grid;
   gap: 8px;

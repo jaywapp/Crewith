@@ -99,6 +99,7 @@ export interface AdminClubOverview {
   dashboard: DashboardSummary;
   feeSettings: ClubFeeSettingsItem;
   privacySettings: ClubPrivacySettingsItem;
+  notificationSettings: ClubNotificationSettingsItem;
   members: AdminMemberListItem[];
   fees: AdminFeeListItem[];
   events: AdminEventListItem[];
@@ -126,6 +127,16 @@ export interface ClubPrivacySettingsItem {
   showPhoneNumberToMembers: boolean;
   showBirthDateToMembers: boolean;
   showGenderToMembers: boolean;
+}
+
+export interface ClubNotificationSettingsItem {
+  clubId: string;
+  eventReminderEnabled: boolean;
+  eventReminderHoursBefore: number[];
+  feeReminderEnabled: boolean;
+  feeReminderDaysAfterDue: number[];
+  noticeUnreadReminderEnabled: boolean;
+  noticeUnreadReminderHoursAfter: number[];
 }
 
 export interface AdminReminderTargetGroup {
@@ -335,6 +346,15 @@ export interface UpdateClubPrivacySettingsInput {
   showPhoneNumberToMembers?: boolean;
   showBirthDateToMembers?: boolean;
   showGenderToMembers?: boolean;
+}
+
+export interface UpdateClubNotificationSettingsInput {
+  eventReminderEnabled?: boolean;
+  eventReminderHoursBefore?: number[];
+  feeReminderEnabled?: boolean;
+  feeReminderDaysAfterDue?: number[];
+  noticeUnreadReminderEnabled?: boolean;
+  noticeUnreadReminderHoursAfter?: number[];
 }
 
 export interface UpdateAdminFeePaymentInput {

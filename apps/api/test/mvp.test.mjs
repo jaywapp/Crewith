@@ -80,6 +80,7 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(adminOverviewJson.club.name, "서울 러너스");
   assert.equal(adminOverviewJson.feeSettings.dueDay, 25);
   assert.equal(adminOverviewJson.privacySettings.showPhoneNumberToMembers, false);
+  assert.equal(adminOverviewJson.notificationSettings.feeReminderEnabled, true);
 
   const privateDirectory = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/member-03/members`);
   assert.equal(privateDirectory.status, 200);
@@ -121,6 +122,37 @@ test("API serves overview and persists member app actions", async (t) => {
   const privacySettings = (await privacySettingsUpdate.json()).data;
   assert.equal(privacySettings.showPhoneNumberToMembers, true);
   assert.equal(privacySettings.showGenderToMembers, true);
+
+  const notificationSettingsUpdate = await fetch(`${baseUrl}/clubs/club-seoul-runners/notification-settings`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({
+      eventReminderEnabled: true,
+      eventReminderHoursBefore: [24, 2],
+      feeReminderEnabled: false,
+      feeReminderDaysAfterDue: [2, 5],
+      noticeUnreadReminderEnabled: true,
+      noticeUnreadReminderHoursAfter: [12, 24],
+    }),
+  });
+  assert.equal(notificationSettingsUpdate.status, 200);
+  const notificationSettings = (await notificationSettingsUpdate.json()).data;
+  assert.equal(notificationSettings.feeReminderEnabled, false);
+  assert.deepEqual(notificationSettings.eventReminderHoursBefore, [24, 2]);
+
+  const remindersAfterFeeDisabled = await fetch(`${baseUrl}/clubs/club-seoul-runners/reminders`);
+  assert.equal(remindersAfterFeeDisabled.status, 200);
+  assert.equal(
+    (await remindersAfterFeeDisabled.json()).data.some((reminder) => reminder.type === "fee_overdue"),
+    false,
+  );
+
+  const notificationSettingsReenabled = await fetch(`${baseUrl}/clubs/club-seoul-runners/notification-settings`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({ feeReminderEnabled: true, feeReminderDaysAfterDue: [1, 3] }),
+  });
+  assert.equal(notificationSettingsReenabled.status, 200);
 
   const publicDirectory = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/member-03/members`);
   assert.equal(publicDirectory.status, 200);

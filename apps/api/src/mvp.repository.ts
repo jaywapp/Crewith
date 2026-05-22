@@ -24,6 +24,7 @@ import {
   type ImportAdminMembersInput,
   type ImportAdminMembersResult,
   type UpdateClubFeeSettingsInput,
+  type UpdateClubNotificationSettingsInput,
   type UpdateClubPrivacySettingsInput,
   type RegisterDeviceInput,
   type ReviewJoinRequestInput,
@@ -55,6 +56,7 @@ import {
   ensureClub,
   ensureEventTargets,
   ensureFeeSettings,
+  ensureNotificationSettings,
   ensurePrivacySettings,
   ensureFeeTargets,
   eventAttendance,
@@ -76,6 +78,7 @@ import {
   isFeePaymentStatus,
   isFeeType,
   feeSettings,
+  notificationSettings,
   privacySettings,
   isMemberStatus,
   isResourceVisibility,
@@ -96,6 +99,12 @@ import {
   visibleMembers,
 } from "./mvp.store";
 
+function cleanNonNegativeIntegerList(values: unknown[]) {
+  return values
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value >= 0);
+}
+
 export abstract class MvpRepository {
   abstract getAdminOverview(clubId: string): ReturnType<typeof buildOverview>;
   abstract requestOtp(input: AuthOtpRequestInput): {
@@ -114,6 +123,11 @@ export abstract class MvpRepository {
   abstract sendReminder(clubId: string, input: SendReminderInput): AdminNotificationLogItem;
   abstract getFeeSettings(clubId: string): ReturnType<typeof ensureFeeSettings>;
   abstract updateFeeSettings(clubId: string, input: UpdateClubFeeSettingsInput): ReturnType<typeof ensureFeeSettings>;
+  abstract getNotificationSettings(clubId: string): ReturnType<typeof ensureNotificationSettings>;
+  abstract updateNotificationSettings(
+    clubId: string,
+    input: UpdateClubNotificationSettingsInput,
+  ): ReturnType<typeof ensureNotificationSettings>;
   abstract getPrivacySettings(clubId: string): ReturnType<typeof ensurePrivacySettings>;
   abstract updatePrivacySettings(
     clubId: string,
@@ -366,6 +380,42 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     feeSettings[clubId] = settings;
+    persistStore();
+    return settings;
+  }
+
+  getNotificationSettings(clubId: string) {
+    return ensureNotificationSettings(clubId);
+  }
+
+  updateNotificationSettings(clubId: string, input: UpdateClubNotificationSettingsInput) {
+    const settings = ensureNotificationSettings(clubId);
+
+    if (typeof input.eventReminderEnabled === "boolean") {
+      settings.eventReminderEnabled = input.eventReminderEnabled;
+    }
+
+    if (Array.isArray(input.eventReminderHoursBefore)) {
+      settings.eventReminderHoursBefore = cleanNonNegativeIntegerList(input.eventReminderHoursBefore).slice(0, 10);
+    }
+
+    if (typeof input.feeReminderEnabled === "boolean") {
+      settings.feeReminderEnabled = input.feeReminderEnabled;
+    }
+
+    if (Array.isArray(input.feeReminderDaysAfterDue)) {
+      settings.feeReminderDaysAfterDue = cleanNonNegativeIntegerList(input.feeReminderDaysAfterDue).slice(0, 10);
+    }
+
+    if (typeof input.noticeUnreadReminderEnabled === "boolean") {
+      settings.noticeUnreadReminderEnabled = input.noticeUnreadReminderEnabled;
+    }
+
+    if (Array.isArray(input.noticeUnreadReminderHoursAfter)) {
+      settings.noticeUnreadReminderHoursAfter = cleanNonNegativeIntegerList(input.noticeUnreadReminderHoursAfter).slice(0, 10);
+    }
+
+    notificationSettings[clubId] = settings;
     persistStore();
     return settings;
   }

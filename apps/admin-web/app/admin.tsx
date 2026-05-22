@@ -84,6 +84,15 @@ const fallbackOverview: AdminClubOverview = {
     showBirthDateToMembers: false,
     showGenderToMembers: false,
   },
+  notificationSettings: {
+    clubId: defaultClubId,
+    eventReminderEnabled: true,
+    eventReminderHoursBefore: [24, 3],
+    feeReminderEnabled: true,
+    feeReminderDaysAfterDue: [1, 3, 7],
+    noticeUnreadReminderEnabled: true,
+    noticeUnreadReminderHoursAfter: [24, 48],
+  },
   members: [],
   fees: [],
   events: [],
@@ -261,6 +270,33 @@ export async function updatePrivacySettingsAction(formData: FormData) {
       showPhoneNumberToMembers: formData.get("showPhoneNumberToMembers") === "on",
       showBirthDateToMembers: formData.get("showBirthDateToMembers") === "on",
       showGenderToMembers: formData.get("showGenderToMembers") === "on",
+    }),
+  });
+
+  revalidateAdmin();
+}
+
+function parseNumberList(value: FormDataEntryValue | null) {
+  return `${value ?? ""}`
+    .split(",")
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isInteger(item) && item >= 0);
+}
+
+export async function updateNotificationSettingsAction(formData: FormData) {
+  "use server";
+
+  const clubId = await getActiveClubId();
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/notification-settings`, {
+    method: "PUT",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({
+      eventReminderEnabled: formData.get("eventReminderEnabled") === "on",
+      eventReminderHoursBefore: parseNumberList(formData.get("eventReminderHoursBefore")),
+      feeReminderEnabled: formData.get("feeReminderEnabled") === "on",
+      feeReminderDaysAfterDue: parseNumberList(formData.get("feeReminderDaysAfterDue")),
+      noticeUnreadReminderEnabled: formData.get("noticeUnreadReminderEnabled") === "on",
+      noticeUnreadReminderHoursAfter: parseNumberList(formData.get("noticeUnreadReminderHoursAfter")),
     }),
   });
 

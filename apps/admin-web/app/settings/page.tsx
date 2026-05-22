@@ -3,6 +3,7 @@ import {
   PageTitle,
   UnauthorizedPanel,
   getOverview,
+  updateNotificationSettingsAction,
   updatePrivacySettingsAction,
 } from "../admin";
 
@@ -13,11 +14,12 @@ export default async function SettingsPage() {
     return <UnauthorizedPanel />;
   }
 
-  const settings = overview.privacySettings;
+  const privacySettings = overview.privacySettings;
+  const notificationSettings = overview.notificationSettings;
 
   return (
     <AdminShell active="/settings" overview={overview}>
-      <PageTitle title="설정" description="모임 운영 정책과 회원 개인정보 공개 범위를 관리합니다." />
+      <PageTitle title="설정" description="모임 운영 정책, 회원 개인정보 공개 범위, 알림 발송 기준을 관리합니다." />
 
       <section className="pageGrid">
         <article className="panel">
@@ -27,19 +29,71 @@ export default async function SettingsPage() {
           </div>
           <form action={updatePrivacySettingsAction} className="settingsForm">
             <label className="checkboxField">
-              <input name="showPhoneNumberToMembers" defaultChecked={settings.showPhoneNumberToMembers} type="checkbox" />
+              <input name="showPhoneNumberToMembers" defaultChecked={privacySettings.showPhoneNumberToMembers} type="checkbox" />
               휴대폰 번호 공개
             </label>
             <label className="checkboxField">
-              <input name="showBirthDateToMembers" defaultChecked={settings.showBirthDateToMembers} type="checkbox" />
+              <input name="showBirthDateToMembers" defaultChecked={privacySettings.showBirthDateToMembers} type="checkbox" />
               생년월일 공개
             </label>
             <label className="checkboxField">
-              <input name="showGenderToMembers" defaultChecked={settings.showGenderToMembers} type="checkbox" />
+              <input name="showGenderToMembers" defaultChecked={privacySettings.showGenderToMembers} type="checkbox" />
               성별 공개
             </label>
             <button className="primary compact" type="submit">
-              설정 저장
+              공개 설정 저장
+            </button>
+          </form>
+        </article>
+
+        <article className="panel">
+          <div className="panelHeader">
+            <h2>알림 설정</h2>
+            <span className="muted">리마인더 대상 산정 기준</span>
+          </div>
+          <form action={updateNotificationSettingsAction} className="settingsForm">
+            <label className="checkboxField">
+              <input name="feeReminderEnabled" defaultChecked={notificationSettings.feeReminderEnabled} type="checkbox" />
+              회비 미납 리마인더 사용
+            </label>
+            <label>
+              회비 미납 발송 기준
+              <input
+                name="feeReminderDaysAfterDue"
+                defaultValue={notificationSettings.feeReminderDaysAfterDue.join(", ")}
+                placeholder="1, 3, 7"
+              />
+            </label>
+            <label className="checkboxField">
+              <input name="eventReminderEnabled" defaultChecked={notificationSettings.eventReminderEnabled} type="checkbox" />
+              일정 참석 확인 리마인더 사용
+            </label>
+            <label>
+              일정 시작 전 발송 기준
+              <input
+                name="eventReminderHoursBefore"
+                defaultValue={notificationSettings.eventReminderHoursBefore.join(", ")}
+                placeholder="24, 3"
+              />
+            </label>
+            <label className="checkboxField">
+              <input
+                name="noticeUnreadReminderEnabled"
+                defaultChecked={notificationSettings.noticeUnreadReminderEnabled}
+                type="checkbox"
+              />
+              공지 미확인 리마인더 사용
+            </label>
+            <label>
+              공지 게시 후 발송 기준
+              <input
+                name="noticeUnreadReminderHoursAfter"
+                defaultValue={notificationSettings.noticeUnreadReminderHoursAfter.join(", ")}
+                placeholder="24, 48"
+              />
+            </label>
+            <button className="primary compact" type="submit">
+              알림 설정 저장
             </button>
           </form>
         </article>
