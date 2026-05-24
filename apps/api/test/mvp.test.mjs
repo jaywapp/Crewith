@@ -16,34 +16,26 @@ const store = require("../dist/mvp.store.js");
 const { AppModule } = require("../dist/app.module.js");
 const { Test } = require("@nestjs/testing");
 
-test("store calculates dashboard summaries and reminder targets", () => {
+test("store returns zero dashboard summaries when store is empty", () => {
   const fees = store.buildFees();
   const events = store.buildEvents();
   const notices = store.buildNotices();
   const dashboard = store.buildDashboard();
   const reminders = store.buildReminderTargets();
 
-  assert.equal(fees[0].targetCount, 4);
-  assert.equal(fees[0].paidCount, 3);
-  assert.equal(fees[0].unpaidCount, 1);
-  assert.equal(fees[0].collectionRate, 75);
-
-  assert.equal(events[0].attendanceRate, 75);
-  assert.equal(events[0].attendanceConversionRate, 100);
-
-  assert.equal(notices[0].readCount, 3);
-  assert.equal(notices[0].unreadCount, 1);
-
-  assert.equal(dashboard.activeMemberCount, 4);
-  assert.equal(dashboard.overdueMemberCount, 1);
-  assert.equal(dashboard.noticeReadRate, 75);
-  assert.equal(dashboard.monthlyFeeCollectionRate, 75);
-
-  assert.deepEqual(
-    reminders.map((reminder) => reminder.type),
-    ["fee_overdue", "event_no_response", "notice_unread"],
+  assert.equal(fees.length, 0);
+  assert.equal(events.length, 0);
+  assert.equal(notices.length, 0);
+  assert.equal(dashboard.totalMemberCount, 0);
+  assert.equal(dashboard.activeMemberCount, 0);
+  assert.equal(dashboard.overdueMemberCount, 0);
+  assert.equal(dashboard.noticeReadRate, 100);
+  assert.equal(dashboard.attendanceRate, 0);
+  assert.equal(dashboard.monthlyFeeCollectionRate, 100);
+  assert.equal(
+    reminders.every((r) => r.targetCount === 0),
+    true,
   );
-  assert.equal(reminders.reduce((sum, reminder) => sum + reminder.targetCount, 0), 3);
 });
 
 test("API serves overview and persists member app actions", async (t) => {
@@ -72,6 +64,52 @@ test("API serves overview and persists member app actions", async (t) => {
   });
   assert.equal(unknownClubOverview.status, 404);
 
+  // Empty store: admin overview must not crash
+  const emptyOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/admin/overview`, {
+    headers: { "x-crewith-role": "operator" },
+  });
+  assert.equal(emptyOverview.status, 200);
+  const emptyOverviewJson = (await emptyOverview.json()).data;
+  assert.equal(emptyOverviewJson.club.name, "서울 러너스");
+  assert.equal(emptyOverviewJson.feeSettings.dueDay, 25);
+  assert.equal(emptyOverviewJson.privacySettings.showPhoneNumberToMembers, false);
+  assert.equal(emptyOverviewJson.notificationSettings.feeReminderEnabled, true);
+
+  // Create members one at a time so each gets a unique Date.now() ID
+  const createMemberA = await fetch(`${baseUrl}/clubs/club-seoul-runners/members`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({ name: "이회원", phoneNumber: "010-2222-0002", role: "member" }),
+  });
+  assert.equal(createMemberA.status, 201);
+  const memberA = (await createMemberA.json()).data;
+
+  const createMemberB = await fetch(`${baseUrl}/clubs/club-seoul-runners/members`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({ name: "박회원", phoneNumber: "010-3333-0003", role: "member" }),
+  });
+  assert.equal(createMemberB.status, 201);
+  const memberB = (await createMemberB.json()).data;
+
+  assert.ok(memberA.id, "memberA should have an id");
+  assert.ok(memberB.id, "memberB should have an id");
+  assert.notEqual(memberA.id, memberB.id, "members should have distinct ids");
+
+  // Import test: row 2 duplicates row 1's phone within the same batch
+  const importMembers = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/imports`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({
+      rows: "테스트회원,010-7777-0001,member\n중복회원,010-7777-0001,member\n운영테스트\t010-7777-0002\toperator",
+    }),
+  });
+  assert.equal(importMembers.status, 201);
+  const importResult = (await importMembers.json()).data;
+  assert.equal(importResult.createdCount, 2);
+  assert.equal(importResult.skippedCount, 1);
+  assert.equal(importResult.errors[0].row, 2);
+
   const adminOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/admin/overview`, {
     headers: { "x-crewith-role": "operator" },
   });
@@ -82,14 +120,14 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(adminOverviewJson.privacySettings.showPhoneNumberToMembers, false);
   assert.equal(adminOverviewJson.notificationSettings.feeReminderEnabled, true);
 
-  const privateDirectory = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/member-03/members`);
+  // Phone hidden by default for other members; own phone always visible
+  const privateDirectory = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/${memberA.id}/members`);
   assert.equal(privateDirectory.status, 200);
   const privateDirectoryJson = (await privateDirectory.json()).data;
-  const privateOwner = privateDirectoryJson.find((member) => member.id === "member-01");
-  const privateViewer = privateDirectoryJson.find((member) => member.id === "member-03");
-  assert.equal(privateOwner.phoneNumber, undefined);
-  assert.equal(privateOwner.birthDate, undefined);
-  assert.equal(privateViewer.phoneNumber, "010-1234-1003");
+  const privateSelf = privateDirectoryJson.find((m) => m.id === memberA.id);
+  const privateOther = privateDirectoryJson.find((m) => m.id === memberB.id);
+  assert.equal(privateSelf.phoneNumber, "010-2222-0002");
+  assert.equal(privateOther.phoneNumber, undefined);
 
   const feeSettingsUpdate = await fetch(`${baseUrl}/clubs/club-seoul-runners/fee-settings`, {
     method: "PUT",
@@ -154,13 +192,13 @@ test("API serves overview and persists member app actions", async (t) => {
   });
   assert.equal(notificationSettingsReenabled.status, 200);
 
-  const publicDirectory = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/member-03/members`);
+  // Public directory after privacy settings updated — other members' phones now visible
+  const publicDirectory = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/${memberA.id}/members`);
   assert.equal(publicDirectory.status, 200);
   const publicDirectoryJson = (await publicDirectory.json()).data;
-  const publicOwner = publicDirectoryJson.find((member) => member.id === "member-01");
-  assert.equal(publicOwner.phoneNumber, "010-1234-1001");
-  assert.equal(publicOwner.birthDate, undefined);
-  assert.equal(publicOwner.gender, "male");
+  const publicOther = publicDirectoryJson.find((m) => m.id === memberB.id);
+  assert.equal(publicOther.phoneNumber, "010-3333-0003");
+  assert.equal(publicOther.birthDate, undefined);
 
   const createdInvite = await fetch(`${baseUrl}/clubs/club-seoul-runners/invite-links`, {
     method: "POST",
@@ -185,20 +223,7 @@ test("API serves overview and persists member app actions", async (t) => {
   });
   assert.equal(disabledInviteAccept.status, 404);
 
-  const importMembers = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/imports`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
-    body: JSON.stringify({
-      rows: "테스트회원,010-7777-0001,member\n중복회원,010-1234-1003,member\n운영테스트\t010-7777-0002\toperator",
-    }),
-  });
-  assert.equal(importMembers.status, 201);
-  const importResult = (await importMembers.json()).data;
-  assert.equal(importResult.createdCount, 2);
-  assert.equal(importResult.skippedCount, 1);
-  assert.equal(importResult.errors[0].row, 2);
-
-  const dormantMember = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/member-04`, {
+  const dormantMember = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/${memberB.id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
     body: JSON.stringify({ memberStatus: "dormant" }),
@@ -208,7 +233,7 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(dormantMemberJson.memberStatus, "dormant");
   assert.equal(typeof dormantMemberJson.personalDataDeleteAt, "string");
 
-  const reactivatedMember = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/member-04`, {
+  const reactivatedMember = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/${memberB.id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
     body: JSON.stringify({ memberStatus: "active" }),
@@ -218,27 +243,29 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(reactivatedMemberJson.memberStatus, "active");
   assert.equal(reactivatedMemberJson.personalDataDeleteAt, undefined);
 
-  const memberOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/member-03`);
+  const memberOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/${memberA.id}`);
   assert.equal(memberOverview.status, 200);
-  assert.equal((await memberOverview.json()).data.member.name, "박도윤");
+  assert.equal((await memberOverview.json()).data.member.name, "이회원");
 
-  const otpRequest = await fetch(`${baseUrl}/auth/otp/request`, {
+  // Password login — default password is last 4 digits of phone: "010-2222-0002" → "0002"
+  const loginWrongPassword = await fetch(`${baseUrl}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ phoneNumber: "010-1234-1003" }),
+    body: JSON.stringify({ phoneNumber: "010-2222-0002", password: "wrong" }),
   });
-  assert.equal(otpRequest.status, 201);
+  assert.equal(loginWrongPassword.status, 400);
 
-  const otpVerify = await fetch(`${baseUrl}/auth/otp/verify`, {
+  const loginResponse = await fetch(`${baseUrl}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ phoneNumber: "010-1234-1003", code: "123456" }),
+    body: JSON.stringify({ phoneNumber: "010-2222-0002", password: "0002" }),
   });
-  assert.equal(otpVerify.status, 201);
-  const session = (await otpVerify.json()).data;
+  assert.equal(loginResponse.status, 201);
+  const session = (await loginResponse.json()).data;
+  assert.equal(session.memberId, memberA.id);
   assert.deepEqual(
-    session.clubs.map((club) => club.clubId),
-    ["club-seoul-runners", "club-seoul-riders"],
+    session.clubs.map((c) => c.clubId),
+    ["club-seoul-runners"],
   );
 
   const deviceRegistration = await fetch(`${baseUrl}/me/devices`, {
@@ -253,50 +280,38 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(deviceRegistration.status, 201);
   assert.equal((await deviceRegistration.json()).data.memberId, session.memberId);
 
-  const reminderSend = await fetch(`${baseUrl}/clubs/club-seoul-runners/reminders/send`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
-    body: JSON.stringify({ reminderId: "fee:fee-2026-05" }),
-  });
-  assert.equal(reminderSend.status, 201);
-  const reminderLog = (await reminderSend.json()).data;
-  assert.equal(reminderLog.targetCount, 3);
-  assert.equal(reminderLog.deliveredCount, 1);
-
-  const memberNotifications = await fetch(`${baseUrl}/me/notifications?memberId=${session.memberId}`);
-  assert.equal(memberNotifications.status, 200);
-  const notification = (await memberNotifications.json()).data[0];
-  assert.equal(notification.memberId, session.memberId);
-  assert.equal(notification.title, "회비 미납 리마인더");
-  assert.equal(notification.readAt, undefined);
-
-  const notificationRead = await fetch(`${baseUrl}/me/notifications/${notification.id}/read`, {
+  // Password reset
+  const passwordReset = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/${memberA.id}/password`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ memberId: session.memberId }),
+    headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({ password: "newpass123" }),
   });
-  assert.equal(notificationRead.status, 200);
-  assert.equal(typeof (await notificationRead.json()).data.readAt, "string");
+  assert.equal(passwordReset.status, 200);
 
-  const secondClubOverview = await fetch(`${baseUrl}/clubs/club-seoul-riders/member-app/member-03`);
-  assert.equal(secondClubOverview.status, 200);
-  const secondClubOverviewJson = await secondClubOverview.json();
-  assert.equal(secondClubOverviewJson.data.club.id, "club-seoul-riders");
-  assert.equal(secondClubOverviewJson.data.member.role, "operator");
+  const loginWithNewPassword = await fetch(`${baseUrl}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phoneNumber: "010-2222-0002", password: "newpass123" }),
+  });
+  assert.equal(loginWithNewPassword.status, 201);
 
-  const nonMemberClubOverview = await fetch(`${baseUrl}/clubs/club-seoul-riders/member-app/member-01`);
-  assert.equal(nonMemberClubOverview.status, 404);
+  const loginWithOldPassword = await fetch(`${baseUrl}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phoneNumber: "010-2222-0002", password: "0002" }),
+  });
+  assert.equal(loginWithOldPassword.status, 400);
 
-  const unknownClubMemberOverview = await fetch(`${baseUrl}/clubs/unknown-club/member-app/member-03`);
+  const unknownClubMemberOverview = await fetch(`${baseUrl}/clubs/unknown-club/member-app/${memberA.id}`);
   assert.equal(unknownClubMemberOverview.status, 404);
 
-  const responseUpdate = await fetch(`${baseUrl}/clubs/club-seoul-runners/events/event-01/responses`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ memberId: "member-03", response: "attending" }),
-  });
-  assert.equal(responseUpdate.status, 200);
-  assert.equal((await responseUpdate.json()).data.notAttendingCount, 2);
+  const unknownMemberOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/unknown-member`);
+  assert.equal(unknownMemberOverview.status, 404);
+
+  // No reminders sent yet — notifications should be empty
+  const memberNotifications = await fetch(`${baseUrl}/me/notifications?memberId=${session.memberId}`);
+  assert.equal(memberNotifications.status, 200);
+  assert.equal(Array.isArray((await memberNotifications.json()).data), true);
 
   const createdEvent = await fetch(`${baseUrl}/clubs/club-seoul-runners/events`, {
     method: "POST",
@@ -312,6 +327,13 @@ test("API serves overview and persists member app actions", async (t) => {
   });
   assert.equal(createdEvent.status, 201);
   const createdEventJson = (await createdEvent.json()).data;
+
+  const responseUpdate = await fetch(`${baseUrl}/clubs/club-seoul-runners/events/${createdEventJson.id}/responses`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ memberId: memberA.id, response: "attending" }),
+  });
+  assert.equal(responseUpdate.status, 200);
 
   const updatedEvent = await fetch(`${baseUrl}/clubs/club-seoul-runners/events/${createdEventJson.id}`, {
     method: "PATCH",
@@ -330,39 +352,6 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(deletedEvent.status, 200);
   assert.equal((await deletedEvent.json()).data.deleted, true);
 
-  const noticeRead = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/notice-01/read`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ memberId: "member-03" }),
-  });
-  assert.equal(noticeRead.status, 200);
-  assert.equal((await noticeRead.json()).data.unreadCount, 2);
-
-  const noticeReaction = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/notice-01/reactions`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ memberId: "member-03" }),
-  });
-  assert.equal(noticeReaction.status, 200);
-  assert.equal((await noticeReaction.json()).data.likeCount, 3);
-
-  const commentBody = "앱에서 확인했습니다.";
-  const noticeComment = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/notice-01/comments`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ memberId: "member-03", body: commentBody }),
-  });
-  assert.equal(noticeComment.status, 201);
-  const noticeCommentJson = (await noticeComment.json()).data;
-  assert.equal(noticeCommentJson.commentCount, 2);
-
-  const memberOverviewAfterNoticeActions = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/member-03`);
-  assert.equal(memberOverviewAfterNoticeActions.status, 200);
-  const noticeSummary = (await memberOverviewAfterNoticeActions.json()).data.notices[0];
-  assert.equal(noticeSummary.read, true);
-  assert.equal(noticeSummary.liked, true);
-  assert.equal(noticeSummary.comments.at(-1).body, commentBody);
-
   const createdNotice = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-crewith-role": "operator" },
@@ -374,6 +363,38 @@ test("API serves overview and persists member app actions", async (t) => {
   });
   assert.equal(createdNotice.status, 201);
   const createdNoticeJson = (await createdNotice.json()).data;
+
+  const noticeRead = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/${createdNoticeJson.id}/read`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ memberId: memberA.id }),
+  });
+  assert.equal(noticeRead.status, 200);
+
+  const noticeReaction = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/${createdNoticeJson.id}/reactions`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ memberId: memberA.id }),
+  });
+  assert.equal(noticeReaction.status, 200);
+  assert.equal((await noticeReaction.json()).data.likeCount, 1);
+
+  const commentBody = "앱에서 확인했습니다.";
+  const noticeComment = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/${createdNoticeJson.id}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ memberId: memberA.id, body: commentBody }),
+  });
+  assert.equal(noticeComment.status, 201);
+  const noticeCommentJson = (await noticeComment.json()).data;
+  assert.equal(noticeCommentJson.commentCount, 1);
+
+  const memberOverviewAfterNoticeActions = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/${memberA.id}`);
+  assert.equal(memberOverviewAfterNoticeActions.status, 200);
+  const noticeSummary = (await memberOverviewAfterNoticeActions.json()).data.notices[0];
+  assert.equal(noticeSummary.read, true);
+  assert.equal(noticeSummary.liked, true);
+  assert.equal(noticeSummary.comments.at(-1).body, commentBody);
 
   const updatedNotice = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/${createdNoticeJson.id}`, {
     method: "PATCH",

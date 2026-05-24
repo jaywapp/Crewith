@@ -1269,22 +1269,22 @@ export function buildLegacyReminderTargets(clubId = club.id): AdminReminderTarge
 export function buildDashboard(clubId = club.id): DashboardSummary {
   const totalMemberCount = visibleMembers(clubId).length;
   const activeMemberCount = activeMembers(clubId).length;
-  const monthlyFee = buildFeeItem(fees[0], clubId);
-  const overdueMemberCount = monthlyFee.unpaidCount;
-  const latestEvent = buildEventItem(events[0], clubId);
-  const latestNotice = buildNoticeItem(notices[0], clubId);
+  const monthlyFee = fees[0] ? buildFeeItem(fees[0], clubId) : null;
+  const overdueMemberCount = monthlyFee?.unpaidCount ?? 0;
+  const latestEvent = events[0] ? buildEventItem(events[0], clubId) : null;
+  const latestNotice = notices[0] ? buildNoticeItem(notices[0], clubId) : null;
 
   return {
     totalMemberCount,
     activeMemberCount,
     overdueMemberCount,
     noticeReadRate:
-      latestNotice.readCount + latestNotice.unreadCount === 0
+      !latestNotice || latestNotice.readCount + latestNotice.unreadCount === 0
         ? 100
         : Math.round((latestNotice.readCount / (latestNotice.readCount + latestNotice.unreadCount)) * 100),
-    attendanceRate: latestEvent.attendanceRate,
-    attendanceConversionRate: latestEvent.attendanceConversionRate,
-    monthlyFeeCollectionRate: monthlyFee.collectionRate,
+    attendanceRate: latestEvent?.attendanceRate ?? 0,
+    attendanceConversionRate: latestEvent?.attendanceConversionRate ?? 0,
+    monthlyFeeCollectionRate: monthlyFee?.collectionRate ?? 100,
   };
 }
 
@@ -1329,7 +1329,7 @@ export function buildOverview(clubId = club.id): AdminClubOverview {
       {
         id: "task-event",
         label: "다음 일정",
-        value: events[1].startsAt.slice(5, 16).replace("T", " "),
+        value: events[1]?.startsAt?.slice(5, 16)?.replace("T", " ") ?? "-",
         severity: "info",
       },
     ],
