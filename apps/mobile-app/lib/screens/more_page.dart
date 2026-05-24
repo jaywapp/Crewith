@@ -82,7 +82,7 @@ class _MorePageState extends State<MorePage> {
   @override
   Widget build(BuildContext context) {
     return PageScaffold(
-      title: '더보기',
+      title: '⚙️ 더보기',
       subtitle: '내 모임 정보와 가입 신청을 관리합니다.',
       children: [
         InfoCard(
@@ -160,7 +160,7 @@ class _MorePageState extends State<MorePage> {
                           _profileSaving = false;
                         });
                       },
-                child: const Text('프로필 저장'),
+                child: const Text('💾 프로필 저장'),
               ),
             ],
           ),
@@ -193,7 +193,7 @@ class _MorePageState extends State<MorePage> {
                           _joinSaving = false;
                         });
                       },
-                child: const Text('가입 신청'),
+                child: const Text('✉️ 가입 신청'),
               ),
             ],
           ),
@@ -226,7 +226,7 @@ class _MorePageState extends State<MorePage> {
                           _inviteSaving = false;
                         });
                       },
-                child: const Text('초대 코드 확인'),
+                child: const Text('🎫 초대 코드 확인'),
               ),
             ],
           ),

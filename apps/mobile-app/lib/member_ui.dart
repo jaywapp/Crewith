@@ -264,9 +264,9 @@ String formatCurrency(int value) {
 
 String roleLabel(String role) {
   return switch (role) {
-    'owner' => '모임장',
-    'operator' => '운영진',
-    _ => '일반회원',
+    'owner' => '🏆 모임장',
+    'operator' => '🛡 운영진',
+    _ => '👤 일반회원',
   };
 }
 

@@ -17,7 +17,7 @@ class EventsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PageScaffold(
-      title: '일정',
+      title: '📅 일정',
       subtitle: '참석 의사를 선택하고 출석 상태를 확인하세요.',
       children: overview.events.map((event) {
         return InfoCard(
@@ -28,31 +28,34 @@ class EventsPage extends StatelessWidget {
               Text(
                   '${event.locationName} · ${event.locationAddress ?? '주소 없음'}'),
               const SizedBox(height: 14),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'attending', label: Text('참석')),
-                  ButtonSegment(value: 'not_attending', label: Text('불참')),
-                ],
-                selected: {event.response},
-                onSelectionChanged: (value) async {
-                  final message =
-                      await onResponseChanged(event.id, value.first);
-                  if (context.mounted && message != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(message)),
-                    );
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  InfoChip(
-                      label:
-                          '출석 상태 ${attendanceLabel(event.attendanceStatus)}'),
-                  InfoChip(label: '동반 ${event.companionCount}명'),
+                  OutlinedButton(
+                    onPressed: null,
+                    child: Text(
+                      event.attendanceStatus == 'present'
+                          ? '✅ 출석'
+                          : event.attendanceStatus == 'late'
+                              ? '⏰ 지각'
+                              : '❌ 결석',
+                    ),
+                  ),
+                  FilledButton(
+                    onPressed: () async {
+                      final next = event.response == 'attending'
+                          ? 'not_attending'
+                          : 'attending';
+                      final message = await onResponseChanged(event.id, next);
+                      if (context.mounted && message != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(message)),
+                        );
+                      }
+                    },
+                    child: Text(
+                        event.response == 'attending' ? '❌ 불참' : '✅ 참석'),
+                  ),
                 ],
               ),
             ],

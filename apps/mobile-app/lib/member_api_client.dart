@@ -5,7 +5,7 @@ import 'member_models.dart';
 
 const _defaultApiBaseUrl = String.fromEnvironment(
   'CREWITH_API_BASE_URL',
-  defaultValue: 'http://10.0.2.2:4000/api/v1',
+  defaultValue: 'https://crewith-api-production.up.railway.app/api/v1',
 );
 
 class MemberApiClient {

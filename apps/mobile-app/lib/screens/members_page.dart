@@ -11,7 +11,7 @@ class MembersPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PageScaffold(
-      title: '구성원',
+      title: '👥 구성원',
       subtitle: '모임 구성원과 공개된 연락처 정보를 확인합니다.',
       children: [
         if (members.isEmpty) const InfoCard(child: Text('표시할 구성원이 없습니다.')),
@@ -59,7 +59,7 @@ class MembersPage extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    InfoChip(label: '가입 ${member.joinedAt}'),
+                    InfoChip(label: '🗓 가입 ${member.joinedAt}'),
                     if (member.phoneNumber != null)
                       InfoChip(label: member.phoneNumber!),
                     if (member.birthDate != null)

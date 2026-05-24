@@ -16,7 +16,7 @@ class NotificationsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PageScaffold(
-      title: '알림',
+      title: '🔔 알림',
       subtitle: '회비, 일정, 공지 리마인더를 확인하세요.',
       children: [
         if (notifications.isEmpty)

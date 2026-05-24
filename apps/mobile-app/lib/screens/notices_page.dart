@@ -36,7 +36,7 @@ class _NoticesPageState extends State<NoticesPage> {
   @override
   Widget build(BuildContext context) {
     return PageScaffold(
-      title: '공지',
+      title: '📢 공지',
       subtitle: '공지 열람 상태와 반응을 확인하세요.',
       children: widget.overview.notices.map((notice) {
         final controller = _commentControllers.putIfAbsent(
@@ -60,9 +60,9 @@ class _NoticesPageState extends State<NoticesPage> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  InfoChip(label: notice.read ? '확인 완료' : '미확인'),
-                  InfoChip(label: '좋아요 ${notice.likeCount}'),
-                  InfoChip(label: '댓글 ${notice.commentCount}'),
+                  InfoChip(label: notice.read ? '✅ 확인 완료' : '⭕ 미확인'),
+                  InfoChip(label: '👍 ${notice.likeCount}'),
+                  InfoChip(label: '💬 ${notice.commentCount}'),
                 ],
               ),
               const SizedBox(height: 12),
@@ -81,7 +81,7 @@ class _NoticesPageState extends State<NoticesPage> {
                               );
                             }
                           },
-                    child: Text(notice.read ? '확인됨' : '확인 처리'),
+                    child: Text(notice.read ? '✅ 확인됨' : '✔️ 확인 처리'),
                   ),
                   OutlinedButton.icon(
                     onPressed: () async {
@@ -105,44 +105,86 @@ class _NoticesPageState extends State<NoticesPage> {
                 const SizedBox(height: 16),
                 ...notice.comments.map(
                   (comment) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text('${comment.memberName}: ${comment.body}'),
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          radius: 14,
+                          backgroundColor: greenLight,
+                          foregroundColor: houseGreen,
+                          child: Text(
+                            comment.memberName.characters.first,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${comment.memberName}  ${formatDate(comment.createdAt)}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: textBlackSoft,
+                                ),
+                              ),
+                              Text(comment.body),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
               const SizedBox(height: 12),
-              TextInput(controller: controller, label: '댓글 입력'),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton(
-                  onPressed: commentSaving
-                      ? null
-                      : () async {
-                          final body = controller.text.trim();
-                          if (body.isEmpty) {
-                            return;
-                          }
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText: '댓글을 입력하세요',
+                        isDense: true,
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: commentSaving
+                        ? null
+                        : () async {
+                            final body = controller.text.trim();
+                            if (body.isEmpty) return;
 
-                          final messenger = ScaffoldMessenger.of(context);
-                          setState(() => _commentSavingIds.add(notice.id));
-                          final message = await widget.onCommentCreated(
-                            notice.id,
-                            body,
-                          );
-                          if (!mounted) {
-                            return;
-                          }
-
-                          if (message != null) {
-                            messenger.showSnackBar(
-                              SnackBar(content: Text(message)),
+                            final messenger = ScaffoldMessenger.of(context);
+                            setState(() => _commentSavingIds.add(notice.id));
+                            final message = await widget.onCommentCreated(
+                              notice.id,
+                              body,
                             );
-                          }
-                          controller.clear();
-                          setState(() => _commentSavingIds.remove(notice.id));
-                        },
-                  child: const Text('댓글 등록'),
-                ),
+                            if (!mounted) return;
+
+                            if (message != null) {
+                              messenger.showSnackBar(
+                                SnackBar(content: Text(message)),
+                              );
+                            }
+                            controller.clear();
+                            setState(
+                                () => _commentSavingIds.remove(notice.id));
+                          },
+                    child: const Text('✉️ 등록'),
+                  ),
+                ],
               ),
             ],
           ),

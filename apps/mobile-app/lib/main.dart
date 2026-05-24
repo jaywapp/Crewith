@@ -48,6 +48,17 @@ class CrewithApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: canvas,
         fontFamily: 'Inter',
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            shape: const StadiumBorder(),
+            backgroundColor: greenAccent,
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            shape: const StadiumBorder(),
+          ),
+        ),
         navigationBarTheme: const NavigationBarThemeData(
           backgroundColor: white,
           indicatorColor: greenLight,

@@ -11,16 +11,35 @@ class FeesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PageScaffold(
-      title: '회비',
+      title: '💰 회비',
       subtitle: '내 납부 상태를 확인하세요.',
       children: overview.fees.map((fee) {
         return InfoCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              CardHeader(label: fee.dueDate, title: fee.title),
-              Text('${formatCurrency(fee.amount)}원'),
-              const SizedBox(height: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fee.title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: houseGreen,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${formatCurrency(fee.amount)}원 · ${fee.dueDate}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: textBlackSoft),
+                    ),
+                  ],
+                ),
+              ),
               StatusPill(label: feeLabel(fee.status), status: fee.status),
             ],
           ),
