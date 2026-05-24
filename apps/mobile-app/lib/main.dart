@@ -96,8 +96,10 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
-    _overviewFuture = Future.value(MemberAppOverview.seed());
-    _memberDirectoryFuture = Future.value(MemberDirectoryItem.seedItems);
+    _overviewFuture = Future.value(const MemberAppOverview(
+      clubName: '', sportType: '', memberName: '', fees: [], events: [], notices: [],
+    ));
+    _memberDirectoryFuture = Future.value(const []);
     _notificationsFuture = Future.value(const []);
   }
 
@@ -141,46 +143,36 @@ class _HomeShellState extends State<HomeShell> {
 
     final requested = await _api.requestOtp(phoneNumber);
     return requested
-        ? '개발 인증번호 123456을 입력하세요.'
-        : '인증번호 요청에 실패했습니다. 개발 인증번호 123456을 사용할 수 있습니다.';
+        ? '인증번호가 발송되었습니다.'
+        : '인증번호 요청에 실패했습니다. 잠시 후 다시 시도하세요.';
   }
 
   Future<bool> _verifyOtp(String phoneNumber, String code) async {
-    if (code.trim() != '123456') {
+    final session = await _api.verifyOtp(phoneNumber, code);
+
+    if (session == null || !mounted) {
       return false;
     }
 
+    final nextClubs = session.clubs.isEmpty ? _defaultClubs : session.clubs;
+    final nextClubId = nextClubs.any((club) => club.clubId == _activeClubId)
+        ? _activeClubId
+        : nextClubs.first.clubId;
+
     setState(() {
-      _activeMemberId = _defaultMemberId;
+      _activeMemberId = session.memberId;
+      _clubs = nextClubs;
+      _activeClubId = nextClubId;
       _isAuthenticated = true;
-      // Use seed data for the immediate UI transition; real data is fetched
-      // after verifyOtp() completes to avoid creating futures that get replaced.
-      _overviewFuture = Future.value(MemberAppOverview.seed());
-      _memberDirectoryFuture = Future.value(MemberDirectoryItem.seedItems);
-      _notificationsFuture = Future.value(const []);
+      _overviewFuture = _fetchOverview(session.memberId);
+      _memberDirectoryFuture = _fetchMemberDirectory(session.memberId);
+      _notificationsFuture = _fetchNotifications(session.memberId);
     });
 
-    final session = await _api.verifyOtp(phoneNumber, code);
-    if (session != null && mounted) {
-      final nextClubs = session.clubs.isEmpty ? _defaultClubs : session.clubs;
-      final nextClubId = nextClubs.any((club) => club.clubId == _activeClubId)
-          ? _activeClubId
-          : nextClubs.first.clubId;
-
-      setState(() {
-        _activeMemberId = session.memberId;
-        _clubs = nextClubs;
-        _activeClubId = nextClubId;
-        _overviewFuture = _fetchOverview(session.memberId);
-        _memberDirectoryFuture = _fetchMemberDirectory(session.memberId);
-        _notificationsFuture = _fetchNotifications(session.memberId);
-      });
-
-      await _api.registerDevice(
-        memberId: session.memberId,
-        fcmToken: 'dev-fcm-token-${session.memberId}',
-      );
-    }
+    await _api.registerDevice(
+      memberId: session.memberId,
+      fcmToken: 'dev-fcm-token-${session.memberId}',
+    );
 
     return true;
   }
@@ -425,7 +417,9 @@ class _HomeShellState extends State<HomeShell> {
           );
         }
 
-        final overview = snapshot.data ?? MemberAppOverview.seed();
+        final overview = snapshot.data ?? const MemberAppOverview(
+          clubName: '', sportType: '', memberName: '', fees: [], events: [], notices: [],
+        );
         final activeClub = _clubs.firstWhere(
           (club) => club.clubId == _activeClubId,
           orElse: () => _defaultClubs.first,

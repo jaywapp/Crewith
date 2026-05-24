@@ -181,7 +181,7 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-    const code = "123456";
+    const code = String(Math.floor(100000 + Math.random() * 900000));
     otpCodes.set(phoneNumber, { code, expiresAt });
 
     return {
@@ -485,15 +485,13 @@ export class JsonMvpRepository implements MvpRepository {
       const exists = members.some((member) => member.phoneNumber === request.applicantPhone);
       if (!exists) {
         const member = createMemberFromProfile(request.applicantName, request.applicantPhone);
-        if (clubId !== "club-seoul-runners") {
-          clubMemberships.push({
-            clubId,
-            memberId: member.id,
-            role: "member",
-            memberStatus: "active",
-            joinedAt: member.joinedAt,
-          });
-        }
+        clubMemberships.push({
+          clubId,
+          memberId: member.id,
+          role: "member",
+          memberStatus: "active",
+          joinedAt: member.joinedAt,
+        });
       }
     }
 

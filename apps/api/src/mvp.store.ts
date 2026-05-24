@@ -519,20 +519,10 @@ export const club: ClubListItem = {
   sportType: "러닝",
   visibility: "private" as const,
   subscriptionStatus: "trial" as const,
-  trialEndsAt: "2026-06-20",
+  trialEndsAt: "2026-12-31",
 };
 
-export const clubs: ClubListItem[] = [
-  club,
-  {
-    id: "club-seoul-riders",
-    name: "Seoul Riders",
-    sportType: "cycling",
-    visibility: "public",
-    subscriptionStatus: "trial",
-    trialEndsAt: "2026-06-20",
-  },
-];
+export const clubs: ClubListItem[] = [club];
 
 export function ensureClub(clubId: string) {
   const currentClub = clubs.find((item) => item.id === clubId);
@@ -544,113 +534,11 @@ export function ensureClub(clubId: string) {
   return currentClub;
 }
 
-export const members: AdminMemberListItem[] = [
-  {
-    id: "member-01",
-    name: "김민준",
-    phoneNumber: "010-1234-1001",
-    birthDate: "1990-03-12",
-    gender: "male",
-    role: "owner",
-    memberStatus: "active",
-    joinedAt: "2025-11-02",
-    lastFeeStatus: "paid",
-    attendanceRate: 92,
-  },
-  {
-    id: "member-02",
-    name: "이서연",
-    phoneNumber: "010-1234-1002",
-    birthDate: "1992-08-21",
-    gender: "female",
-    role: "operator",
-    memberStatus: "active",
-    joinedAt: "2025-12-14",
-    lastFeeStatus: "paid",
-    attendanceRate: 86,
-  },
-  {
-    id: "member-03",
-    name: "박도윤",
-    phoneNumber: "010-1234-1003",
-    birthDate: "1994-01-06",
-    gender: "male",
-    role: "member",
-    memberStatus: "active",
-    joinedAt: "2026-01-06",
-    lastFeeStatus: "unpaid",
-    attendanceRate: 71,
-  },
-  {
-    id: "member-04",
-    name: "최하은",
-    phoneNumber: "010-1234-1004",
-    birthDate: "1996-11-18",
-    gender: "female",
-    role: "member",
-    memberStatus: "active",
-    joinedAt: "2026-02-18",
-    lastFeeStatus: "paid",
-    attendanceRate: 78,
-  },
-  {
-    id: "member-05",
-    name: "정우진",
-    phoneNumber: "010-1234-1005",
-    birthDate: "1989-06-09",
-    gender: "male",
-    role: "member",
-    memberStatus: "dormant",
-    joinedAt: "2026-03-09",
-    lastFeeStatus: "unpaid",
-    attendanceRate: 42,
-  },
-];
+export const members: AdminMemberListItem[] = [];
 
-export const clubMemberships: ClubMembershipItem[] = [
-  ...members.map((member) => ({
-    clubId: club.id,
-    memberId: member.id,
-    role: member.role,
-    memberStatus: member.memberStatus,
-    joinedAt: member.joinedAt,
-  })),
-  {
-    clubId: "club-seoul-riders",
-    memberId: "member-03",
-    role: "operator",
-    memberStatus: "active",
-    joinedAt: "2026-04-03",
-  },
-  {
-    clubId: "club-seoul-riders",
-    memberId: "member-04",
-    role: "member",
-    memberStatus: "active",
-    joinedAt: "2026-04-10",
-  },
-];
+export const clubMemberships: ClubMembershipItem[] = [];
 
-export const feeSettings: Record<string, ClubFeeSettingsItem> = {
-  "club-seoul-runners": {
-    clubId: "club-seoul-runners",
-    amount: 30000,
-    dueDay: 25,
-    intervalType: "monthly",
-    gracePeriodDays: 3,
-    autoReminderEnabled: true,
-    reminderDaysAfterDue: [1, 3, 7],
-  },
-  "club-seoul-riders": {
-    clubId: "club-seoul-riders",
-    amount: 20000,
-    dueDay: 10,
-    intervalType: "monthly",
-    gracePeriodDays: 5,
-    autoReminderEnabled: false,
-    reminderDaysAfterDue: [3],
-  },
-};
+export const feeSettings: Record<string, ClubFeeSettingsItem> = {};
 
 export function ensureFeeSettings(clubId: string): ClubFeeSettingsItem {
   ensureClub(clubId);
@@ -667,20 +555,7 @@ export function ensureFeeSettings(clubId: string): ClubFeeSettingsItem {
   return feeSettings[clubId];
 }
 
-export const privacySettings: Record<string, ClubPrivacySettingsItem> = {
-  "club-seoul-runners": {
-    clubId: "club-seoul-runners",
-    showPhoneNumberToMembers: false,
-    showBirthDateToMembers: false,
-    showGenderToMembers: false,
-  },
-  "club-seoul-riders": {
-    clubId: "club-seoul-riders",
-    showPhoneNumberToMembers: false,
-    showBirthDateToMembers: false,
-    showGenderToMembers: false,
-  },
-};
+export const privacySettings: Record<string, ClubPrivacySettingsItem> = {};
 
 export function ensurePrivacySettings(clubId: string): ClubPrivacySettingsItem {
   ensureClub(clubId);
@@ -694,26 +569,7 @@ export function ensurePrivacySettings(clubId: string): ClubPrivacySettingsItem {
   return privacySettings[clubId];
 }
 
-export const notificationSettings: Record<string, ClubNotificationSettingsItem> = {
-  "club-seoul-runners": {
-    clubId: "club-seoul-runners",
-    eventReminderEnabled: true,
-    eventReminderHoursBefore: [24, 3],
-    feeReminderEnabled: true,
-    feeReminderDaysAfterDue: [1, 3, 7],
-    noticeUnreadReminderEnabled: true,
-    noticeUnreadReminderHoursAfter: [24, 48],
-  },
-  "club-seoul-riders": {
-    clubId: "club-seoul-riders",
-    eventReminderEnabled: true,
-    eventReminderHoursBefore: [24],
-    feeReminderEnabled: false,
-    feeReminderDaysAfterDue: [3],
-    noticeUnreadReminderEnabled: true,
-    noticeUnreadReminderHoursAfter: [24],
-  },
-};
+export const notificationSettings: Record<string, ClubNotificationSettingsItem> = {};
 
 export function ensureNotificationSettings(clubId: string): ClubNotificationSettingsItem {
   ensureClub(clubId);
@@ -730,203 +586,27 @@ export function ensureNotificationSettings(clubId: string): ClubNotificationSett
   return notificationSettings[clubId];
 }
 
-export const fees: AdminFeeListItem[] = [
-  {
-    id: "fee-2026-05",
-    title: "5월 월회비",
-    feeType: "recurring",
-    amount: 30000,
-    dueDate: "2026-05-25",
-    targetCount: 5,
-    paidCount: 22,
-    unpaidCount: 3,
-    exemptCount: 0,
-    collectionRate: 88,
-    payments: [],
-  },
-  {
-    id: "fee-event-01",
-    title: "춘계 단체복 비용",
-    feeType: "one_time",
-    amount: 45000,
-    dueDate: "2026-05-30",
-    targetCount: 5,
-    paidCount: 14,
-    unpaidCount: 11,
-    exemptCount: 0,
-    collectionRate: 56,
-    payments: [],
-  },
-];
+export const fees: AdminFeeListItem[] = [];
 
-export const feePayments: Record<string, Record<string, FeePaymentStatus>> = {
-  "fee-2026-05": {
-    "member-01": "paid",
-    "member-02": "paid",
-    "member-03": "unpaid",
-    "member-04": "paid",
-    "member-05": "unpaid",
-  },
-  "fee-event-01": {
-    "member-01": "paid",
-    "member-02": "paid",
-    "member-03": "unpaid",
-    "member-04": "unpaid",
-    "member-05": "unpaid",
-  },
-};
+export const feePayments: Record<string, Record<string, FeePaymentStatus>> = {};
 
-export const events: AdminEventListItem[] = [
-  {
-    id: "event-01",
-    title: "목요 야간 러닝",
-    startsAt: "2026-05-21T20:00:00+09:00",
-    locationName: "여의도 한강공원",
-    locationAddress: "서울 영등포구 여의동로 330",
-    responseDeadline: "2026-05-21T18:00:00+09:00",
-    visibility: "all_members",
-    attendingCount: 18,
-    notAttendingCount: 5,
-    presentCount: 16,
-    lateCount: 2,
-    absentCount: 3,
-    attendanceRate: 86,
-    attendanceConversionRate: 100,
-    participants: [],
-  },
-  {
-    id: "event-02",
-    title: "주말 장거리 훈련",
-    startsAt: "2026-05-24T07:30:00+09:00",
-    locationName: "서울숲",
-    locationAddress: "서울 성동구 뚝섬로 273",
-    responseDeadline: "2026-05-23T22:00:00+09:00",
-    visibility: "all_members",
-    attendingCount: 14,
-    notAttendingCount: 4,
-    presentCount: 0,
-    lateCount: 0,
-    absentCount: 0,
-    attendanceRate: 0,
-    attendanceConversionRate: 0,
-    participants: [],
-  },
-];
+export const events: AdminEventListItem[] = [];
 
-export const eventResponses: Record<string, Record<string, EventResponseValue>> = {
-  "event-01": {
-    "member-01": "attending",
-    "member-02": "attending",
-    "member-03": "not_attending",
-    "member-04": "attending",
-    "member-05": "not_attending",
-  },
-  "event-02": {
-    "member-01": "attending",
-    "member-02": "attending",
-    "member-03": "attending",
-    "member-04": "not_attending",
-    "member-05": "not_attending",
-  },
-};
+export const eventResponses: Record<string, Record<string, EventResponseValue>> = {};
 
-export const eventAttendance: Record<string, Record<string, { status: AttendanceStatus; companionCount: number }>> = {
-  "event-01": {
-    "member-01": { status: "present", companionCount: 0 },
-    "member-02": { status: "late", companionCount: 1 },
-    "member-03": { status: "absent", companionCount: 0 },
-    "member-04": { status: "present", companionCount: 0 },
-    "member-05": { status: "absent", companionCount: 0 },
-  },
-  "event-02": {},
-};
+export const eventAttendance: Record<string, Record<string, { status: AttendanceStatus; companionCount: number }>> = {};
 
-export const notices: AdminNoticeListItem[] = [
-  {
-    id: "notice-01",
-    title: "5월 회비 납부 안내",
-    body: "5월 월회비 납부일은 5월 25일입니다. 미납자는 운영진에게 입금 확인을 요청해주세요.",
-    visibility: "all_members",
-    createdAt: "2026-05-18T09:00:00+09:00",
-    readCount: 21,
-    unreadCount: 4,
-    likeCount: 9,
-    commentCount: 3,
-    readers: [],
-    comments: [],
-  },
-  {
-    id: "notice-02",
-    title: "운영진 회의 안건",
-    body: "신규 회원 승인 기준과 6월 훈련 장소 후보를 논의합니다.",
-    visibility: "operators_only",
-    createdAt: "2026-05-19T21:30:00+09:00",
-    readCount: 2,
-    unreadCount: 1,
-    likeCount: 1,
-    commentCount: 2,
-    readers: [],
-    comments: [],
-  },
-];
+export const notices: AdminNoticeListItem[] = [];
 
-export const noticeReads: Record<string, Set<string>> = {
-  "notice-01": new Set(["member-01", "member-02", "member-04"]),
-  "notice-02": new Set(["member-01", "member-02"]),
-};
+export const noticeReads: Record<string, Set<string>> = {};
 
-export const noticeLikes: Record<string, Set<string>> = {
-  "notice-01": new Set(["member-01", "member-02"]),
-  "notice-02": new Set(["member-01"]),
-};
+export const noticeLikes: Record<string, Set<string>> = {};
 
-export const noticeComments: Record<string, AdminNoticeCommentListItem[]> = {
-  "notice-01": [
-    {
-      id: "comment-01",
-      memberName: "이서연",
-      body: "입금 확인했습니다.",
-      createdAt: "2026-05-18T10:20:00+09:00",
-    },
-  ],
-  "notice-02": [
-    {
-      id: "comment-02",
-      memberName: "김민준",
-      body: "장소 후보를 두 군데로 좁혀보겠습니다.",
-      createdAt: "2026-05-19T22:00:00+09:00",
-    },
-  ],
-};
+export const noticeComments: Record<string, AdminNoticeCommentListItem[]> = {};
 
-export const joinRequests: AdminJoinRequestListItem[] = [
-  {
-    id: "join-01",
-    applicantName: "한지우",
-    applicantPhone: "010-5555-1001",
-    greeting: "러닝을 꾸준히 해보고 싶어 가입 신청합니다.",
-    status: "pending",
-    createdAt: "2026-05-20T19:30:00+09:00",
-  },
-  {
-    id: "join-02",
-    applicantName: "오서준",
-    applicantPhone: "010-5555-1002",
-    greeting: "친구 추천으로 신청합니다.",
-    status: "pending",
-    createdAt: "2026-05-20T21:10:00+09:00",
-  },
-];
+export const joinRequests: AdminJoinRequestListItem[] = [];
 
-export const inviteLinks: AdminInviteLinkListItem[] = [
-  {
-    id: "invite-01",
-    token: "CREWITH-RUN-30",
-    expiresAt: "2026-06-19",
-    disabled: false,
-    createdAt: "2026-05-20T20:00:00+09:00",
-  },
-];
+export const inviteLinks: AdminInviteLinkListItem[] = [];
 
 export const notificationLogs: AdminNotificationLogItem[] = [];
 export const memberNotifications: MemberNotificationItem[] = [];
