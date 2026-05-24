@@ -13,8 +13,7 @@ import {
 } from "@nestjs/common";
 import {
   type AcceptInviteInput,
-  type AuthOtpRequestInput,
-  type AuthOtpVerifyInput,
+  type AuthLoginInput,
   type CreateAdminEventInput,
   type CreateAdminFeeInput,
   type CreateAdminMemberInput,
@@ -25,6 +24,7 @@ import {
   type FeePaymentStatus,
   type ImportAdminMembersInput,
   type RegisterDeviceInput,
+  type ResetMemberPasswordInput,
   type ReviewJoinRequestInput,
   type SendReminderInput,
   type ToggleAdminNoticeReactionInput,
@@ -73,15 +73,11 @@ export class AppController {
     return { data: this.repository.getAdminOverview(clubId) };
   }
 
-  @Post("auth/otp/request")
-  requestOtp(@Body() input: AuthOtpRequestInput) {
-    return this.repository.requestOtp(input);
+  @Post("auth/login")
+  login(@Body() input: AuthLoginInput) {
+    return { data: this.repository.login(input) };
   }
 
-  @Post("auth/otp/verify")
-  verifyOtp(@Body() input: AuthOtpVerifyInput) {
-    return { data: this.repository.verifyOtp(input) };
-  }
 
   @Post("me/devices")
   registerDevice(@Body() input: RegisterDeviceInput) {
@@ -317,6 +313,16 @@ export class AppController {
   ) {
     assertOperatorRole(role);
     return { data: this.repository.updateMemberFeeStatus(clubId, memberId, status) };
+  }
+
+  @Patch("clubs/:clubId/members/:memberId/password")
+  resetMemberPassword(
+    @Param("memberId") memberId: string,
+    @Body() input: ResetMemberPasswordInput,
+    @Headers("x-crewith-role") role: string | undefined,
+  ) {
+    assertOperatorRole(role);
+    return { data: this.repository.resetMemberPassword(memberId, input) };
   }
 
   @Delete("clubs/:clubId/members/:memberId")
