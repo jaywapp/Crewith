@@ -29,7 +29,9 @@ void main() {
 }
 
 class CrewithApp extends StatelessWidget {
-  const CrewithApp({super.key});
+  const CrewithApp({super.key, this.api});
+
+  final MemberApiClient? api;
 
   @override
   Widget build(BuildContext context) {
@@ -64,13 +66,16 @@ class CrewithApp extends StatelessWidget {
           indicatorColor: greenLight,
         ),
       ),
-      home: const HomeShell(),
+      home: HomeShell(api: api),
     );
   }
 }
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key});
+  HomeShell({super.key, MemberApiClient? api})
+      : _api = api ?? const MemberApiClient();
+
+  final MemberApiClient _api;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -82,7 +87,7 @@ class _HomeShellState extends State<HomeShell> {
   String _activeMemberId = _defaultMemberId;
   String _activeClubId = _defaultClubId;
   List<ClubSummary> _clubs = _defaultClubs;
-  final _api = const MemberApiClient();
+  MemberApiClient get _api => widget._api;
   late Future<MemberAppOverview> _overviewFuture;
   late Future<List<MemberDirectoryItem>> _memberDirectoryFuture;
   late Future<List<MemberNotification>> _notificationsFuture;
@@ -90,19 +95,21 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
-    _overviewFuture = _fetchOverview();
-    _memberDirectoryFuture = _fetchMemberDirectory();
-    _notificationsFuture = _fetchNotifications();
+    _overviewFuture = Future.value(MemberAppOverview.seed());
+    _memberDirectoryFuture = Future.value(MemberDirectoryItem.seedItems);
+    _notificationsFuture = Future.value(const []);
   }
 
-  Future<MemberAppOverview> _fetchOverview([String? memberId]) {
+  Future<MemberAppOverview> _fetchOverview([String? memberId]) async {
+    await WidgetsBinding.instance.endOfFrame;
     return _api.fetchOverview(
       clubId: _activeClubId,
       memberId: memberId ?? _activeMemberId,
     );
   }
 
-  Future<List<MemberDirectoryItem>> _fetchMemberDirectory([String? memberId]) {
+  Future<List<MemberDirectoryItem>> _fetchMemberDirectory([String? memberId]) async {
+    await WidgetsBinding.instance.endOfFrame;
     return _api.fetchMemberDirectory(
       clubId: _activeClubId,
       memberId: memberId ?? _activeMemberId,
@@ -145,9 +152,11 @@ class _HomeShellState extends State<HomeShell> {
     setState(() {
       _activeMemberId = _defaultMemberId;
       _isAuthenticated = true;
-      _overviewFuture = _fetchOverview(_defaultMemberId);
-      _memberDirectoryFuture = _fetchMemberDirectory(_defaultMemberId);
-      _notificationsFuture = _fetchNotifications(_defaultMemberId);
+      // Use seed data for the immediate UI transition; real data is fetched
+      // after verifyOtp() completes to avoid creating futures that get replaced.
+      _overviewFuture = Future.value(MemberAppOverview.seed());
+      _memberDirectoryFuture = Future.value(MemberDirectoryItem.seedItems);
+      _notificationsFuture = Future.value(const []);
     });
 
     final session = await _api.verifyOtp(phoneNumber, code);
@@ -188,7 +197,7 @@ class _HomeShellState extends State<HomeShell> {
 
     _replaceOverview((value) => value.updateMemberName(name.trim()));
     _refreshOverview();
-    return saved ? '프로필을 저장했습니다.' : '로컬 미리보기 프로필을 저장했습니다.';
+    return saved ? '프로필을 저장했습니다.' : '저장에 실패했습니다. 다시 시도하세요.';
   }
 
   Future<String?> _updateEventResponse(String eventId, String response) async {
@@ -206,7 +215,7 @@ class _HomeShellState extends State<HomeShell> {
       return '참석 의사를 저장했습니다.';
     }
 
-    return '오프라인 미리보기로 반영했습니다.';
+    return '연결 실패. 다시 시도하세요.';
   }
 
   Future<String?> _markNoticeRead(String noticeId) async {
@@ -223,7 +232,7 @@ class _HomeShellState extends State<HomeShell> {
       return '공지 확인 상태를 저장했습니다.';
     }
 
-    return '오프라인 미리보기로 확인 처리했습니다.';
+    return '연결 실패. 다시 시도하세요.';
   }
 
   Future<String?> _toggleNoticeReaction(String noticeId) async {
@@ -240,7 +249,7 @@ class _HomeShellState extends State<HomeShell> {
       return '좋아요를 저장했습니다.';
     }
 
-    return '오프라인 미리보기로 좋아요를 반영했습니다.';
+    return '연결 실패. 다시 시도하세요.';
   }
 
   Future<String?> _createNoticeComment(String noticeId, String body) async {
@@ -268,7 +277,7 @@ class _HomeShellState extends State<HomeShell> {
       return '댓글을 등록했습니다.';
     }
 
-    return '오프라인 미리보기로 댓글을 반영했습니다.';
+    return '연결 실패. 다시 시도하세요.';
   }
 
   Future<String?> _markNotificationRead(String notificationId) async {
@@ -294,7 +303,7 @@ class _HomeShellState extends State<HomeShell> {
       return '알림을 읽음 처리했습니다.';
     }
 
-    return '오프라인 미리보기로 읽음 처리했습니다.';
+    return '연결 실패. 다시 시도하세요.';
   }
 
   Future<String> _createJoinRequest(
@@ -397,6 +406,24 @@ class _HomeShellState extends State<HomeShell> {
     return FutureBuilder<MemberAppOverview>(
       future: _overviewFuture,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('연결에 실패했습니다.'),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: _refreshOverview,
+                    child: const Text('다시 시도'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         final overview = snapshot.data ?? MemberAppOverview.seed();
         final activeClub = _clubs.firstWhere(
           (club) => club.clubId == _activeClubId,
@@ -423,9 +450,11 @@ class _HomeShellState extends State<HomeShell> {
           FutureBuilder<List<MemberDirectoryItem>>(
             future: _memberDirectoryFuture,
             builder: (context, directorySnapshot) {
+              if (directorySnapshot.hasError) {
+                return const Center(child: Text('구성원 정보를 불러오지 못했습니다.'));
+              }
               return MembersPage(
-                members:
-                    directorySnapshot.data ?? MemberDirectoryItem.seedItems,
+                members: directorySnapshot.data ?? const [],
               );
             },
           ),
@@ -451,7 +480,9 @@ class _HomeShellState extends State<HomeShell> {
         ];
 
         return Scaffold(
-          body: SafeArea(child: pages[_index]),
+          body: SafeArea(
+            child: IndexedStack(index: _index, children: pages),
+          ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _index,
             onDestinationSelected: (value) => setState(() => _index = value),

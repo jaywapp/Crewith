@@ -25,17 +25,15 @@ class MemberApiClient {
     try {
       final request = await client.getUrl(uri);
       final response =
-          await request.close().timeout(const Duration(seconds: 3));
+          await request.close().timeout(const Duration(seconds: 15));
 
       if (response.statusCode != HttpStatus.ok) {
-        return MemberAppOverview.seed();
+        throw Exception('HTTP ${response.statusCode}');
       }
 
       final payload = await response.transform(utf8.decoder).join();
       final json = jsonDecode(payload) as Map<String, dynamic>;
       return MemberAppOverview.fromJson(json['data'] as Map<String, dynamic>);
-    } catch (_) {
-      return MemberAppOverview.seed();
     } finally {
       client.close(force: true);
     }
@@ -58,7 +56,7 @@ class MemberApiClient {
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode({'phoneNumber': phoneNumber, 'code': code}));
       final response =
-          await request.close().timeout(const Duration(seconds: 3));
+          await request.close().timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final payload = await response.transform(utf8.decoder).join();
@@ -115,7 +113,7 @@ class MemberApiClient {
     try {
       final request = await client.getUrl(uri);
       final response =
-          await request.close().timeout(const Duration(seconds: 3));
+          await request.close().timeout(const Duration(seconds: 15));
 
       if (response.statusCode != HttpStatus.ok) {
         return const [];
@@ -145,10 +143,10 @@ class MemberApiClient {
     try {
       final request = await client.getUrl(uri);
       final response =
-          await request.close().timeout(const Duration(seconds: 3));
+          await request.close().timeout(const Duration(seconds: 15));
 
       if (response.statusCode != HttpStatus.ok) {
-        return MemberDirectoryItem.seedItems;
+        throw Exception('HTTP ${response.statusCode}');
       }
 
       final payload = await response.transform(utf8.decoder).join();
@@ -157,8 +155,6 @@ class MemberApiClient {
           .map((item) =>
               MemberDirectoryItem.fromJson(item as Map<String, dynamic>))
           .toList();
-    } catch (_) {
-      return MemberDirectoryItem.seedItems;
     } finally {
       client.close(force: true);
     }
@@ -284,7 +280,7 @@ class MemberApiClient {
   }
 
   HttpClient _client() {
-    return HttpClient()..connectionTimeout = const Duration(seconds: 2);
+    return HttpClient()..connectionTimeout = const Duration(seconds: 10);
   }
 
   Future<bool> _sendJson(
@@ -303,7 +299,7 @@ class MemberApiClient {
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(body));
       final response =
-          await request.close().timeout(const Duration(seconds: 3));
+          await request.close().timeout(const Duration(seconds: 15));
 
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
