@@ -136,26 +136,12 @@ class _HomeShellState extends State<HomeShell> {
     });
   }
 
-  Future<String?> _requestOtp(String phoneNumber) async {
-    if (phoneNumber.trim().isEmpty) {
-      return '휴대폰 번호를 입력하세요.';
-    }
-
-    final requested = await _api.requestOtp(phoneNumber);
-    return requested
-        ? '인증번호가 발송되었습니다.'
-        : '인증번호 요청에 실패했습니다. 잠시 후 다시 시도하세요.';
-  }
-
-  Future<bool> _verifyOtp(String phoneNumber, String code) async {
-    final session = await _api.verifyOtp(phoneNumber, code);
-
-    if (session == null || !mounted) {
-      return false;
-    }
+  Future<bool> _login(String phoneNumber, String password) async {
+    final session = await _api.login(phoneNumber, password);
+    if (session == null || !mounted) return false;
 
     final nextClubs = session.clubs.isEmpty ? _defaultClubs : session.clubs;
-    final nextClubId = nextClubs.any((club) => club.clubId == _activeClubId)
+    final nextClubId = nextClubs.any((c) => c.clubId == _activeClubId)
         ? _activeClubId
         : nextClubs.first.clubId;
 
@@ -390,10 +376,7 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     if (!_isAuthenticated) {
-      return AuthPage(
-        onOtpRequested: _requestOtp,
-        onVerified: _verifyOtp,
-      );
+      return AuthPage(onLogin: _login);
     }
 
     return FutureBuilder<MemberAppOverview>(
