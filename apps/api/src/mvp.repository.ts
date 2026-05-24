@@ -13,8 +13,8 @@ import {
   type AdminNotificationLogItem,
   type MemberNotificationItem,
   type MemberDirectoryItem,
-  type AuthOtpRequestInput,
-  type AuthOtpVerifyInput,
+  type AuthLoginInput,
+  type ResetMemberPasswordInput,
   type CreateAdminEventInput,
   type CreateAdminFeeInput,
   type CreateAdminMemberInput,
@@ -94,7 +94,6 @@ import {
   noticeReads,
   notices,
   notificationLogs,
-  otpCodes,
   persistStore,
   profileImages,
   registerMemberDevice,
@@ -109,11 +108,8 @@ function cleanNonNegativeIntegerList(values: unknown[]) {
 
 export abstract class MvpRepository {
   abstract getAdminOverview(clubId: string): ReturnType<typeof buildOverview>;
-  abstract requestOtp(input: AuthOtpRequestInput): {
-    data: { phoneNumber: string; code: string; expiresAt: string };
-    meta: { mode: "development" };
-  };
-  abstract verifyOtp(input: AuthOtpVerifyInput): unknown;
+  abstract login(input: AuthLoginInput): unknown;
+  abstract resetMemberPassword(memberId: string, input: ResetMemberPasswordInput): unknown;
   abstract registerDevice(input: RegisterDeviceInput): ReturnType<typeof registerMemberDevice>;
   abstract getMemberProfile(memberId: string): ReturnType<typeof buildProfile>;
   abstract updateMemberProfile(memberId: string, input: UpdateMemberProfileInput): ReturnType<typeof buildProfile>;
@@ -173,59 +169,36 @@ export class JsonMvpRepository implements MvpRepository {
     return buildOverview(clubId);
   }
 
-  requestOtp(input: AuthOtpRequestInput) {
+  login(input: AuthLoginInput) {
     const phoneNumber = normalizePhoneNumber(input.phoneNumber ?? "");
+    const password = `${input.password ?? ""}`.trim();
 
-    if (!phoneNumber) {
-      throw new BadRequestException("Phone number is required");
-    }
-
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    otpCodes.set(phoneNumber, { code, expiresAt });
-
-    return {
-      data: {
-        phoneNumber,
-        code,
-        expiresAt,
-      },
-      meta: {
-        mode: "development" as const,
-      },
-    };
-  }
-
-  verifyOtp(input: AuthOtpVerifyInput) {
-    const phoneNumber = normalizePhoneNumber(input.phoneNumber ?? "");
-    const code = `${input.code ?? ""}`.trim();
-    const otp = otpCodes.get(phoneNumber);
-
-    const phoneCode = phoneNumber.replace(/\D/g, "").slice(-6);
-    const otpValid = !!otp && otp.code === code && Date.parse(otp.expiresAt) >= Date.now();
-    const phoneCodeValid = phoneCode.length === 6 && code === phoneCode;
-
-    if (!otpValid && !phoneCodeValid) {
-      throw new BadRequestException("Invalid or expired OTP code");
-    }
-
-    otpCodes.delete(phoneNumber);
-
-    let member = members.find(
-      (item) => normalizePhoneNumber(item.phoneNumber) === phoneNumber && item.memberStatus !== "removed",
+    const member = members.find(
+      (m) => normalizePhoneNumber(m.phoneNumber) === phoneNumber && m.memberStatus !== "removed",
     );
 
-    if (!member) {
-      member = createMemberFromProfile(`회원 ${phoneNumber.slice(-4)}`, phoneNumber);
-      persistStore();
+    if (!member || member.password !== password) {
+      throw new BadRequestException("전화번호 또는 비밀번호가 올바르지 않습니다.");
     }
 
     return {
-      token: `dev-token-${member.id}`,
       memberId: member.id,
       profile: buildProfile(member),
       clubs: clubMembershipSummaries(member.id),
     };
+  }
+
+  resetMemberPassword(memberId: string, input: ResetMemberPasswordInput) {
+    const member = findMember(memberId);
+    const newPassword = `${input.password ?? ""}`.trim();
+
+    if (!newPassword) {
+      throw new BadRequestException("비밀번호를 입력하세요.");
+    }
+
+    member.password = newPassword;
+    persistStore();
+    return { memberId: member.id };
   }
 
   registerDevice(input: RegisterDeviceInput) {
@@ -545,6 +518,7 @@ export class JsonMvpRepository implements MvpRepository {
       throw new NotFoundException("Invite link expired");
     }
 
+    const phoneDigits = input.applicantPhone.trim().replace(/\D/g, "");
     const member: AdminMemberListItem = {
       id: `member-${Date.now()}`,
       name: input.applicantName.trim(),
@@ -554,6 +528,7 @@ export class JsonMvpRepository implements MvpRepository {
       joinedAt: new Date().toISOString().slice(0, 10),
       lastFeeStatus: "unpaid",
       attendanceRate: 0,
+      password: phoneDigits.slice(-4),
     };
 
     members.push(member);
@@ -571,6 +546,7 @@ export class JsonMvpRepository implements MvpRepository {
 
   createMember(clubId: string, input: CreateAdminMemberInput) {
     ensureClub(clubId);
+    const phoneDigits = input.phoneNumber.trim().replace(/\D/g, "");
     const nextMember: AdminMemberListItem = {
       id: `member-${Date.now()}`,
       name: input.name.trim(),
@@ -580,6 +556,7 @@ export class JsonMvpRepository implements MvpRepository {
       joinedAt: new Date().toISOString().slice(0, 10),
       lastFeeStatus: "unpaid",
       attendanceRate: 0,
+      password: input.password?.trim() || phoneDigits.slice(-4),
     };
 
     members.push(nextMember);
@@ -608,7 +585,7 @@ export class JsonMvpRepository implements MvpRepository {
     for (const [index, row] of rows.entries()) {
       const rowNumber = index + 1;
       const columns = row.split(/\t|,/).map((column) => column.trim());
-      const [name, phoneNumber, roleValue] = columns;
+      const [name, phoneNumber, roleValue, passwordValue] = columns;
 
       if (!name || !phoneNumber) {
         errors.push({ row: rowNumber, reason: "Name and phone number are required", value: row });
@@ -630,6 +607,7 @@ export class JsonMvpRepository implements MvpRepository {
         name,
         phoneNumber: normalizedPhoneNumber,
         role,
+        password: passwordValue?.trim() || undefined,
       });
       importedMembers.push(member);
     }
@@ -672,6 +650,10 @@ export class JsonMvpRepository implements MvpRepository {
     if (isFeePaymentStatus(input.lastFeeStatus)) {
       member.lastFeeStatus = input.lastFeeStatus;
       feePayments[fees[0].id][member.id] = input.lastFeeStatus;
+    }
+
+    if (typeof input.password === "string" && input.password.trim()) {
+      member.password = input.password.trim();
     }
 
     persistStore();
