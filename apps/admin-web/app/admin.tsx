@@ -165,6 +165,7 @@ export async function createMemberAction(formData: FormData) {
       name: formData.get("name"),
       phoneNumber: formData.get("phoneNumber"),
       role: formData.get("role"),
+      password: formData.get("password") || undefined,
     }),
   });
 
@@ -198,6 +199,19 @@ export async function updateMemberAction(memberId: string, formData: FormData) {
       memberStatus: formData.get("memberStatus"),
       lastFeeStatus: formData.get("lastFeeStatus"),
     }),
+  });
+
+  revalidateAdmin();
+}
+
+export async function resetMemberPasswordAction(memberId: string, formData: FormData) {
+  "use server";
+
+  const clubId = await getActiveClubId();
+  await fetch(`${apiBaseUrl}/clubs/${clubId}/members/${memberId}/password`, {
+    method: "PATCH",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ password: formData.get("password") }),
   });
 
   revalidateAdmin();

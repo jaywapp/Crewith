@@ -9,6 +9,7 @@ import {
   importMembersAction,
   memberStatusLabels,
   removeMemberAction,
+  resetMemberPasswordAction,
   roleLabels,
   updateMemberAction,
 } from "../admin";
@@ -46,6 +47,14 @@ export default async function MembersPage() {
               <option value="owner">모임장</option>
             </select>
           </label>
+          <label>
+            초기 비밀번호
+            <input
+              name="password"
+              type="text"
+              placeholder="미입력 시 전화번호 뒤 4자리"
+            />
+          </label>
           <button className="primary" type="submit">
             회원 추가
           </button>
@@ -80,56 +89,64 @@ export default async function MembersPage() {
         </div>
         <div className="memberRows">
           {overview.members.map((member) => (
-            <form action={updateMemberAction.bind(null, member.id)} className="memberRow" key={member.id}>
-              <div className="memberIdentity">
-                <strong>{member.name}</strong>
-                <span>
-                  {member.phoneNumber} · 가입 {member.joinedAt}
-                </span>
-                {member.personalDataDeleteAt ? (
-                  <span className="retentionNotice">개인정보 삭제 예정 {formatDate(member.personalDataDeleteAt)}</span>
-                ) : null}
-              </div>
-              <label>
-                역할
-                <select name="role" defaultValue={member.role}>
-                  {Object.entries(roleLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                상태
-                <select name="memberStatus" defaultValue={member.memberStatus}>
-                  {Object.entries(memberStatusLabels)
-                    .filter(([value]) => value !== "removed")
-                    .map(([value, label]) => (
+            <div key={member.id}>
+              <form action={updateMemberAction.bind(null, member.id)} className="memberRow">
+                <div className="memberIdentity">
+                  <strong>{member.name}</strong>
+                  <span>
+                    {member.phoneNumber} · 가입 {member.joinedAt}
+                  </span>
+                  {member.personalDataDeleteAt ? (
+                    <span className="retentionNotice">개인정보 삭제 예정 {formatDate(member.personalDataDeleteAt)}</span>
+                  ) : null}
+                </div>
+                <label>
+                  역할
+                  <select name="role" defaultValue={member.role}>
+                    {Object.entries(roleLabels).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
                       </option>
                     ))}
-                </select>
-              </label>
-              <label>
-                회비
-                <select name="lastFeeStatus" defaultValue={member.lastFeeStatus}>
-                  {Object.entries(feeStatusLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <span className={`status ${member.lastFeeStatus}`}>{feeStatusLabels[member.lastFeeStatus]}</span>
-              <button className="secondary compact" type="submit">
-                저장
-              </button>
-              <button className="danger compact" formAction={removeMemberAction.bind(null, member.id)}>
-                삭제
-              </button>
-            </form>
+                  </select>
+                </label>
+                <label>
+                  상태
+                  <select name="memberStatus" defaultValue={member.memberStatus}>
+                    {Object.entries(memberStatusLabels)
+                      .filter(([value]) => value !== "removed")
+                      .map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label>
+                  회비
+                  <select name="lastFeeStatus" defaultValue={member.lastFeeStatus}>
+                    {Object.entries(feeStatusLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <span className={`status ${member.lastFeeStatus}`}>{feeStatusLabels[member.lastFeeStatus]}</span>
+                <button className="secondary compact" type="submit">
+                  저장
+                </button>
+                <button className="danger compact" formAction={removeMemberAction.bind(null, member.id)}>
+                  삭제
+                </button>
+              </form>
+              <form action={resetMemberPasswordAction.bind(null, member.id)} className="memberPasswordResetRow">
+                <input name="password" type="text" placeholder="새 비밀번호" required />
+                <button className="secondary compact" type="submit">
+                  비밀번호 재설정
+                </button>
+              </form>
+            </div>
           ))}
         </div>
       </article>
