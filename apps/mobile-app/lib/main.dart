@@ -5,6 +5,7 @@ import 'member_models.dart';
 import 'member_ui.dart';
 import 'screens/auth_page.dart';
 import 'screens/events_page.dart';
+import 'screens/splash_screen.dart';
 import 'screens/fees_page.dart';
 import 'screens/home_page.dart';
 import 'screens/members_page.dart';
@@ -66,7 +67,7 @@ class CrewithApp extends StatelessWidget {
           indicatorColor: greenLight,
         ),
       ),
-      home: HomeShell(api: api),
+      home: SplashScreen(onComplete: (_) => HomeShell(api: api)),
     );
   }
 }
