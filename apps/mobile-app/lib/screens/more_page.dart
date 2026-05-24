@@ -277,6 +277,7 @@ class _MorePageState extends State<MorePage> {
                       ? null
                       : () async {
                           setState(() => _feedbackSaving = true);
+                          final messenger = ScaffoldMessenger.of(context);
                           final message = await widget.onFeedbackSubmitted(
                             title: _feedbackTitleController.text,
                             body: _feedbackBodyController.text,
@@ -285,10 +286,10 @@ class _MorePageState extends State<MorePage> {
                           if (!mounted) return;
                           _feedbackTitleController.clear();
                           _feedbackBodyController.clear();
-                          setState(() {
-                            _resultMessage = message;
-                            _feedbackSaving = false;
-                          });
+                          messenger.showSnackBar(
+                            SnackBar(content: Text(message)),
+                          );
+                          setState(() => _feedbackSaving = false);
                         },
                   child: const Text('📨 피드백 보내기'),
                 ),
