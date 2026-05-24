@@ -93,6 +93,7 @@ export interface AdminMemberListItem {
   personalDataDeleteAt?: string;
   lastFeeStatus: FeePaymentStatus;
   attendanceRate: number;
+  password: string;
 }
 
 export interface ClubPrivacySettingsItem {
@@ -270,13 +271,13 @@ export interface MemberProfile {
   profileImageUrl?: string;
 }
 
-export interface AuthOtpRequestInput {
+export interface AuthLoginInput {
   phoneNumber: string;
+  password: string;
 }
 
-export interface AuthOtpVerifyInput {
-  phoneNumber: string;
-  code: string;
+export interface ResetMemberPasswordInput {
+  password: string;
 }
 
 export interface UpdateMemberProfileInput {
@@ -364,6 +365,7 @@ export interface CreateAdminMemberInput {
   name: string;
   phoneNumber: string;
   role?: ClubRole;
+  password?: string;
 }
 
 export interface ImportAdminMembersInput {
@@ -387,6 +389,7 @@ export interface UpdateAdminMemberInput {
   role?: ClubRole;
   memberStatus?: MemberStatus;
   lastFeeStatus?: FeePaymentStatus;
+  password?: string;
 }
 
 export interface CreateAdminFeeInput {
@@ -611,7 +614,6 @@ export const inviteLinks: AdminInviteLinkListItem[] = [];
 export const notificationLogs: AdminNotificationLogItem[] = [];
 export const memberNotifications: MemberNotificationItem[] = [];
 export const memberDevices: MemberDeviceItem[] = [];
-export const otpCodes = new Map<string, { code: string; expiresAt: string }>();
 export const profileImages = new Map<string, string>();
 export const dataFilePath = process.env.CREWITH_DATA_FILE ?? join(process.cwd(), "data", "mvp-store.json");
 
@@ -691,6 +693,12 @@ export function hydrateStore() {
     const store = JSON.parse(readFileSync(dataFilePath, "utf8")) as Partial<MvpStore>;
 
     replaceArray(members, store.members);
+    for (const member of members) {
+      if (!member.password) {
+        const digits = member.phoneNumber.replace(/\D/g, "");
+        member.password = digits.slice(-4);
+      }
+    }
     replaceArray(clubMemberships, store.clubMemberships);
     replaceArray(memberDevices, store.memberDevices);
     replaceRecord(feeSettings, store.feeSettings);
@@ -765,6 +773,7 @@ export function initializeMemberState(member: AdminMemberListItem) {
 }
 
 export function createMemberFromProfile(name: string, phoneNumber: string): AdminMemberListItem {
+  const phoneDigits = phoneNumber.replace(/\D/g, "");
   const nextMember: AdminMemberListItem = {
     id: `member-${Date.now()}`,
     name,
@@ -774,6 +783,7 @@ export function createMemberFromProfile(name: string, phoneNumber: string): Admi
     joinedAt: new Date().toISOString().slice(0, 10),
     lastFeeStatus: "unpaid",
     attendanceRate: 0,
+    password: phoneDigits.slice(-4),
   };
 
   members.push(nextMember);
