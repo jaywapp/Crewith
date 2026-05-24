@@ -39,37 +39,23 @@ class MemberApiClient {
     }
   }
 
-  Future<bool> requestOtp(String phoneNumber) async {
-    return _sendJson(
-      'POST',
-      Uri.parse('$apiBaseUrl/auth/otp/request'),
-      {'phoneNumber': phoneNumber},
-    );
-  }
-
-  Future<AuthSession?> verifyOtp(String phoneNumber, String code) async {
+  Future<AuthSession?> login(String phoneNumber, String password) async {
     final client = _client();
-
     try {
-      final request =
-          await client.postUrl(Uri.parse('$apiBaseUrl/auth/otp/verify'));
+      final request = await client.postUrl(Uri.parse('$apiBaseUrl/auth/login'));
       request.headers.contentType = ContentType.json;
-      request.write(jsonEncode({'phoneNumber': phoneNumber, 'code': code}));
-      final response =
-          await request.close().timeout(const Duration(seconds: 15));
-
+      request.write(jsonEncode({'phoneNumber': phoneNumber, 'password': password}));
+      final response = await request.close().timeout(const Duration(seconds: 15));
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final payload = await response.transform(utf8.decoder).join();
         final json = jsonDecode(payload) as Map<String, dynamic>;
-        final data = json['data'] as Map<String, dynamic>;
-        return AuthSession.fromJson(data);
+        return AuthSession.fromJson(json['data'] as Map<String, dynamic>);
       }
     } catch (_) {
       return null;
     } finally {
       client.close(force: true);
     }
-
     return null;
   }
 
