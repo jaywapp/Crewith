@@ -4,7 +4,7 @@ import type {
   ClubRole,
   FeeStatus,
   MemberStatus,
-} from "@crewith/shared-types";
+} from "../lib/shared-types";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import Link from "next/link";
