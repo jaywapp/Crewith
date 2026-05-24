@@ -13,6 +13,7 @@ class MorePage extends StatefulWidget {
     required this.onProfileSaved,
     required this.onJoinRequested,
     required this.onInviteAccepted,
+    required this.onFeedbackSubmitted,
   });
 
   final MemberAppOverview overview;
@@ -28,6 +29,11 @@ class MorePage extends StatefulWidget {
   ) onJoinRequested;
   final Future<String> Function(String token, String name, String phoneNumber)
       onInviteAccepted;
+  final Future<String> Function({
+    required String title,
+    required String body,
+    required String category,
+  }) onFeedbackSubmitted;
 
   @override
   State<MorePage> createState() => _MorePageState();
@@ -42,10 +48,14 @@ class _MorePageState extends State<MorePage> {
   final _inviteNameController = TextEditingController();
   final _invitePhoneController = TextEditingController();
   final _inviteCodeController = TextEditingController(text: 'CREWITH-RUN-30');
+  final _feedbackTitleController = TextEditingController();
+  final _feedbackBodyController = TextEditingController();
+  String _feedbackCategory = 'bug';
   String? _resultMessage;
   bool _profileSaving = false;
   bool _joinSaving = false;
   bool _inviteSaving = false;
+  bool _feedbackSaving = false;
 
   @override
   void initState() {
@@ -64,6 +74,8 @@ class _MorePageState extends State<MorePage> {
     _inviteNameController.dispose();
     _invitePhoneController.dispose();
     _inviteCodeController.dispose();
+    _feedbackTitleController.dispose();
+    _feedbackBodyController.dispose();
     super.dispose();
   }
 
@@ -215,6 +227,71 @@ class _MorePageState extends State<MorePage> {
                         });
                       },
                 child: const Text('초대 코드 확인'),
+              ),
+            ],
+          ),
+        ),
+        InfoCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const CardHeader(label: '💬 피드백', title: '✉️ 개발팀에 의견 보내기'),
+              TextInput(
+                controller: _feedbackTitleController,
+                label: '제목',
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: TextField(
+                  controller: _feedbackBodyController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: '내용',
+                  ),
+                ),
+              ),
+              DropdownButtonFormField<String>(
+                value: _feedbackCategory,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: '유형',
+                  isDense: true,
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'bug', child: Text('버그 신고')),
+                  DropdownMenuItem(value: 'improvement', child: Text('개선 제안')),
+                  DropdownMenuItem(value: 'other', child: Text('기타')),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _feedbackCategory = value);
+                },
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  onPressed: _feedbackSaving
+                      ? null
+                      : () async {
+                          setState(() => _feedbackSaving = true);
+                          final message = await widget.onFeedbackSubmitted(
+                            title: _feedbackTitleController.text,
+                            body: _feedbackBodyController.text,
+                            category: _feedbackCategory,
+                          );
+                          if (!mounted) return;
+                          _feedbackTitleController.clear();
+                          _feedbackBodyController.clear();
+                          setState(() {
+                            _resultMessage = message;
+                            _feedbackSaving = false;
+                          });
+                        },
+                  child: const Text('📨 피드백 보내기'),
+                ),
               ),
             ],
           ),

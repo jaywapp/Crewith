@@ -39,6 +39,7 @@ import {
   type UpdateAdminNoticeReadInput,
   type UpdateAdminNoticeInput,
   type UpdateMemberProfileInput,
+  type CreateFeedbackInput,
 } from "./mvp.store";
 import { MvpRepository } from "./mvp.repository";
 
@@ -474,6 +475,11 @@ export class AppController {
     @Body() input: ToggleAdminNoticeReactionInput,
   ) {
     return { data: this.repository.toggleNoticeReaction(clubId, noticeId, input) };
+  }
+
+  @Post("feedback")
+  createFeedback(@Body() input: CreateFeedbackInput) {
+    return this.repository.createFeedback(input);
   }
 
   @Post("clubs/:clubId/notices/:noticeId/comments")

@@ -231,6 +231,24 @@ class MemberApiClient {
     );
   }
 
+  Future<bool> submitFeedback({
+    required String title,
+    required String body,
+    required String category,
+    String? memberId,
+  }) {
+    return _sendJson(
+      'POST',
+      Uri.parse('$apiBaseUrl/feedback'),
+      {
+        'title': title,
+        'body': body,
+        'category': category,
+        if (memberId != null) 'memberId': memberId,
+      },
+    );
+  }
+
   Future<bool> createJoinRequest({
     required String clubId,
     required String name,

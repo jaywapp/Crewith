@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import {
   type AcceptInviteInput,
+  type CreateFeedbackInput,
+  type FeedbackResult,
   type AdminEventListItem,
   type AdminFeeListItem,
   type AdminInviteLinkListItem,
@@ -162,6 +164,7 @@ export abstract class MvpRepository {
   abstract markNoticeRead(clubId: string, noticeId: string, input: UpdateAdminNoticeReadInput): AdminNoticeListItem;
   abstract toggleNoticeReaction(clubId: string, noticeId: string, input: ToggleAdminNoticeReactionInput): AdminNoticeListItem;
   abstract createNoticeComment(clubId: string, noticeId: string, input: CreateAdminNoticeCommentInput): AdminNoticeListItem;
+  abstract createFeedback(input: CreateFeedbackInput): Promise<FeedbackResult>;
 }
 
 @Injectable()
@@ -958,5 +961,44 @@ export class JsonMvpRepository implements MvpRepository {
     noticeComments[noticeId].push(comment);
     persistStore();
     return buildNoticeItem(notice, clubId);
+  }
+
+  async createFeedback(input: CreateFeedbackInput): Promise<FeedbackResult> {
+    const token = process.env.GITHUB_TOKEN;
+    const repo = process.env.GITHUB_REPO ?? "jaywapp/Crewith";
+
+    if (!token) {
+      throw new BadRequestException("GitHub integration is not configured");
+    }
+
+    const categoryLabel = { bug: "버그", improvement: "개선 제안", other: "기타" }[input.category] ?? input.category;
+    const issueBody = [
+      `**카테고리**: ${categoryLabel}`,
+      "",
+      input.body,
+      ...(input.memberId ? ["", "---", `_제출자 ID: ${input.memberId}_`] : []),
+    ].join("\n");
+
+    const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
+      method: "POST",
+      headers: {
+        Authorization: `token ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/vnd.github.v3+json",
+      },
+      body: JSON.stringify({
+        title: `[피드백] ${input.title}`,
+        body: issueBody,
+        labels: ["feedback", "pending-ai"],
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new BadRequestException(`GitHub API ${res.status}: ${err}`);
+    }
+
+    const data = (await res.json()) as { number: number; html_url: string };
+    return { issueNumber: data.number, issueUrl: data.html_url };
   }
 }

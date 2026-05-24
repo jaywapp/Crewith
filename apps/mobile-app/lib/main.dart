@@ -307,6 +307,25 @@ class _HomeShellState extends State<HomeShell> {
     return saved ? '가입 신청을 접수했습니다.' : '가입 신청 저장에 실패했습니다.';
   }
 
+  Future<String> _submitFeedback({
+    required String title,
+    required String body,
+    required String category,
+  }) async {
+    if (title.trim().isEmpty || body.trim().isEmpty) {
+      return '제목과 내용을 모두 입력하세요.';
+    }
+
+    final sent = await _api.submitFeedback(
+      title: title.trim(),
+      body: body.trim(),
+      category: category,
+      memberId: _activeMemberId,
+    );
+
+    return sent ? '피드백이 접수되었습니다. 감사합니다!' : '피드백 전송에 실패했습니다.';
+  }
+
   Future<String> _acceptInvite(
     String token,
     String name,
@@ -416,6 +435,7 @@ class _HomeShellState extends State<HomeShell> {
             onProfileSaved: _updateProfile,
             onJoinRequested: _createJoinRequest,
             onInviteAccepted: _acceptInvite,
+            onFeedbackSubmitted: _submitFeedback,
           ),
         ];
 

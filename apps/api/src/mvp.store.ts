@@ -499,6 +499,20 @@ export interface AcceptInviteInput {
   applicantPhone: string;
 }
 
+export type FeedbackCategory = "bug" | "improvement" | "other";
+
+export interface CreateFeedbackInput {
+  title: string;
+  body: string;
+  category: FeedbackCategory;
+  memberId?: string;
+}
+
+export interface FeedbackResult {
+  issueNumber: number;
+  issueUrl: string;
+}
+
 export const club: ClubListItem = {
   id: "club-seoul-runners",
   name: "서울 러너스",
