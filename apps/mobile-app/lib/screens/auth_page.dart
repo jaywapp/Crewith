@@ -3,56 +3,43 @@ import 'package:flutter/material.dart';
 import '../member_ui.dart';
 
 class AuthPage extends StatefulWidget {
-  const AuthPage({
-    super.key,
-    required this.onOtpRequested,
-    required this.onVerified,
-  });
+  const AuthPage({super.key, required this.onLogin});
 
-  final Future<String?> Function(String phoneNumber) onOtpRequested;
-  final Future<bool> Function(String phoneNumber, String code) onVerified;
+  final Future<bool> Function(String phoneNumber, String password) onLogin;
 
   @override
   State<AuthPage> createState() => _AuthPageState();
 }
 
 class _AuthPageState extends State<AuthPage> {
-  final _phoneController = TextEditingController(text: '010-1234-1003');
-  final _codeController = TextEditingController(text: '123456');
-  String? _message;
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  String? _errorMessage;
   bool _busy = false;
 
   @override
   void dispose() {
     _phoneController.dispose();
-    _codeController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _requestOtp() async {
-    setState(() => _busy = true);
-    final message = await widget.onOtpRequested(_phoneController.text);
-    if (!mounted) {
-      return;
-    }
-
+  Future<void> _submit() async {
     setState(() {
-      _message = message;
-      _busy = false;
+      _busy = true;
+      _errorMessage = null;
     });
-  }
 
-  Future<void> _verifyOtp() async {
-    setState(() => _busy = true);
-    final verified =
-        await widget.onVerified(_phoneController.text, _codeController.text);
-    if (!mounted) {
-      return;
-    }
+    final success = await widget.onLogin(
+      _phoneController.text,
+      _passwordController.text,
+    );
+
+    if (!mounted) return;
 
     setState(() {
-      _message = verified ? null : '인증번호를 확인하세요.';
       _busy = false;
+      _errorMessage = success ? null : '전화번호 또는 비밀번호를 확인하세요.';
     });
   }
 
@@ -65,7 +52,7 @@ class _AuthPageState extends State<AuthPage> {
           children: [
             const SizedBox(height: 24),
             Text(
-              '휴대폰 인증',
+              '로그인',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     color: starbucksGreen,
                     fontWeight: FontWeight.w700,
@@ -73,7 +60,7 @@ class _AuthPageState extends State<AuthPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              '모임 회원 정보를 불러오기 위해 휴대폰 번호를 확인합니다.',
+              '전화번호와 비밀번호를 입력하세요.',
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
@@ -86,35 +73,28 @@ class _AuthPageState extends State<AuthPage> {
                 children: [
                   TextInput(
                     controller: _phoneController,
-                    label: '휴대폰 번호',
+                    label: '전화번호',
                     keyboardType: TextInputType.phone,
                   ),
                   TextInput(
-                    controller: _codeController,
-                    label: '인증번호',
-                    keyboardType: TextInputType.number,
+                    controller: _passwordController,
+                    label: '비밀번호',
+                    obscureText: true,
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _busy ? null : _requestOtp,
-                          child: const Text('인증번호 받기'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: _busy ? null : _verifyOtp,
-                          child: const Text('인증 확인'),
-                        ),
-                      ),
-                    ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _busy ? null : _submit,
+                      child: const Text('로그인'),
+                    ),
                   ),
-                  if (_message != null) ...[
+                  if (_errorMessage != null) ...[
                     const SizedBox(height: 12),
-                    Text(_message!, style: const TextStyle(color: houseGreen)),
+                    Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: red),
+                    ),
                   ],
                 ],
               ),
