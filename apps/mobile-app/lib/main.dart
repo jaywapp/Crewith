@@ -361,6 +361,72 @@ class _HomeShellState extends State<HomeShell> {
     return sent ? '피드백이 접수되었습니다. 감사합니다!' : '피드백 전송에 실패했습니다.';
   }
 
+  Future<String> _createEvent({
+    required String title,
+    required String startsAt,
+    required String locationName,
+    String? locationAddress,
+  }) async {
+    if (title.trim().isEmpty) return '일정명을 입력하세요.';
+    if (startsAt.isEmpty) return '일시를 선택하세요.';
+    if (locationName.trim().isEmpty) return '장소를 입력하세요.';
+
+    final activeClub = _clubs.isNotEmpty
+        ? _clubs.firstWhere(
+            (c) => c.clubId == _activeClubId,
+            orElse: () => _clubs.first,
+          )
+        : null;
+
+    final saved = await _api.createEvent(
+      clubId: _activeClubId,
+      callerRole: activeClub?.role ?? 'member',
+      title: title.trim(),
+      startsAt: startsAt,
+      locationName: locationName.trim(),
+      locationAddress: locationAddress?.trim(),
+    );
+
+    if (saved) {
+      _refreshOverview();
+      return '✅ 일정이 생성되었습니다.';
+    }
+    return '일정 생성에 실패했습니다. 다시 시도하세요.';
+  }
+
+  Future<String> _createMember({
+    required String name,
+    required String phoneNumber,
+    required String role,
+    String? password,
+  }) async {
+    if (name.trim().isEmpty || phoneNumber.trim().isEmpty) {
+      return '이름과 휴대폰 번호를 입력하세요.';
+    }
+
+    final activeClub = _clubs.isNotEmpty
+        ? _clubs.firstWhere(
+            (c) => c.clubId == _activeClubId,
+            orElse: () => _clubs.first,
+          )
+        : null;
+
+    final saved = await _api.createMember(
+      clubId: _activeClubId,
+      callerRole: activeClub?.role ?? 'member',
+      name: name.trim(),
+      phoneNumber: phoneNumber.trim(),
+      role: role,
+      password: password?.trim(),
+    );
+
+    if (saved) {
+      _refreshOverview();
+      return '✅ 회원이 추가되었습니다.';
+    }
+    return '회원 추가에 실패했습니다. 다시 시도하세요.';
+  }
+
   Future<String> _acceptInvite(
     String token,
     String name,
@@ -494,6 +560,8 @@ class _HomeShellState extends State<HomeShell> {
             onJoinRequested: _createJoinRequest,
             onInviteAccepted: _acceptInvite,
             onFeedbackSubmitted: _submitFeedback,
+            onEventCreated: _createEvent,
+            onMemberCreated: _createMember,
           ),
         ];
 
