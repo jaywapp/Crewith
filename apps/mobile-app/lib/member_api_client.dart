@@ -81,10 +81,11 @@ class MemberApiClient {
         final json = jsonDecode(payload) as Map<String, dynamic>;
         return (json['data'] as Map<String, dynamic>)['memberId'] as String;
       }
-      // 409: duplicate phone → null
-      return null;
-    } catch (_) {
-      return null;
+      if (response.statusCode == HttpStatus.conflict) {
+        // 409: duplicate phone number
+        return null;
+      }
+      throw Exception('register failed: ${response.statusCode}');
     } finally {
       client.close(force: true);
     }

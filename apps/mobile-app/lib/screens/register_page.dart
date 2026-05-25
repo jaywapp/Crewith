@@ -44,26 +44,33 @@ class _RegisterPageState extends State<RegisterPage> {
       _errorMessage = null;
     });
 
-    final memberId = await widget.api.register(
-      name: name,
-      phoneNumber: phone,
-      password: password,
-      birthDate: _birthDateController.text.trim().isEmpty
-          ? null
-          : _birthDateController.text.trim(),
-    );
-
-    if (!mounted) return;
-
-    setState(() => _busy = false);
-
-    if (memberId != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('가입 완료. 로그인해주세요.')),
+    try {
+      final memberId = await widget.api.register(
+        name: name,
+        phoneNumber: phone,
+        password: password,
+        birthDate: _birthDateController.text.trim().isEmpty
+            ? null
+            : _birthDateController.text.trim(),
       );
-      Navigator.of(context).pop();
-    } else {
-      setState(() => _errorMessage = '이미 사용 중인 전화번호입니다.');
+
+      if (!mounted) return;
+      setState(() => _busy = false);
+
+      if (memberId != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('가입 완료. 로그인해주세요.')),
+        );
+        Navigator.of(context).pop();
+      } else {
+        setState(() => _errorMessage = '이미 사용 중인 전화번호입니다.');
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _errorMessage = '가입에 실패했습니다. 다시 시도하세요.';
+      });
     }
   }
 
