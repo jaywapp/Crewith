@@ -160,8 +160,11 @@ h2 {
 
 .primary,
 .secondary {
+  align-items: center;
   border-radius: var(--radius-pill);
   cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
   min-height: 44px;
   padding: 7px 20px;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
@@ -181,12 +184,15 @@ h2 {
 }
 
 .danger {
+  align-items: center;
   background: transparent;
   border: 1px solid var(--color-red);
   border-radius: var(--radius-pill);
   color: var(--color-red);
   cursor: pointer;
+  display: inline-flex;
   font-weight: 700;
+  justify-content: center;
   min-height: 44px;
   padding: 7px 20px;
   transition: transform 0.2s ease, background 0.2s ease;
@@ -961,13 +967,102 @@ textarea:focus {
   width: 100%;
 }
 
-.sidebarLogout {
+.sidebarBottom {
+  display: grid;
+  gap: 8px;
   margin-top: auto;
   padding-top: 16px;
 }
 
-.sidebarLogout button {
+.sidebarBottom form {
+  display: contents;
+}
+
+.sidebarBottom button,
+.sidebarFeedback {
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 5px 14px;
+  font-size: inherit;
+  font-weight: 700;
+  text-align: center;
+  transition: transform 0.2s ease, background 0.2s ease;
   width: 100%;
+}
+
+.sidebarBottom button {
+  background: transparent;
+  border: 1px solid var(--color-green-accent);
+  color: var(--color-green-accent);
+}
+
+.sidebarFeedback {
+  background: var(--color-green-light);
+  border: none;
+  color: var(--color-house-green);
+  text-decoration: none;
+}
+
+.sidebarFeedback:hover,
+.sidebarBottom button:hover {
+  opacity: 0.85;
+}
+
+.feedbackForm {
+  display: grid;
+  gap: 16px;
+}
+
+.feedbackForm label {
+  color: var(--color-text-black-soft);
+  display: grid;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.feedbackForm input,
+.feedbackForm select,
+.feedbackForm textarea {
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-input);
+  min-height: 44px;
+  outline: none;
+  padding: 8px 12px;
+  transition: border-color 0.2s ease;
+  width: 100%;
+}
+
+.feedbackForm input:focus,
+.feedbackForm select:focus,
+.feedbackForm textarea:focus {
+  border-color: var(--color-green-accent);
+}
+
+.feedbackSuccess {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 0;
+  text-align: center;
+}
+
+.feedbackSuccess p {
+  color: var(--color-house-green);
+  font-weight: 700;
+  margin: 0;
+}
+
+.feedbackSuccess a {
+  color: var(--color-green-accent);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
 }
 
 @media (max-width: 1024px) {

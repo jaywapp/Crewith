@@ -585,6 +585,27 @@ export async function sendReminderAction(formData: FormData) {
   revalidateAdmin();
 }
 
+export async function sendFeedbackAction(formData: FormData) {
+  "use server";
+
+  const session = await getAdminSession();
+  if (!session) redirect("/login");
+
+  const title = `${formData.get("title") ?? ""}`.trim();
+  const body = `${formData.get("body") ?? ""}`.trim();
+  const category = `${formData.get("category") ?? "other"}`;
+
+  if (!title || !body) return;
+
+  await fetch(`${apiBaseUrl}/feedback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, body, category, memberId: session.memberId }),
+  });
+
+  redirect("/feedback?sent=1");
+}
+
 export async function createClubAction(formData: FormData) {
   "use server";
 
@@ -646,11 +667,16 @@ export async function AdminShell({
             </Link>
           ))}
         </nav>
-        <form action={logoutAction} className="sidebarLogout">
-          <button className="secondary compact" type="submit">
-            로그아웃
-          </button>
-        </form>
+        <div className="sidebarBottom">
+          <Link className="sidebarFeedback" href="/feedback">
+            의견 보내기
+          </Link>
+          <form action={logoutAction}>
+            <button className="secondary compact" type="submit">
+              로그아웃
+            </button>
+          </form>
+        </div>
       </aside>
 
       <section className="content">
