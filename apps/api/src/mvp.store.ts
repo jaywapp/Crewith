@@ -280,6 +280,10 @@ export interface ResetMemberPasswordInput {
   password: string;
 }
 
+export interface SelfResetPasswordInput {
+  phoneNumber: string;
+}
+
 export interface UpdateMemberProfileInput {
   name?: string;
   phoneNumber?: string;
