@@ -42,14 +42,10 @@ async function loginAction(formData: FormData) {
 
   const adminClubs = clubs.filter((c) => c.role === "owner" || c.role === "operator");
 
-  if (!adminClubs.length) {
-    redirect("/login?error=" + encodeURIComponent("관리자 권한이 없습니다."));
-  }
-
   const session = {
-    memberId: result.data!.memberId,
+    memberId: result.data!.memberId as string,
     clubs: adminClubs,
-    activeClubId: adminClubs[0].clubId,
+    activeClubId: adminClubs[0]?.clubId ?? "",
   };
 
   const cookieStore = await cookies();
@@ -58,6 +54,10 @@ async function loginAction(formData: FormData) {
     sameSite: "lax",
     path: "/",
   });
+
+  if (!adminClubs.length) {
+    redirect("/clubs/new");
+  }
 
   redirect("/");
 }

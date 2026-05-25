@@ -28,7 +28,7 @@ async function getAdminSession(): Promise<AdminSession | null> {
   if (!raw) return null;
   try {
     const session = JSON.parse(raw) as AdminSession;
-    if (!session.memberId || !Array.isArray(session.clubs) || !session.activeClubId) return null;
+    if (!session.memberId || !Array.isArray(session.clubs)) return null;
     return session;
   } catch {
     return null;
@@ -121,12 +121,14 @@ const fallbackOverview: AdminClubOverview = {
 async function getActiveClubId() {
   const session = await getAdminSession();
   if (!session) redirect("/login");
+  if (!session.activeClubId) redirect("/clubs/new");
   return session.activeClubId;
 }
 
 export async function getOverview() {
   const session = await getAdminSession();
   if (!session) redirect("/login");
+  if (!session.activeClubId) redirect("/clubs/new");
 
   const clubId = session.activeClubId;
 
@@ -581,6 +583,44 @@ export async function sendReminderAction(formData: FormData) {
   });
 
   revalidateAdmin();
+}
+
+export async function createClubAction(formData: FormData) {
+  "use server";
+
+  const session = await getAdminSession();
+  if (!session) redirect("/login");
+
+  const name = `${formData.get("name") ?? ""}`.trim();
+  const sportType = `${formData.get("sportType") ?? ""}`.trim();
+
+  if (!name || !sportType) return;
+
+  const response = await fetch(`${apiBaseUrl}/clubs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, sportType, ownerMemberId: session.memberId }),
+  });
+
+  if (!response.ok) return;
+
+  const envelope = (await response.json()) as { data: { clubId: string; name: string; sportType: string } };
+  const newClub = { clubId: envelope.data.clubId, name: envelope.data.name, sportType: envelope.data.sportType, role: "owner" };
+
+  const updatedSession = {
+    ...session,
+    clubs: [...session.clubs, newClub],
+    activeClubId: envelope.data.clubId,
+  };
+
+  const cookieStore = await cookies();
+  cookieStore.set(adminSessionCookieName, JSON.stringify(updatedSession), {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+  });
+
+  redirect("/");
 }
 
 export async function AdminShell({

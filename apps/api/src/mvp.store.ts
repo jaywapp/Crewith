@@ -509,6 +509,12 @@ export interface RegisterInput {
   birthDate?: string;
 }
 
+export interface CreateClubInput {
+  name: string;
+  sportType: string;
+  ownerMemberId: string;
+}
+
 export type FeedbackCategory = "bug" | "improvement" | "other";
 
 export interface CreateFeedbackInput {

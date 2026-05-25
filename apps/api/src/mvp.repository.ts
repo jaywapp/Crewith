@@ -41,6 +41,7 @@ import {
   type UpdateAdminNoticeInput,
   type UpdateMemberProfileInput,
   type RegisterInput,
+  type CreateClubInput,
   buildEventItem,
   buildFeeItem,
   buildFees,
@@ -99,6 +100,7 @@ import {
   profileImages,
   registerMemberDevice,
   visibleMembers,
+  clubs,
 } from "./mvp.store";
 
 function cleanNonNegativeIntegerList(values: unknown[]) {
@@ -111,6 +113,7 @@ export abstract class MvpRepository {
   abstract getAdminOverview(clubId: string): ReturnType<typeof buildOverview>;
   abstract login(input: AuthLoginInput): unknown;
   abstract register(input: RegisterInput): { memberId: string };
+  abstract createClub(input: CreateClubInput): { clubId: string; name: string; sportType: string };
   abstract resetMemberPassword(memberId: string, input: ResetMemberPasswordInput): unknown;
   abstract registerDevice(input: RegisterDeviceInput): ReturnType<typeof registerMemberDevice>;
   abstract getMemberProfile(memberId: string): ReturnType<typeof buildProfile>;
@@ -223,6 +226,38 @@ export class JsonMvpRepository implements MvpRepository {
     members.push(nextMember);
     persistStore();
     return { memberId: nextMember.id };
+  }
+
+  createClub(input: CreateClubInput) {
+    const name = `${input.name ?? ""}`.trim();
+    const sportType = `${input.sportType ?? ""}`.trim();
+    if (!name || !sportType) {
+      throw new BadRequestException("모임명과 종목을 입력하세요.");
+    }
+
+    const owner = findMember(input.ownerMemberId);
+
+    const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const newClub = {
+      id: `club-${Date.now()}`,
+      name,
+      sportType,
+      visibility: "private" as const,
+      subscriptionStatus: "trial" as const,
+      trialEndsAt,
+    };
+
+    clubs.push(newClub);
+    clubMemberships.push({
+      clubId: newClub.id,
+      memberId: owner.id,
+      role: "owner",
+      memberStatus: "active",
+      joinedAt: new Date().toISOString().slice(0, 10),
+    });
+    persistStore();
+
+    return { clubId: newClub.id, name: newClub.name, sportType: newClub.sportType };
   }
 
   resetMemberPassword(memberId: string, input: ResetMemberPasswordInput) {

@@ -263,6 +263,39 @@ class MemberApiClient {
     );
   }
 
+  Future<Map<String, String>?> createClub({
+    required String name,
+    required String sportType,
+    required String ownerMemberId,
+  }) async {
+    final client = _client();
+    try {
+      final request = await client.postUrl(Uri.parse('$apiBaseUrl/clubs'));
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode({
+        'name': name,
+        'sportType': sportType,
+        'ownerMemberId': ownerMemberId,
+      }));
+      final response = await request.close().timeout(const Duration(seconds: 15));
+      if (response.statusCode == HttpStatus.created) {
+        final payload = await response.transform(utf8.decoder).join();
+        final json = jsonDecode(payload) as Map<String, dynamic>;
+        final data = json['data'] as Map<String, dynamic>;
+        return {
+          'clubId': data['clubId'] as String,
+          'name': data['name'] as String,
+          'sportType': data['sportType'] as String,
+        };
+      }
+      return null;
+    } catch (_) {
+      return null;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
   Future<bool> createJoinRequest({
     required String clubId,
     required String name,

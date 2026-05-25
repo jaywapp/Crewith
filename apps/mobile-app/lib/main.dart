@@ -4,6 +4,7 @@ import 'member_api_client.dart';
 import 'member_models.dart';
 import 'member_ui.dart';
 import 'screens/auth_page.dart';
+import 'screens/create_club_page.dart';
 import 'screens/events_page.dart';
 import 'screens/fees_page.dart';
 import 'screens/home_page.dart';
@@ -174,6 +175,28 @@ class _HomeShellState extends State<HomeShell> {
       _activeClubId = _defaultClubId;
       _clubs = const [];
     });
+  }
+
+  void _goToCreateClub() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CreateClubPage(
+          api: _api,
+          memberId: _activeMemberId,
+          onCreated: (clubId) {
+            Navigator.of(context).pop();
+            setState(() {
+              _activeClubId = clubId;
+              _clubs = [ClubSummary(clubId: clubId, name: '', sportType: '', role: 'owner', memberStatus: 'active')];
+              _hasClub = true;
+              _overviewFuture = _fetchOverview(_activeMemberId);
+              _memberDirectoryFuture = _fetchMemberDirectory(_activeMemberId);
+              _notificationsFuture = _fetchNotifications(_activeMemberId);
+            });
+          },
+        ),
+      ),
+    );
   }
 
   Future<String> _updateProfile(String name, String profileImageUrl) async {
@@ -393,7 +416,7 @@ class _HomeShellState extends State<HomeShell> {
     }
 
     if (!_hasClub) {
-      return NoClubPage(onLogout: _logout);
+      return NoClubPage(onLogout: _logout, onCreateClub: _goToCreateClub);
     }
 
     return FutureBuilder<MemberAppOverview>(

@@ -41,6 +41,7 @@ import {
   type UpdateMemberProfileInput,
   type CreateFeedbackInput,
   type RegisterInput,
+  type CreateClubInput,
 } from "./mvp.store";
 import { MvpRepository } from "./mvp.repository";
 
@@ -82,6 +83,11 @@ export class AppController {
   @Post("auth/register")
   register(@Body() input: RegisterInput) {
     return { data: this.repository.register(input) };
+  }
+
+  @Post("clubs")
+  createClub(@Body() input: CreateClubInput) {
+    return { data: this.repository.createClub(input) };
   }
 
   @Post("me/devices")
