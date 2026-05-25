@@ -19,14 +19,16 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nextEvent = overview.events.first;
+    final nextEvent = overview.events.isNotEmpty ? overview.events.first : null;
     final unpaidCount =
         overview.fees.where((fee) => fee.status == 'unpaid').length;
     final unreadCount = overview.notices.where((notice) => !notice.read).length;
-    final activeClub = clubs.firstWhere(
-      (c) => c.clubId == activeClubId,
-      orElse: () => clubs.first,
-    );
+    final activeClub = clubs.isNotEmpty
+        ? clubs.firstWhere(
+            (c) => c.clubId == activeClubId,
+            orElse: () => clubs.first,
+          )
+        : null;
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -39,7 +41,9 @@ class HomePage extends StatelessWidget {
               backgroundColor: starbucksGreen,
               foregroundColor: white,
               child: Text(
-                overview.clubName.characters.first,
+                overview.clubName.characters.isNotEmpty
+                    ? overview.clubName.characters.first
+                    : '',
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 18,
@@ -58,7 +62,9 @@ class HomePage extends StatelessWidget {
                       ),
                 ),
                 Text(
-                  '${overview.memberName} · ${activeClub.sportType}',
+                  activeClub != null
+                      ? '${overview.memberName} · ${activeClub.sportType}'
+                      : overview.memberName,
                   style: Theme.of(context)
                       .textTheme
                       .bodyMedium
@@ -92,11 +98,12 @@ class HomePage extends StatelessWidget {
                 },
         ),
         const SizedBox(height: 24),
-        SummaryCard(
-          label: '🏃 다음 일정',
-          title: nextEvent.title,
-          body: '${formatDate(nextEvent.startsAt)} · ${nextEvent.locationName}',
-        ),
+        if (nextEvent != null)
+          SummaryCard(
+            label: '🏃 다음 일정',
+            title: nextEvent.title,
+            body: '${formatDate(nextEvent.startsAt)} · ${nextEvent.locationName}',
+          ),
         const SizedBox(height: 12),
         SummaryCard(
           label: '💰 내 회비',

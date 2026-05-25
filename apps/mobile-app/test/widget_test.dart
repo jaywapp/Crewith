@@ -7,6 +7,22 @@ import 'package:crewith_mobile/member_models.dart';
 
 class _FakeMemberApiClient extends MemberApiClient {
   @override
+  Future<AuthSession?> login(String phoneNumber, String password) async {
+    return const AuthSession(
+      memberId: 'member-03',
+      clubs: [
+        ClubSummary(
+          clubId: 'club-seoul-runners',
+          name: '서울 러너스',
+          sportType: '러닝',
+          role: 'member',
+          memberStatus: 'active',
+        ),
+      ],
+    );
+  }
+
+  @override
   Future<MemberAppOverview> fetchOverview({
     required String clubId,
     required String memberId,
@@ -25,25 +41,6 @@ class _FakeMemberApiClient extends MemberApiClient {
     required String memberId,
   }) async =>
       const [];
-
-  @override
-  Future<bool> requestOtp(String phoneNumber) async => true;
-
-  @override
-  Future<AuthSession?> verifyOtp(String phoneNumber, String code) async {
-    return AuthSession(
-      memberId: 'member-03',
-      clubs: const [
-        ClubSummary(
-          clubId: 'club-seoul-runners',
-          name: '서울 러너스',
-          sportType: '러닝',
-          role: 'member',
-          memberStatus: 'active',
-        ),
-      ],
-    );
-  }
 
   @override
   Future<bool> registerDevice({
@@ -130,15 +127,39 @@ class _FakeMemberApiClient extends MemberApiClient {
       true;
 }
 
+/// Advance past the 2-second SplashScreen.
+Future<void> _skipSplash(WidgetTester tester) async {
+  await tester.pump(const Duration(milliseconds: 2100));
+  await tester.pumpAndSettle();
+}
+
 void main() {
-  testWidgets('renders Crewith home shell after phone auth',
+  testWidgets('login form renders correctly', (WidgetTester tester) async {
+    await tester.pumpWidget(CrewithApp(api: _FakeMemberApiClient()));
+    await _skipSplash(tester);
+
+    // Auth page shows the login form
+    expect(find.text('로그인'), findsWidgets);
+    // TextInput uses labelText, which renders as Text inside InputDecorator
+    expect(find.text('전화번호'), findsOneWidget);
+    expect(find.text('비밀번호'), findsOneWidget);
+    expect(find.text('회원가입'), findsOneWidget);
+    // FilledButton with login label
+    expect(find.widgetWithText(FilledButton, '로그인'), findsOneWidget);
+    // Two text fields present
+    expect(find.byType(TextField), findsNWidgets(2));
+  });
+
+  testWidgets('renders Crewith home shell after password login',
       (WidgetTester tester) async {
     await tester.pumpWidget(CrewithApp(api: _FakeMemberApiClient()));
-    await tester.pump();
+    await _skipSplash(tester);
 
-    expect(find.text('휴대폰 인증'), findsOneWidget);
-    await tester.tap(find.text('인증 확인'));
-    await tester.pump(const Duration(seconds: 1));
+    // Enter credentials into the two TextFields (phone first, password second)
+    final textFields = find.byType(TextField);
+    await tester.enterText(textFields.at(0), '01012345678');
+    await tester.enterText(textFields.at(1), 'password123');
+    await tester.tap(find.widgetWithText(FilledButton, '로그인'));
     await tester.pumpAndSettle();
 
     expect(find.text('서울 러너스'), findsOneWidget);
@@ -176,11 +197,13 @@ void main() {
   testWidgets('shows error state when API throws', (WidgetTester tester) async {
     final errorApi = _ErrorMemberApiClient();
     await tester.pumpWidget(CrewithApp(api: errorApi));
-    await tester.pump();
+    await _skipSplash(tester);
 
-    // 인증 통과 (OTP는 항상 성공)
-    await tester.tap(find.text('인증 확인'));
-    await tester.pump(const Duration(seconds: 1));
+    // Enter credentials and tap login
+    final textFields = find.byType(TextField);
+    await tester.enterText(textFields.at(0), '01012345678');
+    await tester.enterText(textFields.at(1), 'password123');
+    await tester.tap(find.widgetWithText(FilledButton, '로그인'));
     await tester.pumpAndSettle();
 
     // fetchOverview가 throw하면 에러 UI가 표시되어야 함
