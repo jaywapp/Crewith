@@ -44,8 +44,8 @@ jobs:
         run: |
           VERSION_NAME=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
           BUILD_NUMBER=$(git rev-list --count HEAD)
-          echo "tag=v${VERSION_NAME}+${BUILD_NUMBER}" >> $GITHUB_OUTPUT
-          echo "name=v${VERSION_NAME}+${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION_NAME}" >> $GITHUB_OUTPUT
+          echo "name=v${VERSION_NAME}" >> $GITHUB_OUTPUT
           echo "build_number=${BUILD_NUMBER}" >> $GITHUB_OUTPUT
 
       - name: Build release APK
