@@ -38,18 +38,19 @@ jobs:
             "$STORE_PASSWORD" "$KEY_PASSWORD" "$KEY_ALIAS" \
             > apps/mobile-app/android/key.properties
 
-      - name: Build release APK
-        working-directory: apps/mobile-app
-        run: flutter build apk --release
-
       - name: Get app version
         id: version
         working-directory: apps/mobile-app
         run: |
-          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "tag=v${VERSION}-${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "name=v${VERSION} (${SHORT_SHA})" >> $GITHUB_OUTPUT
+          VERSION_NAME=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          echo "tag=v${VERSION_NAME}+${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+          echo "name=v${VERSION_NAME}+${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+          echo "build_number=${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+
+      - name: Build release APK
+        working-directory: apps/mobile-app
+        run: flutter build apk --release --build-number=${{ steps.version.outputs.build_number }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
