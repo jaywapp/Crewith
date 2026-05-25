@@ -3,6 +3,21 @@ import 'package:flutter/material.dart';
 import '../member_api_client.dart';
 import '../member_ui.dart';
 
+const _sportCategories = [
+  '🏃 러닝',
+  '⚽ 축구',
+  '🏀 농구',
+  '🎾 테니스',
+  '🏊 수영',
+  '🚴 자전거',
+  '🥊 복싱',
+  '⛳ 골프',
+  '🏐 배구',
+  '🏋️ 헬스',
+  '🧘 요가',
+  '🎿 스키',
+];
+
 class CreateClubPage extends StatefulWidget {
   const CreateClubPage({
     super.key,
@@ -21,20 +36,19 @@ class CreateClubPage extends StatefulWidget {
 
 class _CreateClubPageState extends State<CreateClubPage> {
   final _nameController = TextEditingController();
-  final _sportTypeController = TextEditingController();
+  String _sportType = '';
   String? _errorMessage;
   bool _busy = false;
 
   @override
   void dispose() {
     _nameController.dispose();
-    _sportTypeController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     final name = _nameController.text.trim();
-    final sportType = _sportTypeController.text.trim();
+    final sportType = _sportType.trim();
 
     if (name.isEmpty || sportType.isEmpty) {
       setState(() => _errorMessage = '모임 이름과 종목을 입력하세요.');
@@ -81,10 +95,60 @@ class _CreateClubPageState extends State<CreateClubPage> {
                     label: '모임 이름',
                     hint: '서울 러너스',
                   ),
-                  TextInput(
-                    controller: _sportTypeController,
-                    label: '종목',
-                    hint: '러닝',
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Autocomplete<String>(
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        if (textEditingValue.text.isEmpty) {
+                          return _sportCategories;
+                        }
+                        return _sportCategories.where(
+                          (option) => option.toLowerCase().contains(
+                                textEditingValue.text.toLowerCase(),
+                              ),
+                        );
+                      },
+                      onSelected: (String selection) {
+                        setState(() => _sportType = selection);
+                      },
+                      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                        return TextField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          onChanged: (value) => _sportType = value,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: '종목',
+                            hintText: '러닝 또는 직접 입력',
+                          ),
+                        );
+                      },
+                      optionsViewBuilder: (context, onSelected, options) {
+                        return Align(
+                          alignment: Alignment.topLeft,
+                          child: Material(
+                            elevation: 4,
+                            borderRadius: BorderRadius.circular(8),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 220),
+                              child: ListView.builder(
+                                padding: EdgeInsets.zero,
+                                shrinkWrap: true,
+                                itemCount: options.length,
+                                itemBuilder: (context, index) {
+                                  final option = options.elementAt(index);
+                                  return ListTile(
+                                    dense: true,
+                                    title: Text(option),
+                                    onTap: () => onSelected(option),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                   const SizedBox(height: 8),
                   SizedBox(

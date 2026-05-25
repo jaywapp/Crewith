@@ -1,5 +1,20 @@
 import { createClubAction } from "../../admin";
 
+const sportCategories = [
+  "🏃 러닝",
+  "⚽ 축구",
+  "🏀 농구",
+  "🎾 테니스",
+  "🏊 수영",
+  "🚴 자전거",
+  "🥊 복싱",
+  "⛳ 골프",
+  "🏐 배구",
+  "🏋️ 헬스",
+  "🧘 요가",
+  "🎿 스키",
+];
+
 export default function NewClubPage() {
   return (
     <main className="loginPage">
@@ -14,8 +29,19 @@ export default function NewClubPage() {
           </label>
           <label>
             종목
-            <input name="sportType" type="text" placeholder="러닝" required />
+            <input
+              name="sportType"
+              list="sportTypeOptions"
+              type="text"
+              placeholder="러닝 또는 직접 입력"
+              required
+            />
           </label>
+          <datalist id="sportTypeOptions">
+            {sportCategories.map((cat) => (
+              <option key={cat} value={cat} />
+            ))}
+          </datalist>
           <button className="primary" type="submit">
             모임 만들기
           </button>
