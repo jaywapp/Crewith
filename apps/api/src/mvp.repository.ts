@@ -15,6 +15,7 @@ import {
   type MemberDirectoryItem,
   type AuthLoginInput,
   type ResetMemberPasswordInput,
+  type SelfResetPasswordInput,
   type CreateAdminEventInput,
   type CreateAdminFeeInput,
   type CreateAdminMemberInput,
@@ -115,6 +116,7 @@ export abstract class MvpRepository {
   abstract register(input: RegisterInput): { memberId: string };
   abstract createClub(input: CreateClubInput): { clubId: string; name: string; sportType: string };
   abstract resetMemberPassword(memberId: string, input: ResetMemberPasswordInput): unknown;
+  abstract selfResetPassword(input: SelfResetPasswordInput): { success: true };
   abstract registerDevice(input: RegisterDeviceInput): ReturnType<typeof registerMemberDevice>;
   abstract getMemberProfile(memberId: string): ReturnType<typeof buildProfile>;
   abstract updateMemberProfile(memberId: string, input: UpdateMemberProfileInput): ReturnType<typeof buildProfile>;
@@ -271,6 +273,22 @@ export class JsonMvpRepository implements MvpRepository {
     member.password = newPassword;
     persistStore();
     return { memberId: member.id };
+  }
+
+  selfResetPassword(input: SelfResetPasswordInput): { success: true } {
+    const phoneNumber = normalizePhoneNumber(input.phoneNumber ?? "");
+    const member = members.find(
+      (m) => normalizePhoneNumber(m.phoneNumber) === phoneNumber && m.memberStatus !== "removed",
+    );
+
+    if (!member) {
+      throw new NotFoundException("등록되지 않은 전화번호입니다.");
+    }
+
+    const digits = member.phoneNumber.replace(/\D/g, "");
+    member.password = digits.slice(-4);
+    persistStore();
+    return { success: true };
   }
 
   registerDevice(input: RegisterDeviceInput) {

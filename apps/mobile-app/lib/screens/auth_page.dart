@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../member_api_client.dart';
 import '../member_ui.dart';
+import 'forgot_password_page.dart';
 import 'register_page.dart';
 
 class AuthPage extends StatefulWidget {
@@ -102,7 +103,18 @@ class _AuthPageState extends State<AuthPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            Center(
+              child: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ForgotPasswordPage(api: widget.api),
+                  ),
+                ),
+                child: const Text('비밀번호를 잊으셨나요?'),
+              ),
+            ),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
