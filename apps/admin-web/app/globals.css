@@ -358,7 +358,7 @@ h2 {
   border-radius: var(--radius-card);
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.2fr) 130px auto;
+  grid-template-columns: minmax(100px, 1fr) minmax(130px, 1fr) 110px minmax(110px, 1fr) auto;
   margin-bottom: 20px;
   padding: 16px;
 }
@@ -490,7 +490,9 @@ textarea {
   border-radius: var(--radius-input);
   color: var(--color-text-black);
   min-height: 40px;
+  min-width: 0;
   padding: 8px 10px;
+  width: 100%;
 }
 
 .memberImportForm textarea {
@@ -520,6 +522,15 @@ textarea:focus {
   gap: 12px;
   grid-template-columns: minmax(180px, 1.2fr) 112px 112px 112px 72px auto auto;
   padding: 14px 0;
+}
+
+.memberPasswordResetRow {
+  align-items: end;
+  border-top: 1px solid var(--color-hairline);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(160px, 1fr) auto;
+  padding: 10px 0 14px;
 }
 
 .memberIdentity {
