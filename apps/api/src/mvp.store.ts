@@ -502,6 +502,13 @@ export interface AcceptInviteInput {
   applicantPhone: string;
 }
 
+export interface RegisterInput {
+  name: string;
+  phoneNumber: string;
+  password: string;
+  birthDate?: string;
+}
+
 export type FeedbackCategory = "bug" | "improvement" | "other";
 
 export interface CreateFeedbackInput {
