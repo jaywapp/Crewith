@@ -59,6 +59,37 @@ class MemberApiClient {
     return null;
   }
 
+  Future<String?> register({
+    required String name,
+    required String phoneNumber,
+    required String password,
+    String? birthDate,
+  }) async {
+    final client = _client();
+    try {
+      final request = await client.postUrl(Uri.parse('$apiBaseUrl/auth/register'));
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode({
+        'name': name,
+        'phoneNumber': phoneNumber,
+        'password': password,
+        if (birthDate != null && birthDate.isNotEmpty) 'birthDate': birthDate,
+      }));
+      final response = await request.close().timeout(const Duration(seconds: 15));
+      if (response.statusCode == HttpStatus.created) {
+        final payload = await response.transform(utf8.decoder).join();
+        final json = jsonDecode(payload) as Map<String, dynamic>;
+        return (json['data'] as Map<String, dynamic>)['memberId'] as String;
+      }
+      // 409: duplicate phone → null
+      return null;
+    } catch (_) {
+      return null;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
   Future<bool> updateProfile(
     String memberId, {
     required String name,
