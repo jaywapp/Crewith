@@ -5,25 +5,17 @@ import 'member_models.dart';
 import 'member_ui.dart';
 import 'screens/auth_page.dart';
 import 'screens/events_page.dart';
-import 'screens/splash_screen.dart';
 import 'screens/fees_page.dart';
 import 'screens/home_page.dart';
 import 'screens/members_page.dart';
 import 'screens/more_page.dart';
+import 'screens/no_club_page.dart';
 import 'screens/notices_page.dart';
 import 'screens/notifications_page.dart';
+import 'screens/splash_screen.dart';
 
 const _defaultMemberId = 'member-03';
 const _defaultClubId = 'club-seoul-runners';
-const _defaultClubs = [
-  ClubSummary(
-    clubId: _defaultClubId,
-    name: '서울 러너스',
-    sportType: '러닝',
-    role: 'member',
-    memberStatus: 'active',
-  ),
-];
 
 void main() {
   runApp(const CrewithApp());
@@ -85,9 +77,10 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
   bool _isAuthenticated = false;
+  bool _hasClub = false;
   String _activeMemberId = _defaultMemberId;
   String _activeClubId = _defaultClubId;
-  List<ClubSummary> _clubs = _defaultClubs;
+  List<ClubSummary> _clubs = const [];
   MemberApiClient get _api => widget._api;
   late Future<MemberAppOverview> _overviewFuture;
   late Future<List<MemberDirectoryItem>> _memberDirectoryFuture;
@@ -140,16 +133,26 @@ class _HomeShellState extends State<HomeShell> {
     final session = await _api.login(phoneNumber, password);
     if (session == null || !mounted) return false;
 
-    final nextClubs = session.clubs.isEmpty ? _defaultClubs : session.clubs;
-    final nextClubId = nextClubs.any((c) => c.clubId == _activeClubId)
+    if (session.clubs.isEmpty) {
+      setState(() {
+        _activeMemberId = session.memberId;
+        _clubs = const [];
+        _isAuthenticated = true;
+        _hasClub = false;
+      });
+      return true;
+    }
+
+    final nextClubId = session.clubs.any((c) => c.clubId == _activeClubId)
         ? _activeClubId
-        : nextClubs.first.clubId;
+        : session.clubs.first.clubId;
 
     setState(() {
       _activeMemberId = session.memberId;
-      _clubs = nextClubs;
+      _clubs = session.clubs;
       _activeClubId = nextClubId;
       _isAuthenticated = true;
+      _hasClub = true;
       _overviewFuture = _fetchOverview(session.memberId);
       _memberDirectoryFuture = _fetchMemberDirectory(session.memberId);
       _notificationsFuture = _fetchNotifications(session.memberId);
@@ -161,6 +164,16 @@ class _HomeShellState extends State<HomeShell> {
     );
 
     return true;
+  }
+
+  void _logout() {
+    setState(() {
+      _isAuthenticated = false;
+      _hasClub = false;
+      _activeMemberId = _defaultMemberId;
+      _activeClubId = _defaultClubId;
+      _clubs = const [];
+    });
   }
 
   Future<String> _updateProfile(String name, String profileImageUrl) async {
@@ -376,7 +389,11 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     if (!_isAuthenticated) {
-      return AuthPage(onLogin: _login);
+      return AuthPage(onLogin: _login, api: _api);
+    }
+
+    if (!_hasClub) {
+      return NoClubPage(onLogout: _logout);
     }
 
     return FutureBuilder<MemberAppOverview>(
@@ -405,7 +422,7 @@ class _HomeShellState extends State<HomeShell> {
         );
         final activeClub = _clubs.firstWhere(
           (club) => club.clubId == _activeClubId,
-          orElse: () => _defaultClubs.first,
+          orElse: () => _clubs.first,
         );
         final pages = [
           HomePage(
