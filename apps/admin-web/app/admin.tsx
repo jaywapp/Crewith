@@ -7,19 +7,33 @@ import type {
 } from "../lib/shared-types";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://127.0.0.1:4000/api/v1";
-const defaultClubId = "club-seoul-runners";
-const activeClubCookieName = "crewith-admin-club-id";
+const adminSessionCookieName = "crewith-admin-session";
 const adminRoleHeaders = { "x-crewith-role": "owner" };
 const adminJsonHeaders = { "Content-Type": "application/json", ...adminRoleHeaders };
 const adminPaths = ["/", "/members", "/fees", "/events", "/notices", "/join", "/reminders", "/settings"];
 
-const adminClubs = [
-  { id: "club-seoul-runners", name: "서울 러너스", sportType: "러닝" },
-  { id: "club-seoul-riders", name: "Seoul Riders", sportType: "cycling" },
-];
+interface AdminSession {
+  memberId: string;
+  clubs: Array<{ clubId: string; name: string; sportType: string; role: string }>;
+  activeClubId: string;
+}
+
+async function getAdminSession(): Promise<AdminSession | null> {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(adminSessionCookieName)?.value;
+  if (!raw) return null;
+  try {
+    const session = JSON.parse(raw) as AdminSession;
+    if (!session.memberId || !Array.isArray(session.clubs) || !session.activeClubId) return null;
+    return session;
+  } catch {
+    return null;
+  }
+}
 
 export const navItems = [
   { href: "/", label: "대시보드" },
@@ -53,7 +67,7 @@ export const feeStatusLabels: Record<FeeStatus, string> = {
 
 const fallbackOverview: AdminClubOverview = {
   club: {
-    id: defaultClubId,
+    id: "club-unknown",
     name: "서울 러너스",
     sportType: "러닝",
     visibility: "private",
@@ -70,7 +84,7 @@ const fallbackOverview: AdminClubOverview = {
     monthlyFeeCollectionRate: 0,
   },
   feeSettings: {
-    clubId: defaultClubId,
+    clubId: "club-unknown",
     amount: 30000,
     dueDay: 25,
     intervalType: "monthly",
@@ -79,13 +93,13 @@ const fallbackOverview: AdminClubOverview = {
     reminderDaysAfterDue: [1, 3, 7],
   },
   privacySettings: {
-    clubId: defaultClubId,
+    clubId: "club-unknown",
     showPhoneNumberToMembers: false,
     showBirthDateToMembers: false,
     showGenderToMembers: false,
   },
   notificationSettings: {
-    clubId: defaultClubId,
+    clubId: "club-unknown",
     eventReminderEnabled: true,
     eventReminderHoursBefore: [24, 3],
     feeReminderEnabled: true,
@@ -104,18 +118,17 @@ const fallbackOverview: AdminClubOverview = {
   tasks: [],
 };
 
-function safeClubId(value: FormDataEntryValue | string | undefined | null) {
-  const nextValue = typeof value === "string" ? value : "";
-  return adminClubs.some((club) => club.id === nextValue) ? nextValue : defaultClubId;
-}
-
 async function getActiveClubId() {
-  const cookieStore = await cookies();
-  return safeClubId(cookieStore.get(activeClubCookieName)?.value);
+  const session = await getAdminSession();
+  if (!session) redirect("/login");
+  return session.activeClubId;
 }
 
 export async function getOverview() {
-  const clubId = await getActiveClubId();
+  const session = await getAdminSession();
+  if (!session) redirect("/login");
+
+  const clubId = session.activeClubId;
 
   try {
     const response = await fetch(`${apiBaseUrl}/clubs/${clubId}/admin/overview`, {
@@ -143,15 +156,28 @@ function revalidateAdmin() {
 export async function switchClubAction(formData: FormData) {
   "use server";
 
-  const nextClubId = safeClubId(formData.get("clubId"));
+  const session = await getAdminSession();
+  if (!session) redirect("/login");
+
+  const nextClubId = `${formData.get("clubId") ?? ""}`;
+  if (!session.clubs.some((c) => c.clubId === nextClubId)) return;
+
   const cookieStore = await cookies();
-  cookieStore.set(activeClubCookieName, nextClubId, {
+  cookieStore.set(adminSessionCookieName, JSON.stringify({ ...session, activeClubId: nextClubId }), {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
   });
 
   revalidateAdmin();
+}
+
+export async function logoutAction() {
+  "use server";
+
+  const cookieStore = await cookies();
+  cookieStore.delete(adminSessionCookieName);
+  redirect("/login");
 }
 
 export async function createMemberAction(formData: FormData) {
@@ -557,7 +583,7 @@ export async function sendReminderAction(formData: FormData) {
   revalidateAdmin();
 }
 
-export function AdminShell({
+export async function AdminShell({
   active,
   overview,
   children,
@@ -566,6 +592,9 @@ export function AdminShell({
   overview: AdminClubOverview;
   children: React.ReactNode;
 }) {
+  const session = await getAdminSession();
+  const sessionClubs = session?.clubs ?? [];
+
   return (
     <main className="shell">
       <aside className="sidebar">
@@ -577,6 +606,11 @@ export function AdminShell({
             </Link>
           ))}
         </nav>
+        <form action={logoutAction} className="sidebarLogout">
+          <button className="secondary compact" type="submit">
+            로그아웃
+          </button>
+        </form>
       </aside>
 
       <section className="content">
@@ -588,19 +622,21 @@ export function AdminShell({
             <h1>{overview.club.name}</h1>
           </div>
           <div className="actions">
-            <form className="clubSwitcher" action={switchClubAction}>
-              <label htmlFor="admin-club-select">모임</label>
-              <select id="admin-club-select" name="clubId" defaultValue={overview.club.id}>
-                {adminClubs.map((club) => (
-                  <option key={club.id} value={club.id}>
-                    {club.name}
-                  </option>
-                ))}
-              </select>
-              <button className="secondary" type="submit">
-                전환
-              </button>
-            </form>
+            {sessionClubs.length > 1 && (
+              <form className="clubSwitcher" action={switchClubAction}>
+                <label htmlFor="admin-club-select">모임</label>
+                <select id="admin-club-select" name="clubId" defaultValue={overview.club.id}>
+                  {sessionClubs.map((club) => (
+                    <option key={club.clubId} value={club.clubId}>
+                      {club.name}
+                    </option>
+                  ))}
+                </select>
+                <button className="secondary" type="submit">
+                  전환
+                </button>
+              </form>
+            )}
             <Link className="secondary" href="/events">
               일정 생성
             </Link>

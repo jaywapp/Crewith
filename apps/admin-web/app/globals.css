@@ -60,6 +60,8 @@ textarea {
 .sidebar {
   background: var(--color-white);
   box-shadow: var(--shadow-nav);
+  display: flex;
+  flex-direction: column;
   padding: 28px 20px;
 }
 
@@ -887,6 +889,85 @@ textarea:focus {
 .joinStatus.rejected {
   background: var(--color-ceramic);
   color: var(--color-text-black-soft);
+}
+
+.loginPage {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.loginCard {
+  background: var(--color-white);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.loginCard .brand {
+  margin-bottom: 8px;
+}
+
+.loginCard h1 {
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+
+.loginCard .muted {
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.loginError {
+  background: #fff5f5;
+  border-radius: var(--radius-input);
+  color: var(--color-red);
+  font-size: 14px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+}
+
+.loginForm {
+  display: grid;
+  gap: 16px;
+}
+
+.loginForm label {
+  display: grid;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.loginForm input {
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-input);
+  min-height: 44px;
+  outline: none;
+  padding: 8px 12px;
+  transition: border-color 0.2s ease;
+  width: 100%;
+}
+
+.loginForm input:focus {
+  border-color: var(--color-green-accent);
+}
+
+.loginForm .primary {
+  width: 100%;
+}
+
+.sidebarLogout {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.sidebarLogout button {
+  width: 100%;
 }
 
 @media (max-width: 1024px) {
