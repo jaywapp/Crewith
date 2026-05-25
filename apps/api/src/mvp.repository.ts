@@ -555,6 +555,32 @@ export class JsonMvpRepository implements MvpRepository {
       throw new NotFoundException("Invite link expired");
     }
 
+    const normalizedPhone = normalizePhoneNumber(input.applicantPhone.trim());
+
+    const existing = members.find(
+      (m) => normalizePhoneNumber(m.phoneNumber) === normalizedPhone && m.memberStatus !== "removed",
+    );
+
+    if (existing) {
+      const alreadyMember = clubMemberships.find(
+        (cm) => cm.clubId === clubId && cm.memberId === existing.id && cm.memberStatus !== "removed",
+      );
+
+      if (!alreadyMember) {
+        clubMemberships.push({
+          clubId,
+          memberId: existing.id,
+          role: "member",
+          memberStatus: "active",
+          joinedAt: new Date().toISOString().slice(0, 10),
+        });
+        initializeMemberState(existing);
+      }
+
+      persistStore();
+      return existing;
+    }
+
     const phoneDigits = input.applicantPhone.trim().replace(/\D/g, "");
     const member: AdminMemberListItem = {
       id: `member-${Date.now()}`,
