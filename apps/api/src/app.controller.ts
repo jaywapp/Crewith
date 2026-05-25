@@ -40,6 +40,7 @@ import {
   type UpdateAdminNoticeInput,
   type UpdateMemberProfileInput,
   type CreateFeedbackInput,
+  type RegisterInput,
 } from "./mvp.store";
 import { MvpRepository } from "./mvp.repository";
 
@@ -78,6 +79,10 @@ export class AppController {
     return { data: this.repository.login(input) };
   }
 
+  @Post("auth/register")
+  register(@Body() input: RegisterInput) {
+    return { data: this.repository.register(input) };
+  }
 
   @Post("me/devices")
   registerDevice(@Body() input: RegisterDeviceInput) {

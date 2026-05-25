@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import {
   type AcceptInviteInput,
   type CreateFeedbackInput,
@@ -40,6 +40,7 @@ import {
   type UpdateAdminNoticeReadInput,
   type UpdateAdminNoticeInput,
   type UpdateMemberProfileInput,
+  type RegisterInput,
   buildEventItem,
   buildFeeItem,
   buildFees,
@@ -109,6 +110,7 @@ function cleanNonNegativeIntegerList(values: unknown[]) {
 export abstract class MvpRepository {
   abstract getAdminOverview(clubId: string): ReturnType<typeof buildOverview>;
   abstract login(input: AuthLoginInput): unknown;
+  abstract register(input: RegisterInput): { memberId: string };
   abstract resetMemberPassword(memberId: string, input: ResetMemberPasswordInput): unknown;
   abstract registerDevice(input: RegisterDeviceInput): ReturnType<typeof registerMemberDevice>;
   abstract getMemberProfile(memberId: string): ReturnType<typeof buildProfile>;
@@ -186,6 +188,41 @@ export class JsonMvpRepository implements MvpRepository {
       profile: buildProfile(member),
       clubs: clubMembershipSummaries(member.id),
     };
+  }
+
+  register(input: RegisterInput) {
+    const phoneNumber = normalizePhoneNumber(input.phoneNumber ?? "");
+    const name = `${input.name ?? ""}`.trim();
+    const password = `${input.password ?? ""}`.trim();
+
+    if (!name || !phoneNumber || !password) {
+      throw new BadRequestException("이름, 전화번호, 비밀번호를 입력하세요.");
+    }
+
+    const duplicate = members.find(
+      (m) => normalizePhoneNumber(m.phoneNumber) === phoneNumber && m.memberStatus !== "removed",
+    );
+
+    if (duplicate) {
+      throw new ConflictException("이미 사용 중인 전화번호입니다.");
+    }
+
+    const nextMember: AdminMemberListItem = {
+      id: `member-${Date.now()}`,
+      name,
+      phoneNumber,
+      birthDate: input.birthDate?.trim() || undefined,
+      role: "member",
+      memberStatus: "active",
+      joinedAt: new Date().toISOString().slice(0, 10),
+      lastFeeStatus: "unpaid",
+      attendanceRate: 0,
+      password,
+    };
+
+    members.push(nextMember);
+    persistStore();
+    return { memberId: nextMember.id };
   }
 
   resetMemberPassword(memberId: string, input: ResetMemberPasswordInput) {
