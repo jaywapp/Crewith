@@ -16,12 +16,14 @@ class TextInput extends StatelessWidget {
     super.key,
     required this.controller,
     required this.label,
+    this.hint,
     this.keyboardType,
     this.obscureText = false,
   });
 
   final TextEditingController controller;
   final String label;
+  final String? hint;
   final TextInputType? keyboardType;
   final bool obscureText;
 
@@ -36,6 +38,7 @@ class TextInput extends StatelessWidget {
         decoration: InputDecoration(
           border: const OutlineInputBorder(),
           labelText: label,
+          hintText: hint,
         ),
       ),
     );
