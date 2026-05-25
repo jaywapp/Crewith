@@ -416,4 +416,77 @@ test("API serves overview and persists member app actions", async (t) => {
   });
   assert.equal(deletedNotice.status, 200);
   assert.equal((await deletedNotice.json()).data.deleted, true);
+
+  // POST /auth/register — 성공
+  const registerResponse = await fetch(`${baseUrl}/auth/register`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      name: "신규회원",
+      phoneNumber: "010-9999-1234",
+      password: "pass1234",
+      birthDate: "1995-06-15",
+    }),
+  });
+  assert.equal(registerResponse.status, 201);
+  const registeredMemberId = (await registerResponse.json()).data.memberId;
+  assert.ok(typeof registeredMemberId === "string" && registeredMemberId.startsWith("member-"));
+
+  // 등록 후 로그인 가능
+  const registerLoginResp = await fetch(`${baseUrl}/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ phoneNumber: "010-9999-1234", password: "pass1234" }),
+  });
+  assert.equal(registerLoginResp.status, 201);
+  const registerSession = (await registerLoginResp.json()).data;
+  assert.equal(registerSession.memberId, registeredMemberId);
+  assert.equal(registerSession.clubs.length, 0); // 클럽 없음
+
+  // 중복 전화번호로 재가입 시도 — 409
+  const duplicateRegister = await fetch(`${baseUrl}/auth/register`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      name: "중복회원",
+      phoneNumber: "010-9999-1234",
+      password: "other",
+    }),
+  });
+  assert.equal(duplicateRegister.status, 409);
+
+  // acceptInvite — 이미 가입된 전화번호이면 기존 계정에 clubMembership만 추가
+  // 먼저 초대 링크 생성
+  const createInviteForReuse = await fetch(`${baseUrl}/clubs/club-seoul-runners/invite-links`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-crewith-role": "operator" },
+    body: JSON.stringify({ expiresInDays: 7 }),
+  });
+  assert.equal(createInviteForReuse.status, 201);
+  const reuseToken = (await createInviteForReuse.json()).data.token;
+
+  const acceptWithExisting = await fetch(
+    `${baseUrl}/clubs/club-seoul-runners/invite-links/${reuseToken}/accept`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        applicantName: "신규회원",
+        applicantPhone: "010-9999-1234",
+      }),
+    },
+  );
+  assert.equal(acceptWithExisting.status, 201);
+  const reuseResult = (await acceptWithExisting.json()).data;
+  assert.equal(reuseResult.id, registeredMemberId); // 기존 계정 반환
+
+  // 이제 로그인하면 클럽이 1개
+  const afterInviteLogin = await fetch(`${baseUrl}/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ phoneNumber: "010-9999-1234", password: "pass1234" }),
+  });
+  const afterSession = (await afterInviteLogin.json()).data;
+  assert.equal(afterSession.clubs.length, 1);
+  assert.equal(afterSession.clubs[0].clubId, "club-seoul-runners");
 });
