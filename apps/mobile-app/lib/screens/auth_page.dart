@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../member_api_client.dart';
 import '../member_ui.dart';
+import 'register_page.dart';
 
 class AuthPage extends StatefulWidget {
-  const AuthPage({super.key, required this.onLogin});
+  const AuthPage({super.key, required this.onLogin, required this.api});
 
   final Future<bool> Function(String phoneNumber, String password) onLogin;
+  final MemberApiClient api;
 
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -98,6 +101,27 @@ class _AuthPageState extends State<AuthPage> {
                   ],
                 ],
               ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '아직 계정이 없으신가요?',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: textBlackSoft),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => RegisterPage(api: widget.api),
+                    ),
+                  ),
+                  child: const Text('회원가입'),
+                ),
+              ],
             ),
           ],
         ),
