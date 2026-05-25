@@ -486,6 +486,7 @@ test("API serves overview and persists member app actions", async (t) => {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ phoneNumber: "010-9999-1234", password: "pass1234" }),
   });
+  assert.equal(afterInviteLogin.status, 201);
   const afterSession = (await afterInviteLogin.json()).data;
   assert.equal(afterSession.clubs.length, 1);
   assert.equal(afterSession.clubs[0].clubId, "club-seoul-runners");
