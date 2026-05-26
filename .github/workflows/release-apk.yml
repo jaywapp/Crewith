@@ -73,6 +73,7 @@ jobs:
           git add apps/mobile-app/pubspec.yaml
           git commit -m "chore: bump version to ${{ steps.version.outputs.tag }}"
           git push origin HEAD:refs/heads/main
+          git push origin HEAD:refs/heads/develop
 
       - name: Build release APK
         working-directory: apps/mobile-app
