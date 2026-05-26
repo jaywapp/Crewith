@@ -74,11 +74,16 @@ jobs:
           TAG="${{ steps.version.outputs.tag }}"
           APK="apps/mobile-app/build/app/outputs/flutter-apk/app-release.apk"
 
-          # 기존 릴리즈·태그 삭제 (없으면 무시)
+          # 기존 릴리즈 삭제 (없으면 무시)
           gh release delete "$TAG" --yes 2>/dev/null || true
-          git push origin ":refs/tags/$TAG" 2>/dev/null || true
 
-          # 현재 커밋에 태그 생성 후 릴리즈 발행
+          # 태그를 현재 커밋으로 강제 이동
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "$TAG"
+          git push origin -f "refs/tags/$TAG"
+
+          # 릴리즈 발행
           gh release create "$TAG" "$APK" \
             --title "$TAG" \
             --generate-notes \
