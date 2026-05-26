@@ -59,6 +59,21 @@ class MemberApiClient {
     return null;
   }
 
+  Future<bool> resetPassword(String phoneNumber) async {
+    final client = _client();
+    try {
+      final request = await client.postUrl(Uri.parse('$apiBaseUrl/auth/reset-password'));
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode({'phoneNumber': phoneNumber}));
+      final response = await request.close().timeout(const Duration(seconds: 15));
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
   Future<String?> register({
     required String name,
     required String phoneNumber,

@@ -280,6 +280,10 @@ export interface ResetMemberPasswordInput {
   password: string;
 }
 
+export interface SelfResetPasswordInput {
+  phoneNumber: string;
+}
+
 export interface UpdateMemberProfileInput {
   name?: string;
   phoneNumber?: string;
@@ -297,6 +301,7 @@ export interface RegisterDeviceInput {
 }
 
 export interface MvpStore {
+  clubs: ClubListItem[];
   members: AdminMemberListItem[];
   clubMemberships: ClubMembershipItem[];
   memberDevices: MemberDeviceItem[];
@@ -670,6 +675,7 @@ export function hydrateSetRecord(target: Record<string, Set<string>>, source: Re
 
 export function persistStore() {
   const store: MvpStore = {
+    clubs,
     members,
     clubMemberships,
     memberDevices,
@@ -705,6 +711,7 @@ export function hydrateStore() {
   try {
     const store = JSON.parse(readFileSync(dataFilePath, "utf8")) as Partial<MvpStore>;
 
+    replaceArray(clubs, store.clubs);
     replaceArray(members, store.members);
     for (const member of members) {
       if (!member.password) {

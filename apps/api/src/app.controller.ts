@@ -42,6 +42,7 @@ import {
   type CreateFeedbackInput,
   type RegisterInput,
   type CreateClubInput,
+  type SelfResetPasswordInput,
 } from "./mvp.store";
 import { MvpRepository } from "./mvp.repository";
 
@@ -83,6 +84,11 @@ export class AppController {
   @Post("auth/register")
   register(@Body() input: RegisterInput) {
     return { data: this.repository.register(input) };
+  }
+
+  @Post("auth/reset-password")
+  selfResetPassword(@Body() input: SelfResetPasswordInput) {
+    return { data: this.repository.selfResetPassword(input) };
   }
 
   @Post("clubs")
