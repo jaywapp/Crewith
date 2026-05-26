@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'admin_models.dart';
 import 'member_models.dart';
 
 const _defaultApiBaseUrl = String.fromEnvironment(
@@ -345,6 +346,235 @@ class MemberApiClient {
     );
   }
 
+  Future<AdminClubOverview?> fetchAdminOverview({
+    required String clubId,
+    required String role,
+  }) async {
+    final uri = Uri.parse('$apiBaseUrl/clubs/$clubId/admin/overview');
+    final client = _client();
+    try {
+      final request = await client.getUrl(uri);
+      request.headers.set('x-crewith-role', role);
+      final response = await request.close().timeout(const Duration(seconds: 15));
+      if (response.statusCode != HttpStatus.ok) return null;
+      final payload = await response.transform(utf8.decoder).join();
+      final json = jsonDecode(payload) as Map<String, dynamic>;
+      return AdminClubOverview.fromJson(json['data'] as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<bool> adminCreateMember({
+    required String clubId,
+    required String role,
+    required String name,
+    required String phoneNumber,
+    required String memberRole,
+    String? password,
+  }) =>
+      _sendJsonAdmin('POST', Uri.parse('$apiBaseUrl/clubs/$clubId/members'), {
+        'name': name,
+        'phoneNumber': phoneNumber,
+        'role': memberRole,
+        if (password != null && password.isNotEmpty) 'password': password,
+      }, role);
+
+  Future<bool> adminUpdateMember({
+    required String clubId,
+    required String role,
+    required String memberId,
+    required String memberRole,
+    required String memberStatus,
+    required String lastFeeStatus,
+  }) =>
+      _sendJsonAdmin(
+          'PATCH', Uri.parse('$apiBaseUrl/clubs/$clubId/members/$memberId'), {
+        'role': memberRole,
+        'memberStatus': memberStatus,
+        'lastFeeStatus': lastFeeStatus,
+      }, role);
+
+  Future<bool> adminRemoveMember({
+    required String clubId,
+    required String role,
+    required String memberId,
+  }) =>
+      _deleteAdmin(Uri.parse('$apiBaseUrl/clubs/$clubId/members/$memberId'), role);
+
+  Future<bool> adminResetMemberPassword({
+    required String clubId,
+    required String role,
+    required String memberId,
+    required String password,
+  }) =>
+      _sendJsonAdmin(
+          'PATCH', Uri.parse('$apiBaseUrl/clubs/$clubId/members/$memberId/password'), {
+        'password': password,
+      }, role);
+
+  Future<bool> adminCreateFee({
+    required String clubId,
+    required String role,
+    required String title,
+    required String feeType,
+    required int amount,
+    required String dueDate,
+  }) =>
+      _sendJsonAdmin('POST', Uri.parse('$apiBaseUrl/clubs/$clubId/fees'), {
+        'title': title,
+        'feeType': feeType,
+        'amount': amount,
+        'dueDate': dueDate,
+      }, role);
+
+  Future<bool> adminUpdateFeePayment({
+    required String clubId,
+    required String role,
+    required String feeId,
+    required String memberId,
+    required String status,
+  }) =>
+      _sendJsonAdmin(
+          'PATCH', Uri.parse('$apiBaseUrl/clubs/$clubId/fees/$feeId/payments'), {
+        'memberId': memberId,
+        'status': status,
+      }, role);
+
+  Future<bool> adminCreateEvent({
+    required String clubId,
+    required String role,
+    required String title,
+    required String startsAt,
+    required String locationName,
+    String? locationAddress,
+    required String visibility,
+  }) =>
+      _sendJsonAdmin('POST', Uri.parse('$apiBaseUrl/clubs/$clubId/events'), {
+        'title': title,
+        'startsAt': startsAt,
+        'locationName': locationName,
+        if (locationAddress != null && locationAddress.isNotEmpty)
+          'locationAddress': locationAddress,
+        'visibility': visibility,
+      }, role);
+
+  Future<bool> adminUpdateEvent({
+    required String clubId,
+    required String role,
+    required String eventId,
+    required String title,
+    required String startsAt,
+    required String locationName,
+    String? locationAddress,
+    required String visibility,
+  }) =>
+      _sendJsonAdmin(
+          'PATCH', Uri.parse('$apiBaseUrl/clubs/$clubId/events/$eventId'), {
+        'title': title,
+        'startsAt': startsAt,
+        'locationName': locationName,
+        if (locationAddress != null && locationAddress.isNotEmpty)
+          'locationAddress': locationAddress,
+        'visibility': visibility,
+      }, role);
+
+  Future<bool> adminDeleteEvent({
+    required String clubId,
+    required String role,
+    required String eventId,
+  }) =>
+      _deleteAdmin(Uri.parse('$apiBaseUrl/clubs/$clubId/events/$eventId'), role);
+
+  Future<bool> adminUpdateAttendance({
+    required String clubId,
+    required String role,
+    required String eventId,
+    required String memberId,
+    required String status,
+    required int companionCount,
+  }) =>
+      _sendJsonAdmin(
+          'PATCH', Uri.parse('$apiBaseUrl/clubs/$clubId/events/$eventId/attendance'), {
+        'memberId': memberId,
+        'status': status,
+        'companionCount': companionCount,
+      }, role);
+
+  Future<bool> adminCreateNotice({
+    required String clubId,
+    required String role,
+    required String title,
+    required String body,
+    required String visibility,
+  }) =>
+      _sendJsonAdmin('POST', Uri.parse('$apiBaseUrl/clubs/$clubId/notices'), {
+        'title': title,
+        'body': body,
+        'visibility': visibility,
+      }, role);
+
+  Future<bool> adminUpdateNotice({
+    required String clubId,
+    required String role,
+    required String noticeId,
+    required String title,
+    required String body,
+    required String visibility,
+  }) =>
+      _sendJsonAdmin(
+          'PATCH', Uri.parse('$apiBaseUrl/clubs/$clubId/notices/$noticeId'), {
+        'title': title,
+        'body': body,
+        'visibility': visibility,
+      }, role);
+
+  Future<bool> adminDeleteNotice({
+    required String clubId,
+    required String role,
+    required String noticeId,
+  }) =>
+      _deleteAdmin(Uri.parse('$apiBaseUrl/clubs/$clubId/notices/$noticeId'), role);
+
+  Future<bool> adminReviewJoinRequest({
+    required String clubId,
+    required String role,
+    required String requestId,
+    required String status,
+  }) =>
+      _sendJsonAdmin(
+          'PATCH', Uri.parse('$apiBaseUrl/clubs/$clubId/join-requests/$requestId'), {
+        'status': status,
+      }, role);
+
+  Future<bool> adminCreateInviteLink({
+    required String clubId,
+    required String role,
+    required int expiresInDays,
+  }) =>
+      _sendJsonAdmin('POST', Uri.parse('$apiBaseUrl/clubs/$clubId/invite-links'), {
+        'expiresInDays': expiresInDays,
+      }, role);
+
+  Future<bool> adminDisableInviteLink({
+    required String clubId,
+    required String role,
+    required String inviteId,
+  }) =>
+      _sendJsonAdmin(
+          'PATCH', Uri.parse('$apiBaseUrl/clubs/$clubId/invite-links/$inviteId/disable'), {}, role);
+
+  Future<bool> adminSendReminder({
+    required String clubId,
+    required String role,
+    required String reminderId,
+  }) =>
+      _sendJsonAdmin('POST', Uri.parse('$apiBaseUrl/clubs/$clubId/reminders/send'), {
+        'reminderId': reminderId,
+      }, role);
+
   HttpClient _client() {
     return HttpClient()..connectionTimeout = const Duration(seconds: 10);
   }
@@ -367,6 +597,45 @@ class MemberApiClient {
       final response =
           await request.close().timeout(const Duration(seconds: 15));
 
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<bool> _sendJsonAdmin(
+    String method,
+    Uri uri,
+    Map<String, Object?> body,
+    String role,
+  ) async {
+    final client = _client();
+    try {
+      final request = switch (method) {
+        'PATCH' => await client.patchUrl(uri),
+        'POST' => await client.postUrl(uri),
+        _ => await client.postUrl(uri),
+      };
+      request.headers.contentType = ContentType.json;
+      request.headers.set('x-crewith-role', role);
+      request.write(jsonEncode(body));
+      final response = await request.close().timeout(const Duration(seconds: 15));
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<bool> _deleteAdmin(Uri uri, String role) async {
+    final client = _client();
+    try {
+      final request = await client.deleteUrl(uri);
+      request.headers.set('x-crewith-role', role);
+      final response = await request.close().timeout(const Duration(seconds: 15));
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
       return false;
