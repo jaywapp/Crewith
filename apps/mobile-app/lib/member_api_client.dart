@@ -346,11 +346,6 @@ class MemberApiClient {
     );
   }
 
-<<<<<<< HEAD
-  Future<bool> createEvent({
-    required String clubId,
-    required String callerRole,
-=======
   Future<AdminClubOverview?> fetchAdminOverview({
     required String clubId,
     required String role,
@@ -451,56 +446,19 @@ class MemberApiClient {
   Future<bool> adminCreateEvent({
     required String clubId,
     required String role,
->>>>>>> 69a2eeefb81e6222a94f74d4e57aeef704a44c2e
     required String title,
     required String startsAt,
     required String locationName,
     String? locationAddress,
-<<<<<<< HEAD
-    String visibility = 'all_members',
-  }) {
-    return _sendJsonWithRole(
-      'POST',
-      Uri.parse('$apiBaseUrl/clubs/$clubId/events'),
-      {
-=======
     required String visibility,
   }) =>
       _sendJsonAdmin('POST', Uri.parse('$apiBaseUrl/clubs/$clubId/events'), {
->>>>>>> 69a2eeefb81e6222a94f74d4e57aeef704a44c2e
         'title': title,
         'startsAt': startsAt,
         'locationName': locationName,
         if (locationAddress != null && locationAddress.isNotEmpty)
           'locationAddress': locationAddress,
         'visibility': visibility,
-<<<<<<< HEAD
-      },
-      callerRole,
-    );
-  }
-
-  Future<bool> createMember({
-    required String clubId,
-    required String callerRole,
-    required String name,
-    required String phoneNumber,
-    String role = 'member',
-    String? password,
-  }) {
-    return _sendJsonWithRole(
-      'POST',
-      Uri.parse('$apiBaseUrl/clubs/$clubId/members'),
-      {
-        'name': name,
-        'phoneNumber': phoneNumber,
-        'role': role,
-        if (password != null && password.isNotEmpty) 'password': password,
-      },
-      callerRole,
-    );
-  }
-=======
       }, role);
 
   Future<bool> adminUpdateEvent({
@@ -616,36 +574,9 @@ class MemberApiClient {
       _sendJsonAdmin('POST', Uri.parse('$apiBaseUrl/clubs/$clubId/reminders/send'), {
         'reminderId': reminderId,
       }, role);
->>>>>>> 69a2eeefb81e6222a94f74d4e57aeef704a44c2e
 
   HttpClient _client() {
     return HttpClient()..connectionTimeout = const Duration(seconds: 10);
-  }
-
-  Future<bool> _sendJsonWithRole(
-    String method,
-    Uri uri,
-    Map<String, Object?> body,
-    String role,
-  ) async {
-    final client = _client();
-    try {
-      final request = switch (method) {
-        'PATCH' => await client.patchUrl(uri),
-        'POST' => await client.postUrl(uri),
-        _ => await client.postUrl(uri),
-      };
-      request.headers.contentType = ContentType.json;
-      request.headers.set('x-crewith-role', role);
-      request.write(jsonEncode(body));
-      final response =
-          await request.close().timeout(const Duration(seconds: 15));
-      return response.statusCode >= 200 && response.statusCode < 300;
-    } catch (_) {
-      return false;
-    } finally {
-      client.close(force: true);
-    }
   }
 
   Future<bool> _sendJson(
