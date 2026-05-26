@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'member_api_client.dart';
 import 'member_models.dart';
 import 'member_ui.dart';
+import 'screens/admin_page.dart';
 import 'screens/auth_page.dart';
 import 'screens/create_club_page.dart';
 import 'screens/events_page.dart';
@@ -395,6 +396,24 @@ class _HomeShellState extends State<HomeShell> {
     });
   }
 
+  bool _isAdminRole(String role) => role == 'owner' || role == 'operator';
+
+  void _openAdminPage() {
+    final activeClub = _clubs.firstWhere(
+      (c) => c.clubId == _activeClubId,
+      orElse: () => _clubs.first,
+    );
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AdminPage(
+          clubId: _activeClubId,
+          role: activeClub.role,
+          api: _api,
+        ),
+      ),
+    );
+  }
+
   void _changeClub(String clubId) {
     if (clubId == _activeClubId) {
       return;
@@ -494,6 +513,7 @@ class _HomeShellState extends State<HomeShell> {
             onJoinRequested: _createJoinRequest,
             onInviteAccepted: _acceptInvite,
             onFeedbackSubmitted: _submitFeedback,
+            onAdminMode: _isAdminRole(activeClub.role) ? _openAdminPage : null,
           ),
         ];
 
