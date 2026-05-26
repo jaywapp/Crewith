@@ -55,12 +55,24 @@ jobs:
             "$STORE_PASSWORD" "$KEY_PASSWORD" "$KEY_ALIAS" \
             > apps/mobile-app/android/key.properties
 
-      - name: Get app version
+      - name: Bump patch version
         id: version
-        working-directory: apps/mobile-app
         run: |
-          VERSION_NAME=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
-          echo "tag=v${VERSION_NAME}" >> $GITHUB_OUTPUT
+          CURRENT=$(grep '^version:' apps/mobile-app/pubspec.yaml | awk '{print $2}')
+          MAJOR=$(echo $CURRENT | cut -d'.' -f1)
+          MINOR=$(echo $CURRENT | cut -d'.' -f2)
+          PATCH=$(echo $CURRENT | cut -d'.' -f3)
+          NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          sed -i "s/^version: .*/version: $NEW_VERSION/" apps/mobile-app/pubspec.yaml
+          echo "tag=v${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Commit and push version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/mobile-app/pubspec.yaml
+          git commit -m "chore: bump version to ${{ steps.version.outputs.tag }}"
+          git push origin HEAD:refs/heads/main
 
       - name: Build release APK
         working-directory: apps/mobile-app
@@ -75,8 +87,6 @@ jobs:
 
           gh release delete "$TAG" --yes 2>/dev/null || true
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -f "$TAG"
           git push origin -f "refs/tags/$TAG"
 
