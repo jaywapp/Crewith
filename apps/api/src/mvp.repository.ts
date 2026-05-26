@@ -217,6 +217,7 @@ export class JsonMvpRepository implements MvpRepository {
       name,
       phoneNumber,
       birthDate: input.birthDate?.trim() || undefined,
+      gender: input.gender?.trim() || undefined,
       role: "member",
       memberStatus: "active",
       joinedAt: new Date().toISOString().slice(0, 10),

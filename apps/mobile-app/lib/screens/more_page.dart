@@ -14,8 +14,12 @@ class MorePage extends StatefulWidget {
     required this.onJoinRequested,
     required this.onInviteAccepted,
     required this.onFeedbackSubmitted,
+<<<<<<< HEAD
     required this.onEventCreated,
     required this.onMemberCreated,
+=======
+    this.onAdminMode,
+>>>>>>> 69a2eeefb81e6222a94f74d4e57aeef704a44c2e
   });
 
   final MemberAppOverview overview;
@@ -36,6 +40,7 @@ class MorePage extends StatefulWidget {
     required String body,
     required String category,
   }) onFeedbackSubmitted;
+<<<<<<< HEAD
   final Future<String> Function({
     required String title,
     required String startsAt,
@@ -48,6 +53,9 @@ class MorePage extends StatefulWidget {
     required String role,
     String? password,
   }) onMemberCreated;
+=======
+  final VoidCallback? onAdminMode;
+>>>>>>> 69a2eeefb81e6222a94f74d4e57aeef704a44c2e
 
   @override
   State<MorePage> createState() => _MorePageState();
@@ -140,6 +148,8 @@ class _MorePageState extends State<MorePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin = widget.activeClub.role == 'owner' || widget.activeClub.role == 'operator';
+
     return PageScaffold(
       title: '⚙️ 더보기',
       subtitle: '내 모임 정보와 가입 신청을 관리합니다.',
@@ -156,6 +166,22 @@ class _MorePageState extends State<MorePage> {
             ],
           ),
         ),
+        if (isAdmin && widget.onAdminMode != null)
+          InfoCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const CardHeader(label: '운영', title: '관리자 모드'),
+                const Text('회원, 회비, 일정, 공지 등 모임 운영 기능을 관리합니다.'),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: widget.onAdminMode,
+                  icon: const Icon(Icons.admin_panel_settings_outlined),
+                  label: const Text('관리자 모드 열기'),
+                ),
+              ],
+            ),
+          ),
         InfoCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

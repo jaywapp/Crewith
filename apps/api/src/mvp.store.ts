@@ -512,6 +512,7 @@ export interface RegisterInput {
   phoneNumber: string;
   password: string;
   birthDate?: string;
+  gender?: string;
 }
 
 export interface CreateClubInput {
