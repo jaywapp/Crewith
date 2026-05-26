@@ -1121,6 +1121,19 @@ textarea:focus {
     padding: 24px 20px;
   }
 
+  .sidebar {
+    padding: 16px;
+  }
+
+  .brand {
+    margin-bottom: 16px;
+  }
+
+  .sidebar a {
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+
   .topbar,
   .actions,
   .clubSwitcher {
