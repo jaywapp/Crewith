@@ -1073,12 +1073,16 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     const categoryLabel = { bug: "버그", improvement: "개선 제안", other: "기타" }[input.category] ?? input.category;
+    const sourceLabel = { "mobile-app": "모바일 앱", "admin-web": "관리자 페이지" }[input.source ?? ""] ?? null;
     const issueBody = [
       `**카테고리**: ${categoryLabel}`,
+      ...(sourceLabel ? [`**출처**: ${sourceLabel}`] : []),
       "",
       input.body,
       ...(input.memberId ? ["", "---", `_제출자 ID: ${input.memberId}_`] : []),
     ].join("\n");
+
+    const labels = ["feedback", "pending-ai", ...(input.source ? [input.source] : [])];
 
     const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
       method: "POST",
@@ -1090,7 +1094,7 @@ export class JsonMvpRepository implements MvpRepository {
       body: JSON.stringify({
         title: `[피드백] ${input.title}`,
         body: issueBody,
-        labels: ["feedback", "pending-ai"],
+        labels,
       }),
     });
 

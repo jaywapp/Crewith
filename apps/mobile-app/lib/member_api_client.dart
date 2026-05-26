@@ -275,6 +275,7 @@ class MemberApiClient {
         'body': body,
         'category': category,
         if (memberId != null) 'memberId': memberId,
+        'source': 'mobile-app',
       },
     );
   }

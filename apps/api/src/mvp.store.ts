@@ -528,6 +528,7 @@ export interface CreateFeedbackInput {
   body: string;
   category: FeedbackCategory;
   memberId?: string;
+  source?: 'mobile-app' | 'admin-web';
 }
 
 export interface FeedbackResult {
