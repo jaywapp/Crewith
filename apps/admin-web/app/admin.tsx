@@ -600,7 +600,7 @@ export async function sendFeedbackAction(formData: FormData) {
   await fetch(`${apiBaseUrl}/feedback`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, body, category, memberId: session.memberId }),
+    body: JSON.stringify({ title, body, category, memberId: session.memberId, source: "admin-web" }),
   });
 
   redirect("/feedback?sent=1");
