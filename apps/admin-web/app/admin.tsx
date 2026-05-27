@@ -728,6 +728,11 @@ export function UnauthorizedPanel() {
           <p className="eyebrow">권한 필요</p>
           <h1>관리자 권한이 필요합니다.</h1>
           <p className="muted">모임장 또는 운영진 계정으로 다시 접속해야 합니다.</p>
+          <form action={logoutAction}>
+            <button className="primary" type="submit">
+              다른 계정으로 로그인
+            </button>
+          </form>
         </article>
       </section>
     </main>
