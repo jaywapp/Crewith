@@ -1,15 +1,20 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
-import { JsonMvpRepository, MvpRepository } from "./mvp.repository";
+import { MvpRepository } from "./mvp.repository";
+import { PrismaRepository } from "./prisma.repository";
+import { PrismaModule } from "./prisma/prisma.module";
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true })],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+  ],
   controllers: [AppController],
   providers: [
     {
       provide: MvpRepository,
-      useClass: JsonMvpRepository,
+      useClass: PrismaRepository,
     },
   ],
 })
