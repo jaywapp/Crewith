@@ -476,14 +476,31 @@ class _HomeShellState extends State<HomeShell> {
           EventsPage(
             overview: overview,
             onResponseChanged: _updateEventResponse,
+            isAdmin: _isAdminRole(activeClub.role),
+            clubId: _activeClubId,
+            role: activeClub.role,
+            api: _api,
+            onRefresh: _refreshOverview,
           ),
           NoticesPage(
             overview: overview,
             onRead: _markNoticeRead,
             onReactionToggled: _toggleNoticeReaction,
             onCommentCreated: _createNoticeComment,
+            isAdmin: _isAdminRole(activeClub.role),
+            clubId: _activeClubId,
+            role: activeClub.role,
+            api: _api,
+            onRefresh: _refreshOverview,
           ),
-          FeesPage(overview: overview),
+          FeesPage(
+            overview: overview,
+            isAdmin: _isAdminRole(activeClub.role),
+            clubId: _activeClubId,
+            role: activeClub.role,
+            api: _api,
+            onRefresh: _refreshOverview,
+          ),
           FutureBuilder<List<MemberDirectoryItem>>(
             future: _memberDirectoryFuture,
             builder: (context, directorySnapshot) {
