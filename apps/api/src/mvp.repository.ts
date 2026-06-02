@@ -111,62 +111,62 @@ function cleanNonNegativeIntegerList(values: unknown[]) {
 }
 
 export abstract class MvpRepository {
-  abstract getAdminOverview(clubId: string): ReturnType<typeof buildOverview>;
+  abstract getAdminOverview(clubId: string): ReturnType<typeof buildOverview> | Promise<ReturnType<typeof buildOverview>>;
   abstract login(input: AuthLoginInput): unknown;
-  abstract register(input: RegisterInput): { memberId: string };
-  abstract createClub(input: CreateClubInput): { clubId: string; name: string; sportType: string };
+  abstract register(input: RegisterInput): { memberId: string } | Promise<{ memberId: string }>;
+  abstract createClub(input: CreateClubInput): { clubId: string; name: string; sportType: string } | Promise<{ clubId: string; name: string; sportType: string }>;
   abstract resetMemberPassword(memberId: string, input: ResetMemberPasswordInput): unknown;
-  abstract selfResetPassword(input: SelfResetPasswordInput): { success: true };
-  abstract registerDevice(input: RegisterDeviceInput): ReturnType<typeof registerMemberDevice>;
-  abstract getMemberProfile(memberId: string): ReturnType<typeof buildProfile>;
-  abstract updateMemberProfile(memberId: string, input: UpdateMemberProfileInput): ReturnType<typeof buildProfile>;
-  abstract getMemberAppOverview(clubId: string, memberId: string): ReturnType<typeof buildMemberAppOverview>;
-  abstract getMemberDirectory(clubId: string, memberId: string): MemberDirectoryItem[];
-  abstract getMemberNotifications(memberId: string): MemberNotificationItem[];
-  abstract markMemberNotificationRead(memberId: string, notificationId: string): MemberNotificationItem;
-  abstract getReminderTargets(clubId: string): ReturnType<typeof buildReminderTargets>;
-  abstract sendReminder(clubId: string, input: SendReminderInput): AdminNotificationLogItem;
-  abstract getFeeSettings(clubId: string): ReturnType<typeof ensureFeeSettings>;
-  abstract updateFeeSettings(clubId: string, input: UpdateClubFeeSettingsInput): ReturnType<typeof ensureFeeSettings>;
-  abstract getNotificationSettings(clubId: string): ReturnType<typeof ensureNotificationSettings>;
+  abstract selfResetPassword(input: SelfResetPasswordInput): { success: true } | Promise<{ success: true }>;
+  abstract registerDevice(input: RegisterDeviceInput): ReturnType<typeof registerMemberDevice> | Promise<ReturnType<typeof registerMemberDevice>>;
+  abstract getMemberProfile(memberId: string): ReturnType<typeof buildProfile> | Promise<ReturnType<typeof buildProfile>>;
+  abstract updateMemberProfile(memberId: string, input: UpdateMemberProfileInput): ReturnType<typeof buildProfile> | Promise<ReturnType<typeof buildProfile>>;
+  abstract getMemberAppOverview(clubId: string, memberId: string): ReturnType<typeof buildMemberAppOverview> | Promise<ReturnType<typeof buildMemberAppOverview>>;
+  abstract getMemberDirectory(clubId: string, memberId: string): MemberDirectoryItem[] | Promise<MemberDirectoryItem[]>;
+  abstract getMemberNotifications(memberId: string): MemberNotificationItem[] | Promise<MemberNotificationItem[]>;
+  abstract markMemberNotificationRead(memberId: string, notificationId: string): MemberNotificationItem | Promise<MemberNotificationItem>;
+  abstract getReminderTargets(clubId: string): ReturnType<typeof buildReminderTargets> | Promise<ReturnType<typeof buildReminderTargets>>;
+  abstract sendReminder(clubId: string, input: SendReminderInput): AdminNotificationLogItem | Promise<AdminNotificationLogItem>;
+  abstract getFeeSettings(clubId: string): ReturnType<typeof ensureFeeSettings> | Promise<ReturnType<typeof ensureFeeSettings>>;
+  abstract updateFeeSettings(clubId: string, input: UpdateClubFeeSettingsInput): ReturnType<typeof ensureFeeSettings> | Promise<ReturnType<typeof ensureFeeSettings>>;
+  abstract getNotificationSettings(clubId: string): ReturnType<typeof ensureNotificationSettings> | Promise<ReturnType<typeof ensureNotificationSettings>>;
   abstract updateNotificationSettings(
     clubId: string,
     input: UpdateClubNotificationSettingsInput,
-  ): ReturnType<typeof ensureNotificationSettings>;
-  abstract getPrivacySettings(clubId: string): ReturnType<typeof ensurePrivacySettings>;
+  ): ReturnType<typeof ensureNotificationSettings> | Promise<ReturnType<typeof ensureNotificationSettings>>;
+  abstract getPrivacySettings(clubId: string): ReturnType<typeof ensurePrivacySettings> | Promise<ReturnType<typeof ensurePrivacySettings>>;
   abstract updatePrivacySettings(
     clubId: string,
     input: UpdateClubPrivacySettingsInput,
-  ): ReturnType<typeof ensurePrivacySettings>;
-  abstract getMembers(clubId: string): AdminMemberListItem[];
-  abstract getJoinRequests(clubId: string): AdminJoinRequestListItem[];
-  abstract createJoinRequest(clubId: string, input: CreateJoinRequestInput): AdminJoinRequestListItem;
-  abstract reviewJoinRequest(clubId: string, requestId: string, input: ReviewJoinRequestInput): AdminJoinRequestListItem;
-  abstract getInviteLinks(clubId: string): AdminInviteLinkListItem[];
-  abstract createInviteLink(clubId: string, input: CreateInviteLinkInput): AdminInviteLinkListItem;
-  abstract disableInviteLink(clubId: string, inviteId: string): AdminInviteLinkListItem;
-  abstract acceptInvite(clubId: string, token: string, input: AcceptInviteInput): AdminMemberListItem;
-  abstract createMember(clubId: string, input: CreateAdminMemberInput): AdminMemberListItem;
-  abstract importMembers(clubId: string, input: ImportAdminMembersInput): ImportAdminMembersResult;
-  abstract updateMember(clubId: string, memberId: string, input: UpdateAdminMemberInput): AdminMemberListItem;
-  abstract updateMemberFeeStatus(clubId: string, memberId: string, status: FeePaymentStatus): AdminMemberListItem;
-  abstract removeMember(clubId: string, memberId: string): AdminMemberListItem;
-  abstract getFees(clubId: string): AdminFeeListItem[];
-  abstract createFee(clubId: string, input: CreateAdminFeeInput): AdminFeeListItem;
-  abstract updateFeePayment(clubId: string, feeId: string, input: UpdateAdminFeePaymentInput): AdminFeeListItem;
-  abstract updateEventAttendance(clubId: string, eventId: string, input: UpdateAdminAttendanceInput): AdminEventListItem;
-  abstract getEvents(clubId: string): AdminEventListItem[];
-  abstract createEvent(clubId: string, input: CreateAdminEventInput): AdminEventListItem;
-  abstract updateEvent(clubId: string, eventId: string, input: UpdateAdminEventInput): AdminEventListItem;
-  abstract deleteEvent(clubId: string, eventId: string): { id: string; deleted: true };
-  abstract updateEventResponse(clubId: string, eventId: string, input: UpdateAdminEventResponseInput): AdminEventListItem;
-  abstract getNotices(clubId: string): AdminNoticeListItem[];
-  abstract createNotice(clubId: string, input: CreateAdminNoticeInput): AdminNoticeListItem;
-  abstract updateNotice(clubId: string, noticeId: string, input: UpdateAdminNoticeInput): AdminNoticeListItem;
-  abstract deleteNotice(clubId: string, noticeId: string): { id: string; deleted: true };
-  abstract markNoticeRead(clubId: string, noticeId: string, input: UpdateAdminNoticeReadInput): AdminNoticeListItem;
-  abstract toggleNoticeReaction(clubId: string, noticeId: string, input: ToggleAdminNoticeReactionInput): AdminNoticeListItem;
-  abstract createNoticeComment(clubId: string, noticeId: string, input: CreateAdminNoticeCommentInput): AdminNoticeListItem;
+  ): ReturnType<typeof ensurePrivacySettings> | Promise<ReturnType<typeof ensurePrivacySettings>>;
+  abstract getMembers(clubId: string): AdminMemberListItem[] | Promise<AdminMemberListItem[]>;
+  abstract getJoinRequests(clubId: string): AdminJoinRequestListItem[] | Promise<AdminJoinRequestListItem[]>;
+  abstract createJoinRequest(clubId: string, input: CreateJoinRequestInput): AdminJoinRequestListItem | Promise<AdminJoinRequestListItem>;
+  abstract reviewJoinRequest(clubId: string, requestId: string, input: ReviewJoinRequestInput): AdminJoinRequestListItem | Promise<AdminJoinRequestListItem>;
+  abstract getInviteLinks(clubId: string): AdminInviteLinkListItem[] | Promise<AdminInviteLinkListItem[]>;
+  abstract createInviteLink(clubId: string, input: CreateInviteLinkInput): AdminInviteLinkListItem | Promise<AdminInviteLinkListItem>;
+  abstract disableInviteLink(clubId: string, inviteId: string): AdminInviteLinkListItem | Promise<AdminInviteLinkListItem>;
+  abstract acceptInvite(clubId: string, token: string, input: AcceptInviteInput): AdminMemberListItem | Promise<AdminMemberListItem>;
+  abstract createMember(clubId: string, input: CreateAdminMemberInput): AdminMemberListItem | Promise<AdminMemberListItem>;
+  abstract importMembers(clubId: string, input: ImportAdminMembersInput): ImportAdminMembersResult | Promise<ImportAdminMembersResult>;
+  abstract updateMember(clubId: string, memberId: string, input: UpdateAdminMemberInput): AdminMemberListItem | Promise<AdminMemberListItem>;
+  abstract updateMemberFeeStatus(clubId: string, memberId: string, status: FeePaymentStatus): AdminMemberListItem | Promise<AdminMemberListItem>;
+  abstract removeMember(clubId: string, memberId: string): AdminMemberListItem | Promise<AdminMemberListItem>;
+  abstract getFees(clubId: string): AdminFeeListItem[] | Promise<AdminFeeListItem[]>;
+  abstract createFee(clubId: string, input: CreateAdminFeeInput): AdminFeeListItem | Promise<AdminFeeListItem>;
+  abstract updateFeePayment(clubId: string, feeId: string, input: UpdateAdminFeePaymentInput): AdminFeeListItem | Promise<AdminFeeListItem>;
+  abstract updateEventAttendance(clubId: string, eventId: string, input: UpdateAdminAttendanceInput): AdminEventListItem | Promise<AdminEventListItem>;
+  abstract getEvents(clubId: string): AdminEventListItem[] | Promise<AdminEventListItem[]>;
+  abstract createEvent(clubId: string, input: CreateAdminEventInput): AdminEventListItem | Promise<AdminEventListItem>;
+  abstract updateEvent(clubId: string, eventId: string, input: UpdateAdminEventInput): AdminEventListItem | Promise<AdminEventListItem>;
+  abstract deleteEvent(clubId: string, eventId: string): { id: string; deleted: true } | Promise<{ id: string; deleted: true }>;
+  abstract updateEventResponse(clubId: string, eventId: string, input: UpdateAdminEventResponseInput): AdminEventListItem | Promise<AdminEventListItem>;
+  abstract getNotices(clubId: string): AdminNoticeListItem[] | Promise<AdminNoticeListItem[]>;
+  abstract createNotice(clubId: string, input: CreateAdminNoticeInput): AdminNoticeListItem | Promise<AdminNoticeListItem>;
+  abstract updateNotice(clubId: string, noticeId: string, input: UpdateAdminNoticeInput): AdminNoticeListItem | Promise<AdminNoticeListItem>;
+  abstract deleteNotice(clubId: string, noticeId: string): { id: string; deleted: true } | Promise<{ id: string; deleted: true }>;
+  abstract markNoticeRead(clubId: string, noticeId: string, input: UpdateAdminNoticeReadInput): AdminNoticeListItem | Promise<AdminNoticeListItem>;
+  abstract toggleNoticeReaction(clubId: string, noticeId: string, input: ToggleAdminNoticeReactionInput): AdminNoticeListItem | Promise<AdminNoticeListItem>;
+  abstract createNoticeComment(clubId: string, noticeId: string, input: CreateAdminNoticeCommentInput): AdminNoticeListItem | Promise<AdminNoticeListItem>;
   abstract createFeedback(input: CreateFeedbackInput): Promise<FeedbackResult>;
 }
 
