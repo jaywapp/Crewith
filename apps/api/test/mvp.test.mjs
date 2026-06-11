@@ -14,7 +14,27 @@ require("reflect-metadata");
 
 const store = require("../dist/mvp.store.js");
 const { AppModule } = require("../dist/app.module.js");
+const { MvpRepository, JsonMvpRepository } = require("../dist/mvp.repository.js");
+const { PrismaService } = require("../dist/prisma/prisma.service.js");
 const { Test } = require("@nestjs/testing");
+
+// AppModule은 PrismaRepository(실 Postgres 필요)를 바인딩하므로,
+// 테스트에서는 파일 스토어 구현(JsonMvpRepository)으로 오버라이드하고
+// PrismaService는 DB에 연결하지 않는 스텁으로 대체한다.
+export async function bootstrapTestApp() {
+  const moduleRef = await Test.createTestingModule({
+    imports: [AppModule],
+  })
+    .overrideProvider(PrismaService)
+    .useValue({})
+    .overrideProvider(MvpRepository)
+    .useClass(JsonMvpRepository)
+    .compile();
+  const app = moduleRef.createNestApplication();
+  app.setGlobalPrefix("api/v1");
+  await app.listen(0);
+  return app;
+}
 
 test("store returns zero dashboard summaries when store is empty", () => {
   const fees = store.buildFees();
@@ -39,12 +59,7 @@ test("store returns zero dashboard summaries when store is empty", () => {
 });
 
 test("API serves overview and persists member app actions", async (t) => {
-  const moduleRef = await Test.createTestingModule({
-    imports: [AppModule],
-  }).compile();
-  const app = moduleRef.createNestApplication();
-  app.setGlobalPrefix("api/v1");
-  await app.listen(0);
+  const app = await bootstrapTestApp();
   t.after(async () => {
     await app.close();
   });
