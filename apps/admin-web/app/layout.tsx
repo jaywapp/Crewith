@@ -11,7 +11,14 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        {children}
+        <footer style={{ padding: 16, textAlign: "center", fontSize: 13 }}>
+          <a href="/legal/terms">이용약관</a>
+          {" · "}
+          <a href="/legal/privacy">개인정보처리방침</a>
+        </footer>
+      </body>
     </html>
   );
 }
