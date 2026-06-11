@@ -1,0 +1,22 @@
+name: API CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths: ["apps/api/**", "packages/shared-types/**", "package.json"]
+  pull_request:
+    paths: ["apps/api/**", "packages/shared-types/**", "package.json"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run prisma:generate -w @crewith/api
+      - run: npm run typecheck -w @crewith/api
+      - run: npm run test -w @crewith/api   # build 포함, 실패 시 워크플로우 실패 = 게이트

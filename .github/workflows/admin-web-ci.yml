@@ -1,0 +1,21 @@
+name: Admin Web CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths: ["apps/admin-web/**", "packages/shared-types/**", "package.json"]
+  pull_request:
+    paths: ["apps/admin-web/**", "packages/shared-types/**", "package.json"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck -w @crewith/admin-web
+      - run: npm run build -w @crewith/admin-web
