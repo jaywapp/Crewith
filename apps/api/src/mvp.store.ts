@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { hashPassword } from "./auth/password";
 export type FeePaymentStatus = "unpaid" | "paid" | "exempt";
 export type FeeType = "recurring" | "one_time";
 export type EventResponseValue = "attending" | "not_attending";
@@ -93,7 +94,7 @@ export interface AdminMemberListItem {
   personalDataDeleteAt?: string;
   lastFeeStatus: FeePaymentStatus;
   attendanceRate: number;
-  password: string;
+  password?: string;
 }
 
 export interface ClubPrivacySettingsItem {
@@ -718,7 +719,7 @@ export function hydrateStore() {
     for (const member of members) {
       if (!member.password) {
         const digits = member.phoneNumber.replace(/\D/g, "");
-        member.password = digits.slice(-4);
+        member.password = hashPassword(digits.slice(-4));
       }
     }
     replaceArray(clubMemberships, store.clubMemberships);
@@ -805,7 +806,7 @@ export function createMemberFromProfile(name: string, phoneNumber: string): Admi
     joinedAt: new Date().toISOString().slice(0, 10),
     lastFeeStatus: "unpaid",
     attendanceRate: 0,
-    password: phoneDigits.slice(-4),
+    password: hashPassword(phoneDigits.slice(-4)),
   };
 
   members.push(nextMember);
@@ -853,13 +854,19 @@ export function clubMembershipSummaries(memberId: string) {
 
 export function memberWithMembership(membership: ClubMembershipItem): AdminMemberListItem {
   const member = findMember(membership.memberId);
+  const { password: _password, ...rest } = member;
 
   return {
-    ...member,
+    ...rest,
     role: membership.role,
     memberStatus: membership.memberStatus,
     joinedAt: membership.joinedAt,
   };
+}
+
+export function sanitizeMember(member: AdminMemberListItem): AdminMemberListItem {
+  const { password: _password, ...rest } = member;
+  return rest;
 }
 
 export function activeMembers(clubId = club.id) {

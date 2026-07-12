@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { PrismaService } from "./prisma/prisma.service";
+import { hashPassword, verifyPassword } from "./auth/password";
 import {
   type AcceptInviteInput,
   type AdminEventListItem,
@@ -100,7 +101,6 @@ function toAdminMember(
     personalDataDeleteAt: membership.personalDataDeleteAt?.toISOString().slice(0, 10),
     lastFeeStatus: membership.lastFeeStatus as any,
     attendanceRate,
-    password: user.passwordHash,
   };
 }
 
@@ -286,10 +286,19 @@ export class PrismaRepository extends MvpRepository {
       },
     });
 
-    if (!user || user.passwordHash !== password) {
+    const verdict = verifyPassword(password, user?.passwordHash);
+
+    if (!user || !verdict.ok) {
       throw new BadRequestException(
         "전화번호 또는 비밀번호가 올바르지 않습니다.",
       );
+    }
+
+    if (verdict.needsRehash) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: hashPassword(password) },
+      });
     }
 
     return {
@@ -331,7 +340,7 @@ export class PrismaRepository extends MvpRepository {
       data: {
         phoneNumber: phone,
         name,
-        passwordHash: password,
+        passwordHash: hashPassword(password),
         birthDate: input.birthDate ? new Date(input.birthDate) : null,
         gender: input.gender?.trim() || null,
       },
@@ -387,7 +396,7 @@ export class PrismaRepository extends MvpRepository {
 
     await this.prisma.user.update({
       where: { id: memberId },
-      data: { passwordHash: newPassword },
+      data: { passwordHash: hashPassword(newPassword) },
     });
 
     return { memberId };
@@ -404,7 +413,7 @@ export class PrismaRepository extends MvpRepository {
     const digits = user.phoneNumber.replace(/\D/g, "");
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash: digits.slice(-4) },
+      data: { passwordHash: hashPassword(digits.slice(-4)) },
     });
 
     return { success: true };
@@ -447,8 +456,9 @@ export class PrismaRepository extends MvpRepository {
         data: {
           phoneNumber: phone,
           name: input.name.trim(),
-          passwordHash:
+          passwordHash: hashPassword(
             input.password?.trim() || phoneDigits.slice(-4),
+          ),
         },
       });
     }
@@ -489,7 +499,7 @@ export class PrismaRepository extends MvpRepository {
     if (input.name?.trim()) userUpdate.name = input.name.trim();
     if (input.phoneNumber?.trim())
       userUpdate.phoneNumber = normalizePhone(input.phoneNumber);
-    if (input.password?.trim()) userUpdate.passwordHash = input.password.trim();
+    if (input.password?.trim()) userUpdate.passwordHash = hashPassword(input.password.trim());
 
     const memberUpdate: any = {};
     if (["owner", "operator", "member"].includes(input.role ?? ""))
@@ -1361,7 +1371,7 @@ export class PrismaRepository extends MvpRepository {
           data: {
             phoneNumber: phone,
             name: request.applicantName,
-            passwordHash: digits.slice(-4),
+            passwordHash: hashPassword(digits.slice(-4)),
           },
         });
       }
@@ -1484,7 +1494,7 @@ export class PrismaRepository extends MvpRepository {
         data: {
           phoneNumber: phone,
           name: input.applicantName.trim(),
-          passwordHash: digits.slice(-4),
+          passwordHash: hashPassword(digits.slice(-4)),
         },
       });
     }

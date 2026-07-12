@@ -2,7 +2,7 @@
 // 현재 구현(JsonMvpRepository)이 실제로 반환하는 상태코드를 기록한다.
 // mvp.test.mjs의 부트스트랩 패턴을 복제: 임시 데이터 파일 + Prisma 오버라이드 + app.listen(0).
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -192,5 +192,45 @@ test("endpoint success/failure characterization", async (t) => {
       body: JSON.stringify({ name: "중복검증2", phoneNumber: "010-8888-7777", password: "other" }),
     });
     assert.equal(dup.status, 409);
+  });
+
+  // ───────────────────────── [비밀번호 해싱] ─────────────────────────
+
+  await t.test("passwords are stored as bcrypt hashes, not plaintext", async () => {
+    const created = await fetch(`${baseUrl}/clubs/${CLUB}/members`, {
+      method: "POST",
+      headers: { ...JSON_HEADERS, ...OPERATOR },
+      body: JSON.stringify({ name: "해시검증", phoneNumber: "010-7777-0001", role: "member", password: "pw-hash-check" }),
+    });
+    assert.equal(created.status, 201);
+
+    const raw = JSON.parse(readFileSync(process.env.CREWITH_DATA_FILE, "utf8"));
+    const stored = raw.members.find((m) => m.phoneNumber === "010-7777-0001");
+    assert.ok(stored, "member persisted to store file");
+    assert.match(stored.password, /^\$2[aby]\$/, "password must be a bcrypt hash");
+  });
+
+  await t.test("login verifies against the bcrypt hash", async () => {
+    const ok = await fetch(`${baseUrl}/auth/login`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ phoneNumber: "010-7777-0001", password: "pw-hash-check" }),
+    });
+    assert.equal(ok.status, 201);
+
+    const bad = await fetch(`${baseUrl}/auth/login`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ phoneNumber: "010-7777-0001", password: "wrong-password" }),
+    });
+    assert.equal(bad.status, 400);
+  });
+
+  await t.test("member responses never include password", async () => {
+    const res = await fetch(`${baseUrl}/clubs/${CLUB}/members`, { headers: OPERATOR });
+    assert.equal(res.status, 200);
+    const list = (await res.json()).data;
+    assert.ok(list.length > 0);
+    assert.ok(list.every((m) => !("password" in m)), "password must not leak in member list");
   });
 });

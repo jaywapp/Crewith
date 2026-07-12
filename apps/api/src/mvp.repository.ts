@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { hashPassword, verifyPassword } from "./auth/password";
 import {
   type AcceptInviteInput,
   type CreateFeedbackInput,
@@ -100,6 +101,7 @@ import {
   persistStore,
   profileImages,
   registerMemberDevice,
+  sanitizeMember,
   visibleMembers,
   clubs,
 } from "./mvp.store";
@@ -184,8 +186,15 @@ export class JsonMvpRepository implements MvpRepository {
       (m) => normalizePhoneNumber(m.phoneNumber) === phoneNumber && m.memberStatus !== "removed",
     );
 
-    if (!member || member.password !== password) {
+    const verdict = verifyPassword(password, member?.password);
+
+    if (!member || !verdict.ok) {
       throw new BadRequestException("전화번호 또는 비밀번호가 올바르지 않습니다.");
+    }
+
+    if (verdict.needsRehash) {
+      member.password = hashPassword(password);
+      persistStore();
     }
 
     return {
@@ -223,7 +232,7 @@ export class JsonMvpRepository implements MvpRepository {
       joinedAt: new Date().toISOString().slice(0, 10),
       lastFeeStatus: "unpaid",
       attendanceRate: 0,
-      password,
+      password: hashPassword(password),
     };
 
     members.push(nextMember);
@@ -271,7 +280,7 @@ export class JsonMvpRepository implements MvpRepository {
       throw new BadRequestException("비밀번호를 입력하세요.");
     }
 
-    member.password = newPassword;
+    member.password = hashPassword(newPassword);
     persistStore();
     return { memberId: member.id };
   }
@@ -287,7 +296,7 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     const digits = member.phoneNumber.replace(/\D/g, "");
-    member.password = digits.slice(-4);
+    member.password = hashPassword(digits.slice(-4));
     persistStore();
     return { success: true };
   }
@@ -632,7 +641,7 @@ export class JsonMvpRepository implements MvpRepository {
       }
 
       persistStore();
-      return existing;
+      return sanitizeMember(existing);
     }
 
     const phoneDigits = input.applicantPhone.trim().replace(/\D/g, "");
@@ -645,7 +654,7 @@ export class JsonMvpRepository implements MvpRepository {
       joinedAt: new Date().toISOString().slice(0, 10),
       lastFeeStatus: "unpaid",
       attendanceRate: 0,
-      password: phoneDigits.slice(-4),
+      password: hashPassword(phoneDigits.slice(-4)),
     };
 
     members.push(member);
@@ -658,7 +667,7 @@ export class JsonMvpRepository implements MvpRepository {
     });
     initializeMemberState(member);
     persistStore();
-    return member;
+    return sanitizeMember(member);
   }
 
   createMember(clubId: string, input: CreateAdminMemberInput) {
@@ -673,7 +682,7 @@ export class JsonMvpRepository implements MvpRepository {
       joinedAt: new Date().toISOString().slice(0, 10),
       lastFeeStatus: "unpaid",
       attendanceRate: 0,
-      password: input.password?.trim() || phoneDigits.slice(-4),
+      password: hashPassword(input.password?.trim() || phoneDigits.slice(-4)),
     };
 
     members.push(nextMember);
@@ -686,7 +695,7 @@ export class JsonMvpRepository implements MvpRepository {
     });
     initializeMemberState(nextMember);
     persistStore();
-    return nextMember;
+    return sanitizeMember(nextMember);
   }
 
   importMembers(clubId: string, input: ImportAdminMembersInput): ImportAdminMembersResult {
@@ -770,11 +779,11 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     if (typeof input.password === "string" && input.password.trim()) {
-      member.password = input.password.trim();
+      member.password = hashPassword(input.password.trim());
     }
 
     persistStore();
-    return member;
+    return sanitizeMember(member);
   }
 
   updateMemberFeeStatus(clubId: string, memberId: string, status: FeePaymentStatus) {
@@ -786,7 +795,7 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     persistStore();
-    return member;
+    return sanitizeMember(member);
   }
 
   removeMember(clubId: string, memberId: string) {
@@ -798,7 +807,7 @@ export class JsonMvpRepository implements MvpRepository {
       membership.memberStatus = "removed";
     }
     persistStore();
-    return member;
+    return sanitizeMember(member);
   }
 
   getFees(clubId: string) {
