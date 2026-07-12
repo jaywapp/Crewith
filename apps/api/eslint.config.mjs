@@ -10,6 +10,7 @@ export default [
         Buffer: "readonly",
         console: "readonly",
         exports: "writable",
+        fetch: "readonly",
         module: "readonly",
         process: "readonly",
         require: "readonly",
