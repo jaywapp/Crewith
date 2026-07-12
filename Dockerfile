@@ -15,6 +15,8 @@ COPY tsconfig.base.json ./
 COPY packages/shared-types ./packages/shared-types
 COPY apps/api ./apps/api
 
+RUN npm run prisma:generate -w @crewith/api
+
 RUN npm run build -w @crewith/api
 
 WORKDIR /app/apps/api
