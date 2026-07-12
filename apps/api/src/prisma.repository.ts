@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { randomBytes } from "node:crypto";
 import { PrismaService } from "./prisma/prisma.service";
 import { hashPassword, verifyPassword } from "./auth/password";
 import {
@@ -1430,7 +1431,7 @@ export class PrismaRepository extends MvpRepository {
       where: { clubId, role: "owner" },
     });
     const expiresInDays = Number(input.expiresInDays) || 30;
-    const token = `CREWITH-${Date.now().toString().slice(-6)}`;
+    const token = `CREWITH-${randomBytes(9).toString("base64url")}`;
 
     const link = await this.prisma.inviteLink.create({
       data: {

@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { randomBytes } from "node:crypto";
 import { hashPassword, verifyPassword } from "./auth/password";
 import {
   type AcceptInviteInput,
@@ -587,7 +588,7 @@ export class JsonMvpRepository implements MvpRepository {
     const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const nextInvite: AdminInviteLinkListItem = {
       id: `invite-${Date.now()}`,
-      token: `CREWITH-${Date.now().toString().slice(-6)}`,
+      token: `CREWITH-${randomBytes(9).toString("base64url")}`,
       expiresAt,
       disabled: false,
       createdAt: new Date().toISOString(),

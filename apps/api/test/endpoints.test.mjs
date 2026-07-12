@@ -233,4 +233,22 @@ test("endpoint success/failure characterization", async (t) => {
     assert.ok(list.length > 0);
     assert.ok(list.every((m) => !("password" in m)), "password must not leak in member list");
   });
+
+  // ───────────────────────── [초대 링크] ─────────────────────────
+
+  await t.test("invite tokens are random and unique", async () => {
+    const createLink = () =>
+      fetch(`${baseUrl}/clubs/${CLUB}/invite-links`, {
+        method: "POST",
+        headers: { ...JSON_HEADERS, ...OPERATOR },
+        body: JSON.stringify({ expiresInDays: 7 }),
+      });
+
+    const first = (await (await createLink()).json()).data;
+    const second = (await (await createLink()).json()).data;
+
+    assert.match(first.token, /^CREWITH-[A-Za-z0-9_-]{12}$/);
+    assert.match(second.token, /^CREWITH-[A-Za-z0-9_-]{12}$/);
+    assert.notEqual(first.token, second.token);
+  });
 });
