@@ -11,6 +11,8 @@ import {
   Put,
   Query,
 } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { Public } from "./auth/public.decorator";
 import {
   type AcceptInviteInput,
   type AuthLoginInput,
@@ -54,8 +56,12 @@ function assertOperatorRole(role: string | undefined) {
 
 @Controller()
 export class AppController {
-  constructor(private readonly repository: MvpRepository) {}
+  constructor(
+    private readonly repository: MvpRepository,
+    private readonly jwtService: JwtService,
+  ) {}
 
+  @Public()
   @Get("health")
   health() {
     return {
@@ -76,16 +82,24 @@ export class AppController {
     return { data: this.repository.getAdminOverview(clubId) };
   }
 
+  @Public()
   @Post("auth/login")
-  login(@Body() input: AuthLoginInput) {
-    return { data: this.repository.login(input) };
+  async login(@Body() input: AuthLoginInput) {
+    const session = await this.repository.login(input);
+    const accessToken = await this.jwtService.signAsync({
+      sub: session.memberId,
+      phoneNumber: session.profile.phoneNumber,
+    });
+    return { data: { ...session, accessToken } };
   }
 
+  @Public()
   @Post("auth/register")
   register(@Body() input: RegisterInput) {
     return { data: this.repository.register(input) };
   }
 
+  @Public()
   @Post("auth/reset-password")
   selfResetPassword(@Body() input: SelfResetPasswordInput) {
     return { data: this.repository.selfResetPassword(input) };
@@ -233,6 +247,7 @@ export class AppController {
     return { data: this.repository.getJoinRequests(clubId) };
   }
 
+  @Public()
   @Post("clubs/:clubId/join-requests")
   createJoinRequest(
     @Param("clubId") clubId: string,
@@ -281,6 +296,7 @@ export class AppController {
     return { data: this.repository.disableInviteLink(clubId, inviteId) };
   }
 
+  @Public()
   @Post("clubs/:clubId/invite-links/:token/accept")
   acceptInvite(
     @Param("clubId") clubId: string,

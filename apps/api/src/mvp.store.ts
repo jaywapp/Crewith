@@ -516,6 +516,20 @@ export interface RegisterInput {
   gender?: string;
 }
 
+export interface ClubMembershipSummaryItem {
+  clubId: string;
+  name: string;
+  sportType: string;
+  role: ClubRole;
+  memberStatus: MemberStatus;
+}
+
+export interface AuthSessionResult {
+  memberId: string;
+  profile: MemberProfile;
+  clubs: ClubMembershipSummaryItem[];
+}
+
 export interface CreateClubInput {
   name: string;
   sportType: string;

@@ -12,6 +12,7 @@ const require = createRequire(import.meta.url);
 const tempDir = mkdtempSync(join(tmpdir(), "crewith-api-endpoints-test-"));
 
 process.env.CREWITH_DATA_FILE = join(tempDir, "endpoints-store.json");
+process.env.JWT_ACCESS_SECRET = "test-secret";
 
 require("reflect-metadata");
 
@@ -20,8 +21,6 @@ const { MvpRepository, JsonMvpRepository } = require("../dist/mvp.repository.js"
 const { PrismaService } = require("../dist/prisma/prisma.service.js");
 const { Test } = require("@nestjs/testing");
 
-const CLUB = "club-seoul-runners";
-const OPERATOR = { "x-crewith-role": "operator" };
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
 async function bootstrapTestApp() {
@@ -39,6 +38,27 @@ async function bootstrapTestApp() {
   return app;
 }
 
+async function createOwnerSession(baseUrl, phone = "010-9000-0001") {
+  await fetch(`${baseUrl}/auth/register`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ name: "테스트오너", phoneNumber: phone, password: "pw-test-1234" }),
+  });
+  const loginRes = await fetch(`${baseUrl}/auth/login`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ phoneNumber: phone, password: "pw-test-1234" }),
+  });
+  const session = (await loginRes.json()).data;
+  const clubRes = await fetch(`${baseUrl}/clubs`, {
+    method: "POST",
+    headers: { ...JSON_HEADERS, Authorization: `Bearer ${session.accessToken}` },
+    body: JSON.stringify({ name: "테스트클럽", sportType: "러닝", ownerMemberId: session.memberId }),
+  });
+  const clubId = (await clubRes.json()).data.clubId;
+  return { token: session.accessToken, memberId: session.memberId, clubId };
+}
+
 test("endpoint success/failure characterization", async (t) => {
   const app = await bootstrapTestApp();
   t.after(async () => {
@@ -47,6 +67,13 @@ test("endpoint success/failure characterization", async (t) => {
 
   const address = app.getHttpServer().address();
   const baseUrl = `http://127.0.0.1:${address.port}/api/v1`;
+
+  const owner = await createOwnerSession(baseUrl);
+  const CLUB = owner.clubId;
+  const OPERATOR = {
+    Authorization: `Bearer ${owner.token}`,
+    "x-crewith-role": "operator", // Task 7에서 제거 예정
+  };
 
   // 공용 픽스처: 회원 1명 생성 (회비/일정/공지 대상)
   const createdMember = await fetch(`${baseUrl}/clubs/${CLUB}/members`, {
@@ -71,7 +98,7 @@ test("endpoint success/failure characterization", async (t) => {
   await t.test("POST fees — operator 역할 없이 호출하면 403", async () => {
     const res = await fetch(`${baseUrl}/clubs/${CLUB}/fees`, {
       method: "POST",
-      headers: JSON_HEADERS,
+      headers: { ...JSON_HEADERS, Authorization: `Bearer ${owner.token}` },
       body: JSON.stringify({ title: "6월 회비", amount: 30000, dueDate: "2026-06-25" }),
     });
     assert.equal(res.status, 403);
@@ -110,7 +137,7 @@ test("endpoint success/failure characterization", async (t) => {
 
     const res = await fetch(`${baseUrl}/clubs/${CLUB}/events/${event.id}/responses`, {
       method: "PATCH",
-      headers: JSON_HEADERS,
+      headers: { ...JSON_HEADERS, Authorization: `Bearer ${owner.token}` },
       body: JSON.stringify({ memberId: member.id, response: "definitely-not-a-valid-response" }),
     });
     // 기대는 400이지만 현재 구현은 response 값을 검증하지 않고 그대로 저장 → 200.
@@ -161,7 +188,7 @@ test("endpoint success/failure characterization", async (t) => {
 
     const res = await fetch(`${baseUrl}/clubs/${CLUB}/notices/${notice.id}/read`, {
       method: "PATCH",
-      headers: JSON_HEADERS,
+      headers: { ...JSON_HEADERS, Authorization: `Bearer ${owner.token}` },
       body: JSON.stringify({ memberId: "unknown-member" }),
     });
     assert.equal(res.status, 404);
@@ -250,5 +277,29 @@ test("endpoint success/failure characterization", async (t) => {
     assert.match(first.token, /^CREWITH-[A-Za-z0-9_-]{12}$/);
     assert.match(second.token, /^CREWITH-[A-Za-z0-9_-]{12}$/);
     assert.notEqual(first.token, second.token);
+  });
+
+  // ───────────────────────── [JWT 인증] ─────────────────────────
+
+  await t.test("login issues a JWT access token", async () => {
+    const res = await fetch(`${baseUrl}/auth/login`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ phoneNumber: "010-9000-0001", password: "pw-test-1234" }),
+    });
+    assert.equal(res.status, 201);
+    const data = (await res.json()).data;
+    assert.equal(typeof data.accessToken, "string");
+    assert.equal(data.accessToken.split(".").length, 3, "JWT has 3 segments");
+  });
+
+  await t.test("protected endpoint without token returns 401", async () => {
+    // Deliberately omit Authorization (unlike OPERATOR, which now carries a valid
+    // Bearer token after the Step 8 migration) so this test actually exercises the
+    // no-token rejection path.
+    const res = await fetch(`${baseUrl}/clubs/${CLUB}/members`, {
+      headers: { "x-crewith-role": "operator" },
+    });
+    assert.equal(res.status, 401);
   });
 });

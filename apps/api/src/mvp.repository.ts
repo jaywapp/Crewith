@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { hashPassword, verifyPassword } from "./auth/password";
 import {
   type AcceptInviteInput,
+  type AuthSessionResult,
   type CreateFeedbackInput,
   type FeedbackResult,
   type AdminEventListItem,
@@ -115,7 +116,7 @@ function cleanNonNegativeIntegerList(values: unknown[]) {
 
 export abstract class MvpRepository {
   abstract getAdminOverview(clubId: string): ReturnType<typeof buildOverview> | Promise<ReturnType<typeof buildOverview>>;
-  abstract login(input: AuthLoginInput): unknown;
+  abstract login(input: AuthLoginInput): AuthSessionResult | Promise<AuthSessionResult>;
   abstract register(input: RegisterInput): { memberId: string } | Promise<{ memberId: string }>;
   abstract createClub(input: CreateClubInput): { clubId: string; name: string; sportType: string } | Promise<{ clubId: string; name: string; sportType: string }>;
   abstract resetMemberPassword(memberId: string, input: ResetMemberPasswordInput): unknown;
