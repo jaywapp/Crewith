@@ -10,6 +10,7 @@ class _FakeMemberApiClient extends MemberApiClient {
   Future<AuthSession?> login(String phoneNumber, String password) async {
     return const AuthSession(
       memberId: 'member-03',
+      accessToken: 'test-access-token',
       clubs: [
         ClubSummary(
           clubId: 'club-seoul-runners',

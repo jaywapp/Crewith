@@ -1,15 +1,18 @@
 class AuthSession {
   const AuthSession({
     required this.memberId,
+    required this.accessToken,
     required this.clubs,
   });
 
   final String memberId;
+  final String accessToken;
   final List<ClubSummary> clubs;
 
   factory AuthSession.fromJson(Map<String, dynamic> json) {
     return AuthSession(
       memberId: json['memberId'] as String,
+      accessToken: json['accessToken'] as String? ?? '',
       clubs: (json['clubs'] as List<dynamic>? ?? [])
           .map((item) => ClubSummary.fromJson(item as Map<String, dynamic>))
           .toList(),

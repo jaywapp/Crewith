@@ -10,11 +10,20 @@ const _defaultApiBaseUrl = String.fromEnvironment(
 );
 
 class MemberApiClient {
-  const MemberApiClient({
+  MemberApiClient({
     this.apiBaseUrl = _defaultApiBaseUrl,
   });
 
   final String apiBaseUrl;
+
+  String? accessToken;
+
+  void _applyAuth(HttpClientRequest request) {
+    final token = accessToken;
+    if (token != null && token.isNotEmpty) {
+      request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
+    }
+  }
 
   Future<MemberAppOverview> fetchOverview({
     required String clubId,
@@ -25,6 +34,7 @@ class MemberApiClient {
 
     try {
       final request = await client.getUrl(uri);
+      _applyAuth(request);
       final response =
           await request.close().timeout(const Duration(seconds: 15));
 
@@ -44,13 +54,16 @@ class MemberApiClient {
     final client = _client();
     try {
       final request = await client.postUrl(Uri.parse('$apiBaseUrl/auth/login'));
+      _applyAuth(request);
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode({'phoneNumber': phoneNumber, 'password': password}));
       final response = await request.close().timeout(const Duration(seconds: 15));
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final payload = await response.transform(utf8.decoder).join();
         final json = jsonDecode(payload) as Map<String, dynamic>;
-        return AuthSession.fromJson(json['data'] as Map<String, dynamic>);
+        final session = AuthSession.fromJson(json['data'] as Map<String, dynamic>);
+        accessToken = session.accessToken;
+        return session;
       }
     } catch (_) {
       return null;
@@ -64,6 +77,7 @@ class MemberApiClient {
     final client = _client();
     try {
       final request = await client.postUrl(Uri.parse('$apiBaseUrl/auth/reset-password'));
+      _applyAuth(request);
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode({'phoneNumber': phoneNumber}));
       final response = await request.close().timeout(const Duration(seconds: 15));
@@ -84,6 +98,7 @@ class MemberApiClient {
     final client = _client();
     try {
       final request = await client.postUrl(Uri.parse('$apiBaseUrl/auth/register'));
+      _applyAuth(request);
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode({
         'name': name,
@@ -146,6 +161,7 @@ class MemberApiClient {
 
     try {
       final request = await client.getUrl(uri);
+      _applyAuth(request);
       final response =
           await request.close().timeout(const Duration(seconds: 15));
 
@@ -176,6 +192,7 @@ class MemberApiClient {
 
     try {
       final request = await client.getUrl(uri);
+      _applyAuth(request);
       final response =
           await request.close().timeout(const Duration(seconds: 15));
 
@@ -288,6 +305,7 @@ class MemberApiClient {
     final client = _client();
     try {
       final request = await client.postUrl(Uri.parse('$apiBaseUrl/clubs'));
+      _applyAuth(request);
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode({
         'name': name,
@@ -355,6 +373,7 @@ class MemberApiClient {
     final client = _client();
     try {
       final request = await client.getUrl(uri);
+      _applyAuth(request);
       request.headers.set('x-crewith-role', role);
       final response = await request.close().timeout(const Duration(seconds: 15));
       if (response.statusCode != HttpStatus.ok) return null;
@@ -593,6 +612,7 @@ class MemberApiClient {
         'POST' => await client.postUrl(uri),
         _ => await client.postUrl(uri),
       };
+      _applyAuth(request);
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(body));
       final response =
@@ -619,6 +639,7 @@ class MemberApiClient {
         'POST' => await client.postUrl(uri),
         _ => await client.postUrl(uri),
       };
+      _applyAuth(request);
       request.headers.contentType = ContentType.json;
       request.headers.set('x-crewith-role', role);
       request.write(jsonEncode(body));
@@ -635,6 +656,7 @@ class MemberApiClient {
     final client = _client();
     try {
       final request = await client.deleteUrl(uri);
+      _applyAuth(request);
       request.headers.set('x-crewith-role', role);
       final response = await request.close().timeout(const Duration(seconds: 15));
       return response.statusCode >= 200 && response.statusCode < 300;
