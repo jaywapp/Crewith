@@ -7,7 +7,7 @@ import type {
 } from "../lib/shared-types";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import Link from "next/link";
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://127.0.0.1:4000/api/v1";
@@ -156,7 +156,9 @@ export async function getOverview() {
 
     const envelope = (await response.json()) as ApiEnvelope<AdminClubOverview>;
     return { overview: envelope.data, authorized: true };
-  } catch {
+  } catch (error) {
+    // redirect() signals via throw; let the framework handle it
+    unstable_rethrow(error);
     return { overview: fallbackOverview, authorized: true };
   }
 }
