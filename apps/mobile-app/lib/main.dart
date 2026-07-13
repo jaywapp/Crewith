@@ -68,7 +68,7 @@ class CrewithApp extends StatelessWidget {
 
 class HomeShell extends StatefulWidget {
   HomeShell({super.key, MemberApiClient? api})
-      : _api = api ?? const MemberApiClient();
+      : _api = api ?? MemberApiClient();
 
   final MemberApiClient _api;
 
@@ -169,6 +169,7 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   void _logout() {
+    _api.accessToken = null;
     setState(() {
       _isAuthenticated = false;
       _hasClub = false;

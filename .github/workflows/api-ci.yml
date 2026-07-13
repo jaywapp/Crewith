@@ -20,3 +20,4 @@ jobs:
       - run: npm run prisma:generate -w @crewith/api
       - run: npm run typecheck -w @crewith/api
       - run: npm run test -w @crewith/api   # build 포함, 실패 시 워크플로우 실패 = 게이트
+      - run: npm exec -w @crewith/api -- eslint "dist/**/*.js"

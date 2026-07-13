@@ -7,17 +7,16 @@ import type {
 } from "../lib/shared-types";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import Link from "next/link";
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://127.0.0.1:4000/api/v1";
 const adminSessionCookieName = "crewith-admin-session";
-const adminRoleHeaders = { "x-crewith-role": "owner" };
-const adminJsonHeaders = { "Content-Type": "application/json", ...adminRoleHeaders };
 const adminPaths = ["/", "/members", "/fees", "/events", "/notices", "/join", "/reminders", "/settings"];
 
 interface AdminSession {
   memberId: string;
+  accessToken: string;
   clubs: Array<{ clubId: string; name: string; sportType: string; role: string }>;
   activeClubId: string;
 }
@@ -28,11 +27,21 @@ async function getAdminSession(): Promise<AdminSession | null> {
   if (!raw) return null;
   try {
     const session = JSON.parse(raw) as AdminSession;
-    if (!session.memberId || !Array.isArray(session.clubs)) return null;
+    if (!session.memberId || !session.accessToken || !Array.isArray(session.clubs)) return null;
     return session;
   } catch {
     return null;
   }
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const session = await getAdminSession();
+  if (!session) redirect("/login");
+  return { Authorization: `Bearer ${session.accessToken}` };
+}
+
+async function jsonAuthHeaders(): Promise<Record<string, string>> {
+  return { "Content-Type": "application/json", ...(await authHeaders()) };
 }
 
 export const navItems = [
@@ -135,16 +144,21 @@ export async function getOverview() {
   try {
     const response = await fetch(`${apiBaseUrl}/clubs/${clubId}/admin/overview`, {
       cache: "no-store",
-      headers: adminRoleHeaders,
+      headers: await authHeaders(),
     });
 
+    if (response.status === 401) {
+      redirect("/login");
+    }
     if (!response.ok) {
       return { overview: fallbackOverview, authorized: false };
     }
 
     const envelope = (await response.json()) as ApiEnvelope<AdminClubOverview>;
     return { overview: envelope.data, authorized: true };
-  } catch {
+  } catch (error) {
+    // redirect() signals via throw; let the framework handle it
+    unstable_rethrow(error);
     return { overview: fallbackOverview, authorized: true };
   }
 }
@@ -169,6 +183,7 @@ export async function switchClubAction(formData: FormData) {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
+    secure: process.env.NODE_ENV === "production",
   });
 
   revalidateAdmin();
@@ -188,7 +203,7 @@ export async function createMemberAction(formData: FormData) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/members`, {
     method: "POST",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       name: formData.get("name"),
       phoneNumber: formData.get("phoneNumber"),
@@ -206,7 +221,7 @@ export async function importMembersAction(formData: FormData) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/members/imports`, {
     method: "POST",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       rows: formData.get("rows"),
     }),
@@ -221,7 +236,7 @@ export async function updateMemberAction(memberId: string, formData: FormData) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/members/${memberId}`, {
     method: "PATCH",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       role: formData.get("role"),
       memberStatus: formData.get("memberStatus"),
@@ -238,7 +253,7 @@ export async function resetMemberPasswordAction(memberId: string, formData: Form
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/members/${memberId}/password`, {
     method: "PATCH",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({ password: formData.get("password") }),
   });
 
@@ -251,7 +266,7 @@ export async function removeMemberAction(memberId: string) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/members/${memberId}`, {
     method: "DELETE",
-    headers: adminRoleHeaders,
+    headers: await authHeaders(),
   });
 
   revalidateAdmin();
@@ -263,7 +278,7 @@ export async function createFeeAction(formData: FormData) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/fees`, {
     method: "POST",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       title: formData.get("title"),
       feeType: formData.get("feeType"),
@@ -286,7 +301,7 @@ export async function updateFeeSettingsAction(formData: FormData) {
 
   await fetch(`${apiBaseUrl}/clubs/${clubId}/fee-settings`, {
     method: "PUT",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       amount: Number(formData.get("amount")),
       dueDay: Number(formData.get("dueDay")),
@@ -307,7 +322,7 @@ export async function updatePrivacySettingsAction(formData: FormData) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/privacy-settings`, {
     method: "PUT",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       showPhoneNumberToMembers: formData.get("showPhoneNumberToMembers") === "on",
       showBirthDateToMembers: formData.get("showBirthDateToMembers") === "on",
@@ -331,7 +346,7 @@ export async function updateNotificationSettingsAction(formData: FormData) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/notification-settings`, {
     method: "PUT",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       eventReminderEnabled: formData.get("eventReminderEnabled") === "on",
       eventReminderHoursBefore: parseNumberList(formData.get("eventReminderHoursBefore")),
@@ -351,7 +366,7 @@ export async function updateFeePaymentAction(feeId: string, formData: FormData) 
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/fees/${feeId}/payments`, {
     method: "PATCH",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       memberId: formData.get("memberId"),
       status: formData.get("status"),
@@ -367,7 +382,7 @@ export async function createEventAction(formData: FormData) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/events`, {
     method: "POST",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       title: formData.get("title"),
       startsAt: formData.get("startsAt"),
@@ -387,7 +402,7 @@ export async function updateEventAction(eventId: string, formData: FormData) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/events/${eventId}`, {
     method: "PATCH",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       title: formData.get("title"),
       startsAt: formData.get("startsAt"),
@@ -407,7 +422,7 @@ export async function deleteEventAction(eventId: string) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/events/${eventId}`, {
     method: "DELETE",
-    headers: adminRoleHeaders,
+    headers: await authHeaders(),
   });
 
   revalidateAdmin();
@@ -419,7 +434,7 @@ export async function updateEventResponseAction(eventId: string, formData: FormD
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/events/${eventId}/responses`, {
     method: "PATCH",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       memberId: formData.get("memberId"),
       response: formData.get("response"),
@@ -435,7 +450,7 @@ export async function updateAttendanceAction(eventId: string, formData: FormData
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/events/${eventId}/attendance`, {
     method: "PATCH",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       memberId: formData.get("memberId"),
       status: formData.get("status"),
@@ -452,7 +467,7 @@ export async function createNoticeAction(formData: FormData) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/notices`, {
     method: "POST",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       title: formData.get("title"),
       body: formData.get("body"),
@@ -469,7 +484,7 @@ export async function updateNoticeAction(noticeId: string, formData: FormData) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/notices/${noticeId}`, {
     method: "PATCH",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       title: formData.get("title"),
       body: formData.get("body"),
@@ -486,7 +501,7 @@ export async function deleteNoticeAction(noticeId: string) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/notices/${noticeId}`, {
     method: "DELETE",
-    headers: adminRoleHeaders,
+    headers: await authHeaders(),
   });
 
   revalidateAdmin();
@@ -498,7 +513,7 @@ export async function markNoticeReadAction(noticeId: string, formData: FormData)
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/notices/${noticeId}/read`, {
     method: "PATCH",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({ memberId: formData.get("memberId") }),
   });
 
@@ -511,7 +526,7 @@ export async function toggleNoticeReactionAction(noticeId: string, formData: For
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/notices/${noticeId}/reactions`, {
     method: "PATCH",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({ memberId: formData.get("memberId") }),
   });
 
@@ -524,7 +539,7 @@ export async function createNoticeCommentAction(noticeId: string, formData: Form
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/notices/${noticeId}/comments`, {
     method: "POST",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({
       memberId: formData.get("memberId"),
       body: formData.get("body"),
@@ -540,7 +555,7 @@ export async function reviewJoinRequestAction(requestId: string, status: "approv
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/join-requests/${requestId}`, {
     method: "PATCH",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({ status }),
   });
 
@@ -553,7 +568,7 @@ export async function createInviteLinkAction(formData: FormData) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/invite-links`, {
     method: "POST",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({ expiresInDays: Number(formData.get("expiresInDays")) }),
   });
 
@@ -566,7 +581,7 @@ export async function disableInviteLinkAction(inviteId: string) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/invite-links/${inviteId}/disable`, {
     method: "PATCH",
-    headers: adminRoleHeaders,
+    headers: await authHeaders(),
   });
 
   revalidateAdmin();
@@ -578,7 +593,7 @@ export async function sendReminderAction(formData: FormData) {
   const clubId = await getActiveClubId();
   await fetch(`${apiBaseUrl}/clubs/${clubId}/reminders/send`, {
     method: "POST",
-    headers: adminJsonHeaders,
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({ reminderId: formData.get("reminderId") }),
   });
 
@@ -599,7 +614,7 @@ export async function sendFeedbackAction(formData: FormData) {
 
   await fetch(`${apiBaseUrl}/feedback`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({ title, body, category, memberId: session.memberId, source: "admin-web" }),
   });
 
@@ -619,7 +634,7 @@ export async function createClubAction(formData: FormData) {
 
   const response = await fetch(`${apiBaseUrl}/clubs`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await jsonAuthHeaders(),
     body: JSON.stringify({ name, sportType, ownerMemberId: session.memberId }),
   });
 
@@ -639,6 +654,7 @@ export async function createClubAction(formData: FormData) {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
+    secure: process.env.NODE_ENV === "production",
   });
 
   redirect("/");

@@ -1,6 +1,9 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { randomBytes } from "node:crypto";
+import { hashPassword, verifyPassword } from "./auth/password";
 import {
   type AcceptInviteInput,
+  type AuthSessionResult,
   type CreateFeedbackInput,
   type FeedbackResult,
   type AdminEventListItem,
@@ -14,6 +17,7 @@ import {
   type MemberNotificationItem,
   type MemberDirectoryItem,
   type AuthLoginInput,
+  type ClubRole,
   type ResetMemberPasswordInput,
   type SelfResetPasswordInput,
   type CreateAdminEventInput,
@@ -100,7 +104,9 @@ import {
   persistStore,
   profileImages,
   registerMemberDevice,
+  sanitizeMember,
   visibleMembers,
+  club,
   clubs,
 } from "./mvp.store";
 
@@ -112,9 +118,10 @@ function cleanNonNegativeIntegerList(values: unknown[]) {
 
 export abstract class MvpRepository {
   abstract getAdminOverview(clubId: string): ReturnType<typeof buildOverview> | Promise<ReturnType<typeof buildOverview>>;
-  abstract login(input: AuthLoginInput): unknown;
+  abstract login(input: AuthLoginInput): AuthSessionResult | Promise<AuthSessionResult>;
   abstract register(input: RegisterInput): { memberId: string } | Promise<{ memberId: string }>;
   abstract createClub(input: CreateClubInput): { clubId: string; name: string; sportType: string } | Promise<{ clubId: string; name: string; sportType: string }>;
+  abstract getClubRole(clubId: string, memberId: string): ClubRole | null | Promise<ClubRole | null>;
   abstract resetMemberPassword(memberId: string, input: ResetMemberPasswordInput): unknown;
   abstract selfResetPassword(input: SelfResetPasswordInput): { success: true } | Promise<{ success: true }>;
   abstract registerDevice(input: RegisterDeviceInput): ReturnType<typeof registerMemberDevice> | Promise<ReturnType<typeof registerMemberDevice>>;
@@ -184,8 +191,15 @@ export class JsonMvpRepository implements MvpRepository {
       (m) => normalizePhoneNumber(m.phoneNumber) === phoneNumber && m.memberStatus !== "removed",
     );
 
-    if (!member || member.password !== password) {
+    const verdict = verifyPassword(password, member?.password);
+
+    if (!member || !verdict.ok) {
       throw new BadRequestException("전화번호 또는 비밀번호가 올바르지 않습니다.");
+    }
+
+    if (verdict.needsRehash) {
+      member.password = hashPassword(password);
+      persistStore();
     }
 
     return {
@@ -223,7 +237,7 @@ export class JsonMvpRepository implements MvpRepository {
       joinedAt: new Date().toISOString().slice(0, 10),
       lastFeeStatus: "unpaid",
       attendanceRate: 0,
-      password,
+      password: hashPassword(password),
     };
 
     members.push(nextMember);
@@ -238,6 +252,9 @@ export class JsonMvpRepository implements MvpRepository {
       throw new BadRequestException("모임명과 종목을 입력하세요.");
     }
 
+    if (!input.ownerMemberId) {
+      throw new BadRequestException("모임 생성자 정보가 없습니다.");
+    }
     const owner = findMember(input.ownerMemberId);
 
     const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -263,6 +280,25 @@ export class JsonMvpRepository implements MvpRepository {
     return { clubId: newClub.id, name: newClub.name, sportType: newClub.sportType };
   }
 
+  getClubRole(clubId: string, memberId: string): ClubRole | null {
+    const membership = clubMemberships.find(
+      (item) => item.clubId === clubId && item.memberId === memberId && item.memberStatus !== "removed",
+    );
+
+    if (membership) {
+      return membership.role;
+    }
+
+    // Legacy fallback: members created directly in the seeded club carry
+    // their role on the member record without a membership row.
+    if (clubId === club.id) {
+      const member = members.find((m) => m.id === memberId && m.memberStatus !== "removed");
+      return member?.role ?? null;
+    }
+
+    return null;
+  }
+
   resetMemberPassword(memberId: string, input: ResetMemberPasswordInput) {
     const member = findMember(memberId);
     const newPassword = `${input.password ?? ""}`.trim();
@@ -271,7 +307,7 @@ export class JsonMvpRepository implements MvpRepository {
       throw new BadRequestException("비밀번호를 입력하세요.");
     }
 
-    member.password = newPassword;
+    member.password = hashPassword(newPassword);
     persistStore();
     return { memberId: member.id };
   }
@@ -287,7 +323,7 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     const digits = member.phoneNumber.replace(/\D/g, "");
-    member.password = digits.slice(-4);
+    member.password = hashPassword(digits.slice(-4));
     persistStore();
     return { success: true };
   }
@@ -578,7 +614,7 @@ export class JsonMvpRepository implements MvpRepository {
     const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const nextInvite: AdminInviteLinkListItem = {
       id: `invite-${Date.now()}`,
-      token: `CREWITH-${Date.now().toString().slice(-6)}`,
+      token: `CREWITH-${randomBytes(9).toString("base64url")}`,
       expiresAt,
       disabled: false,
       createdAt: new Date().toISOString(),
@@ -632,7 +668,7 @@ export class JsonMvpRepository implements MvpRepository {
       }
 
       persistStore();
-      return existing;
+      return sanitizeMember(existing);
     }
 
     const phoneDigits = input.applicantPhone.trim().replace(/\D/g, "");
@@ -645,7 +681,7 @@ export class JsonMvpRepository implements MvpRepository {
       joinedAt: new Date().toISOString().slice(0, 10),
       lastFeeStatus: "unpaid",
       attendanceRate: 0,
-      password: phoneDigits.slice(-4),
+      password: hashPassword(phoneDigits.slice(-4)),
     };
 
     members.push(member);
@@ -658,7 +694,7 @@ export class JsonMvpRepository implements MvpRepository {
     });
     initializeMemberState(member);
     persistStore();
-    return member;
+    return sanitizeMember(member);
   }
 
   createMember(clubId: string, input: CreateAdminMemberInput) {
@@ -673,7 +709,7 @@ export class JsonMvpRepository implements MvpRepository {
       joinedAt: new Date().toISOString().slice(0, 10),
       lastFeeStatus: "unpaid",
       attendanceRate: 0,
-      password: input.password?.trim() || phoneDigits.slice(-4),
+      password: hashPassword(input.password?.trim() || phoneDigits.slice(-4)),
     };
 
     members.push(nextMember);
@@ -686,7 +722,7 @@ export class JsonMvpRepository implements MvpRepository {
     });
     initializeMemberState(nextMember);
     persistStore();
-    return nextMember;
+    return sanitizeMember(nextMember);
   }
 
   importMembers(clubId: string, input: ImportAdminMembersInput): ImportAdminMembersResult {
@@ -770,11 +806,11 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     if (typeof input.password === "string" && input.password.trim()) {
-      member.password = input.password.trim();
+      member.password = hashPassword(input.password.trim());
     }
 
     persistStore();
-    return member;
+    return sanitizeMember(member);
   }
 
   updateMemberFeeStatus(clubId: string, memberId: string, status: FeePaymentStatus) {
@@ -786,7 +822,7 @@ export class JsonMvpRepository implements MvpRepository {
     }
 
     persistStore();
-    return member;
+    return sanitizeMember(member);
   }
 
   removeMember(clubId: string, memberId: string) {
@@ -798,7 +834,7 @@ export class JsonMvpRepository implements MvpRepository {
       membership.memberStatus = "removed";
     }
     persistStore();
-    return member;
+    return sanitizeMember(member);
   }
 
   getFees(clubId: string) {

@@ -49,6 +49,9 @@ Crewith/
 npm install
 ```
 
+> `npm install`이 끝나면 postinstall 훅이 Prisma 클라이언트를 자동 생성합니다.
+> 스키마(`apps/api/prisma/schema.prisma`)를 수정한 뒤에는 `npm run prisma:generate`를 다시 실행하세요.
+
 ### 개발 서버 실행
 
 ```bash

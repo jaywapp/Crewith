@@ -44,6 +44,7 @@ async function loginAction(formData: FormData) {
 
   const session = {
     memberId: result.data!.memberId as string,
+    accessToken: result.data!.accessToken as string,
     clubs: adminClubs,
     activeClubId: adminClubs[0]?.clubId ?? "",
   };
@@ -53,6 +54,7 @@ async function loginAction(formData: FormData) {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
+    secure: process.env.NODE_ENV === "production",
   });
 
   if (!adminClubs.length) {
