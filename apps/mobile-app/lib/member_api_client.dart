@@ -374,7 +374,6 @@ class MemberApiClient {
     try {
       final request = await client.getUrl(uri);
       _applyAuth(request);
-      request.headers.set('x-crewith-role', role);
       final response = await request.close().timeout(const Duration(seconds: 15));
       if (response.statusCode != HttpStatus.ok) return null;
       final payload = await response.transform(utf8.decoder).join();
@@ -641,7 +640,6 @@ class MemberApiClient {
       };
       _applyAuth(request);
       request.headers.contentType = ContentType.json;
-      request.headers.set('x-crewith-role', role);
       request.write(jsonEncode(body));
       final response = await request.close().timeout(const Duration(seconds: 15));
       return response.statusCode >= 200 && response.statusCode < 300;
@@ -657,7 +655,6 @@ class MemberApiClient {
     try {
       final request = await client.deleteUrl(uri);
       _applyAuth(request);
-      request.headers.set('x-crewith-role', role);
       final response = await request.close().timeout(const Duration(seconds: 15));
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
