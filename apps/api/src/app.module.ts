@@ -4,6 +4,7 @@ import { APP_FILTER, APP_GUARD } from "@nestjs/core";
 import { JwtModule } from "@nestjs/jwt";
 import { SentryGlobalFilter } from "@sentry/nestjs/setup";
 import { AppController } from "./app.controller";
+import { ClubRolesGuard } from "./auth/club-roles.guard";
 import { JwtAuthGuard } from "./auth/jwt-auth.guard";
 import { MvpRepository } from "./mvp.repository";
 import { PrismaRepository } from "./prisma.repository";
@@ -29,6 +30,7 @@ import { PrismaModule } from "./prisma/prisma.module";
   providers: [
     { provide: APP_FILTER, useClass: SentryGlobalFilter },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: ClubRolesGuard },
     {
       provide: MvpRepository,
       useClass: PrismaRepository,

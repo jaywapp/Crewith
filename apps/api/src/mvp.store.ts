@@ -533,7 +533,7 @@ export interface AuthSessionResult {
 export interface CreateClubInput {
   name: string;
   sportType: string;
-  ownerMemberId: string;
+  ownerMemberId?: string;
 }
 
 export type FeedbackCategory = "bug" | "improvement" | "other";

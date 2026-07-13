@@ -4,7 +4,6 @@ import {
   Delete,
   ForbiddenException,
   Get,
-  Headers,
   Param,
   Patch,
   Post,
@@ -12,7 +11,9 @@ import {
   Query,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { CurrentUser, type CurrentUserPayload } from "./auth/current-user";
 import { Public } from "./auth/public.decorator";
+import { RequireClubRole } from "./auth/require-club-role.decorator";
 import {
   type AcceptInviteInput,
   type AuthLoginInput,
@@ -48,9 +49,9 @@ import {
 } from "./mvp.store";
 import { MvpRepository } from "./mvp.repository";
 
-function assertOperatorRole(role: string | undefined) {
-  if (role !== "owner" && role !== "operator") {
-    throw new ForbiddenException("Operator role is required");
+function assertSelf(user: CurrentUserPayload | undefined, memberId: string | undefined) {
+  if (!user || !memberId || user.sub !== memberId) {
+    throw new ForbiddenException("본인 계정으로만 접근할 수 있습니다.");
   }
 }
 
@@ -73,12 +74,9 @@ export class AppController {
     };
   }
 
+  @RequireClubRole()
   @Get("clubs/:clubId/admin/overview")
-  getAdminOverview(
-    @Param("clubId") clubId: string,
-    @Headers("x-crewith-role") role: string | undefined,
-  ) {
-    assertOperatorRole(role);
+  getAdminOverview(@Param("clubId") clubId: string) {
     return { data: this.repository.getAdminOverview(clubId) };
   }
 
@@ -106,17 +104,34 @@ export class AppController {
   }
 
   @Post("clubs")
-  createClub(@Body() input: CreateClubInput) {
-    return { data: this.repository.createClub(input) };
+  createClub(
+    @Body() input: CreateClubInput,
+    @CurrentUser() user: CurrentUserPayload | undefined,
+  ) {
+    if (!user) {
+      throw new ForbiddenException("본인 계정으로만 접근할 수 있습니다.");
+    }
+    if (input.ownerMemberId && input.ownerMemberId !== user.sub) {
+      throw new ForbiddenException("본인 계정으로만 모임을 만들 수 있습니다.");
+    }
+    return { data: this.repository.createClub({ ...input, ownerMemberId: user.sub }) };
   }
 
   @Post("me/devices")
-  registerDevice(@Body() input: RegisterDeviceInput) {
+  registerDevice(
+    @Body() input: RegisterDeviceInput,
+    @CurrentUser() user: CurrentUserPayload | undefined,
+  ) {
+    assertSelf(user, input.memberId);
     return { data: this.repository.registerDevice(input) };
   }
 
   @Get("members/:memberId/profile")
-  getMemberProfile(@Param("memberId") memberId: string) {
+  getMemberProfile(
+    @Param("memberId") memberId: string,
+    @CurrentUser() user: CurrentUserPayload | undefined,
+  ) {
+    assertSelf(user, memberId);
     return { data: this.repository.getMemberProfile(memberId) };
   }
 
@@ -124,7 +139,9 @@ export class AppController {
   updateMemberProfile(
     @Param("memberId") memberId: string,
     @Body() input: UpdateMemberProfileInput,
+    @CurrentUser() user: CurrentUserPayload | undefined,
   ) {
+    assertSelf(user, memberId);
     return { data: this.repository.updateMemberProfile(memberId, input) };
   }
 
@@ -132,7 +149,9 @@ export class AppController {
   getMemberAppOverview(
     @Param("clubId") clubId: string,
     @Param("memberId") memberId: string,
+    @CurrentUser() user: CurrentUserPayload | undefined,
   ) {
+    assertSelf(user, memberId);
     return { data: this.repository.getMemberAppOverview(clubId, memberId) };
   }
 
@@ -140,12 +159,18 @@ export class AppController {
   getMemberDirectory(
     @Param("clubId") clubId: string,
     @Param("memberId") memberId: string,
+    @CurrentUser() user: CurrentUserPayload | undefined,
   ) {
+    assertSelf(user, memberId);
     return { data: this.repository.getMemberDirectory(clubId, memberId) };
   }
 
   @Get("me/notifications")
-  getMemberNotifications(@Query("memberId") memberId: string) {
+  getMemberNotifications(
+    @Query("memberId") memberId: string,
+    @CurrentUser() user: CurrentUserPayload | undefined,
+  ) {
+    assertSelf(user, memberId);
     return { data: this.repository.getMemberNotifications(memberId) };
   }
 
@@ -153,97 +178,81 @@ export class AppController {
   markMemberNotificationRead(
     @Param("notificationId") notificationId: string,
     @Body("memberId") memberId: string,
+    @CurrentUser() user: CurrentUserPayload | undefined,
   ) {
+    assertSelf(user, memberId);
     return { data: this.repository.markMemberNotificationRead(memberId, notificationId) };
   }
 
+  @RequireClubRole()
   @Get("clubs/:clubId/reminders")
   getReminderTargets(@Param("clubId") clubId: string) {
     return { data: this.repository.getReminderTargets(clubId) };
   }
 
+  @RequireClubRole()
   @Get("clubs/:clubId/fee-settings")
-  getFeeSettings(
-    @Param("clubId") clubId: string,
-    @Headers("x-crewith-role") role: string | undefined,
-  ) {
-    assertOperatorRole(role);
+  getFeeSettings(@Param("clubId") clubId: string) {
     return { data: this.repository.getFeeSettings(clubId) };
   }
 
+  @RequireClubRole()
   @Put("clubs/:clubId/fee-settings")
   updateFeeSettings(
     @Param("clubId") clubId: string,
     @Body() input: UpdateClubFeeSettingsInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.updateFeeSettings(clubId, input) };
   }
 
+  @RequireClubRole()
   @Get("clubs/:clubId/notification-settings")
-  getNotificationSettings(
-    @Param("clubId") clubId: string,
-    @Headers("x-crewith-role") role: string | undefined,
-  ) {
-    assertOperatorRole(role);
+  getNotificationSettings(@Param("clubId") clubId: string) {
     return { data: this.repository.getNotificationSettings(clubId) };
   }
 
+  @RequireClubRole()
   @Put("clubs/:clubId/notification-settings")
   updateNotificationSettings(
     @Param("clubId") clubId: string,
     @Body() input: UpdateClubNotificationSettingsInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.updateNotificationSettings(clubId, input) };
   }
 
+  @RequireClubRole()
   @Get("clubs/:clubId/privacy-settings")
-  getPrivacySettings(
-    @Param("clubId") clubId: string,
-    @Headers("x-crewith-role") role: string | undefined,
-  ) {
-    assertOperatorRole(role);
+  getPrivacySettings(@Param("clubId") clubId: string) {
     return { data: this.repository.getPrivacySettings(clubId) };
   }
 
+  @RequireClubRole()
   @Put("clubs/:clubId/privacy-settings")
   updatePrivacySettings(
     @Param("clubId") clubId: string,
     @Body() input: UpdateClubPrivacySettingsInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.updatePrivacySettings(clubId, input) };
   }
 
+  @RequireClubRole()
   @Post("clubs/:clubId/reminders/send")
   sendReminder(
     @Param("clubId") clubId: string,
     @Body() input: SendReminderInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.sendReminder(clubId, input) };
   }
 
+  @RequireClubRole()
   @Get("clubs/:clubId/members")
-  getMembers(
-    @Param("clubId") clubId: string,
-    @Headers("x-crewith-role") role: string | undefined,
-  ) {
-    assertOperatorRole(role);
+  getMembers(@Param("clubId") clubId: string) {
     return { data: this.repository.getMembers(clubId) };
   }
 
+  @RequireClubRole()
   @Get("clubs/:clubId/join-requests")
-  getJoinRequests(
-    @Param("clubId") clubId: string,
-    @Headers("x-crewith-role") role: string | undefined,
-  ) {
-    assertOperatorRole(role);
+  getJoinRequests(@Param("clubId") clubId: string) {
     return { data: this.repository.getJoinRequests(clubId) };
   }
 
@@ -256,43 +265,37 @@ export class AppController {
     return { data: this.repository.createJoinRequest(clubId, input) };
   }
 
+  @RequireClubRole()
   @Patch("clubs/:clubId/join-requests/:requestId")
   reviewJoinRequest(
     @Param("clubId") clubId: string,
     @Param("requestId") requestId: string,
     @Body() input: ReviewJoinRequestInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.reviewJoinRequest(clubId, requestId, input) };
   }
 
+  @RequireClubRole()
   @Get("clubs/:clubId/invite-links")
-  getInviteLinks(
-    @Param("clubId") clubId: string,
-    @Headers("x-crewith-role") role: string | undefined,
-  ) {
-    assertOperatorRole(role);
+  getInviteLinks(@Param("clubId") clubId: string) {
     return { data: this.repository.getInviteLinks(clubId) };
   }
 
+  @RequireClubRole()
   @Post("clubs/:clubId/invite-links")
   createInviteLink(
     @Param("clubId") clubId: string,
     @Body() input: CreateInviteLinkInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.createInviteLink(clubId, input) };
   }
 
+  @RequireClubRole()
   @Patch("clubs/:clubId/invite-links/:inviteId/disable")
   disableInviteLink(
     @Param("clubId") clubId: string,
     @Param("inviteId") inviteId: string,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.disableInviteLink(clubId, inviteId) };
   }
 
@@ -306,146 +309,128 @@ export class AppController {
     return { data: this.repository.acceptInvite(clubId, token, input) };
   }
 
+  @RequireClubRole()
   @Post("clubs/:clubId/members")
   createMember(
     @Param("clubId") clubId: string,
     @Body() input: CreateAdminMemberInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.createMember(clubId, input) };
   }
 
+  @RequireClubRole()
   @Post("clubs/:clubId/members/imports")
   importMembers(
     @Param("clubId") clubId: string,
     @Body() input: ImportAdminMembersInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.importMembers(clubId, input) };
   }
 
+  @RequireClubRole()
   @Patch("clubs/:clubId/members/:memberId")
   updateMember(
     @Param("clubId") clubId: string,
     @Param("memberId") memberId: string,
     @Body() input: UpdateAdminMemberInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.updateMember(clubId, memberId, input) };
   }
 
+  @RequireClubRole()
   @Patch("clubs/:clubId/members/:memberId/fee-status")
   updateMemberFeeStatus(
     @Param("clubId") clubId: string,
     @Param("memberId") memberId: string,
     @Body("status") status: FeePaymentStatus,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.updateMemberFeeStatus(clubId, memberId, status) };
   }
 
+  @RequireClubRole()
   @Patch("clubs/:clubId/members/:memberId/password")
   resetMemberPassword(
     @Param("memberId") memberId: string,
     @Body() input: ResetMemberPasswordInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.resetMemberPassword(memberId, input) };
   }
 
+  @RequireClubRole()
   @Delete("clubs/:clubId/members/:memberId")
   removeMember(
     @Param("clubId") clubId: string,
     @Param("memberId") memberId: string,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.removeMember(clubId, memberId) };
   }
 
+  @RequireClubRole()
   @Get("clubs/:clubId/fees")
-  getFees(
-    @Param("clubId") clubId: string,
-    @Headers("x-crewith-role") role: string | undefined,
-  ) {
-    assertOperatorRole(role);
+  getFees(@Param("clubId") clubId: string) {
     return { data: this.repository.getFees(clubId) };
   }
 
+  @RequireClubRole()
   @Post("clubs/:clubId/fees")
   createFee(
     @Param("clubId") clubId: string,
     @Body() input: CreateAdminFeeInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.createFee(clubId, input) };
   }
 
+  @RequireClubRole()
   @Patch("clubs/:clubId/fees/:feeId/payments")
   updateFeePayment(
     @Param("clubId") clubId: string,
     @Param("feeId") feeId: string,
     @Body() input: UpdateAdminFeePaymentInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.updateFeePayment(clubId, feeId, input) };
   }
 
+  @RequireClubRole()
   @Patch("clubs/:clubId/events/:eventId/attendance")
   updateEventAttendance(
     @Param("clubId") clubId: string,
     @Param("eventId") eventId: string,
     @Body() input: UpdateAdminAttendanceInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.updateEventAttendance(clubId, eventId, input) };
   }
 
+  @RequireClubRole()
   @Get("clubs/:clubId/events")
-  getEvents(
-    @Param("clubId") clubId: string,
-    @Headers("x-crewith-role") role: string | undefined,
-  ) {
-    assertOperatorRole(role);
+  getEvents(@Param("clubId") clubId: string) {
     return { data: this.repository.getEvents(clubId) };
   }
 
+  @RequireClubRole()
   @Post("clubs/:clubId/events")
   createEvent(
     @Param("clubId") clubId: string,
     @Body() input: CreateAdminEventInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.createEvent(clubId, input) };
   }
 
+  @RequireClubRole()
   @Patch("clubs/:clubId/events/:eventId")
   updateEvent(
     @Param("clubId") clubId: string,
     @Param("eventId") eventId: string,
     @Body() input: UpdateAdminEventInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.updateEvent(clubId, eventId, input) };
   }
 
+  @RequireClubRole()
   @Delete("clubs/:clubId/events/:eventId")
   deleteEvent(
     @Param("clubId") clubId: string,
     @Param("eventId") eventId: string,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.deleteEvent(clubId, eventId) };
   }
 
@@ -454,47 +439,43 @@ export class AppController {
     @Param("clubId") clubId: string,
     @Param("eventId") eventId: string,
     @Body() input: UpdateAdminEventResponseInput,
+    @CurrentUser() user: CurrentUserPayload | undefined,
   ) {
+    assertSelf(user, input.memberId);
     return { data: this.repository.updateEventResponse(clubId, eventId, input) };
   }
 
+  @RequireClubRole()
   @Get("clubs/:clubId/notices")
-  getNotices(
-    @Param("clubId") clubId: string,
-    @Headers("x-crewith-role") role: string | undefined,
-  ) {
-    assertOperatorRole(role);
+  getNotices(@Param("clubId") clubId: string) {
     return { data: this.repository.getNotices(clubId) };
   }
 
+  @RequireClubRole()
   @Post("clubs/:clubId/notices")
   createNotice(
     @Param("clubId") clubId: string,
     @Body() input: CreateAdminNoticeInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.createNotice(clubId, input) };
   }
 
+  @RequireClubRole()
   @Patch("clubs/:clubId/notices/:noticeId")
   updateNotice(
     @Param("clubId") clubId: string,
     @Param("noticeId") noticeId: string,
     @Body() input: UpdateAdminNoticeInput,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.updateNotice(clubId, noticeId, input) };
   }
 
+  @RequireClubRole()
   @Delete("clubs/:clubId/notices/:noticeId")
   deleteNotice(
     @Param("clubId") clubId: string,
     @Param("noticeId") noticeId: string,
-    @Headers("x-crewith-role") role: string | undefined,
   ) {
-    assertOperatorRole(role);
     return { data: this.repository.deleteNotice(clubId, noticeId) };
   }
 
@@ -503,7 +484,9 @@ export class AppController {
     @Param("clubId") clubId: string,
     @Param("noticeId") noticeId: string,
     @Body() input: UpdateAdminNoticeReadInput,
+    @CurrentUser() user: CurrentUserPayload | undefined,
   ) {
+    assertSelf(user, input.memberId);
     return { data: this.repository.markNoticeRead(clubId, noticeId, input) };
   }
 
@@ -512,7 +495,9 @@ export class AppController {
     @Param("clubId") clubId: string,
     @Param("noticeId") noticeId: string,
     @Body() input: ToggleAdminNoticeReactionInput,
+    @CurrentUser() user: CurrentUserPayload | undefined,
   ) {
+    assertSelf(user, input.memberId);
     return { data: this.repository.toggleNoticeReaction(clubId, noticeId, input) };
   }
 
@@ -526,7 +511,9 @@ export class AppController {
     @Param("clubId") clubId: string,
     @Param("noticeId") noticeId: string,
     @Body() input: CreateAdminNoticeCommentInput,
+    @CurrentUser() user: CurrentUserPayload | undefined,
   ) {
+    assertSelf(user, input.memberId);
     return { data: this.repository.createNoticeComment(clubId, noticeId, input) };
   }
 }

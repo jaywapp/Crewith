@@ -23,6 +23,7 @@ import {
   type CreateAdminNoticeCommentInput,
   type CreateClubInput,
   type CreateFeedbackInput,
+  type ClubRole,
   type CreateInviteLinkInput,
   type CreateJoinRequestInput,
   type FeedbackResult,
@@ -358,6 +359,9 @@ export class PrismaRepository extends MvpRepository {
       throw new BadRequestException("모임명과 종목을 입력하세요.");
     }
 
+    if (!input.ownerMemberId) {
+      throw new BadRequestException("모임 생성자 정보가 없습니다.");
+    }
     const owner = await this.prisma.user.findUnique({
       where: { id: input.ownerMemberId },
     });
@@ -389,6 +393,14 @@ export class PrismaRepository extends MvpRepository {
     });
 
     return { clubId: club.id, name: club.name, sportType: club.sportType };
+  }
+
+  async getClubRole(clubId: string, memberId: string) {
+    const membership = await this.prisma.clubMember.findFirst({
+      where: { clubId, userId: memberId, memberStatus: { not: "removed" } },
+    });
+
+    return (membership?.role as ClubRole | undefined) ?? null;
   }
 
   async resetMemberPassword(memberId: string, input: ResetMemberPasswordInput) {

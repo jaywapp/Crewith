@@ -73,7 +73,11 @@ Authorization: Bearer <accessToken>
 
 ## 3. 인증 API
 
-> **MVP 구현 주의**: MVP 구현에서는 Bearer JWT 대신 `x-crewith-role` 헤더로 역할을 전달한다. Firebase Auth 연동 후 Bearer JWT로 전환 예정.
+> **인증 방식**: 모든 비공개(Non-public) 엔드포인트는 `Authorization: Bearer <accessToken>`이 필수이며, 없거나 유효하지 않으면 401을 반환한다(`JwtAuthGuard`). 공개 엔드포인트는 `GET /health`, `POST /auth/login`, `POST /auth/register`, `POST /auth/reset-password`, `POST /clubs/{clubId}/join-requests`, `POST /clubs/{clubId}/invite-links/{token}/accept` 6개뿐이다.
+>
+> 운영진 전용 엔드포인트(`clubId` 라우트 파라미터를 갖는 관리 API)는 JWT의 `sub`(회원 ID)로 DB에서 조회한 해당 모임 내 실제 역할이 `owner` 또는 `operator`여야 하며, 아니면 403을 반환한다(`ClubRolesGuard`). 회원 본인 데이터 엔드포인트(프로필, 회원 앱 홈, 알림, 이벤트 응답, 공지 읽음/좋아요/댓글 등)는 JWT의 `sub`가 대상 `memberId`와 일치해야 하며, 다르면 403을 반환한다(본인 확인).
+>
+> 과거 MVP 구현에서 클라이언트가 보내는 `x-crewith-role` 헤더로 역할을 판정하던 방식은 위조가 가능해 제거되었다. API는 더 이상 이 헤더를 신뢰하거나 읽지 않는다.
 
 ### OTP 인증 요청
 
@@ -1073,4 +1077,4 @@ Response:
 - `operators_only` 리소스는 일반 회원에게 목록과 상세 모두 숨긴다.
 - 일반 회원은 본인에게 부과된 회비만 조회한다.
 - 일반 회원은 본인이 속한 모임 리소스만 접근할 수 있다.
-- MVP 인증: `x-crewith-role` 헤더로 역할 전달 (Firebase Auth 연동 후 Bearer JWT로 전환 예정).
+- 인증: `Authorization: Bearer <accessToken>` 필수(401), 운영진 역할은 JWT `sub` 기준 DB 조회로 판정(403). `x-crewith-role` 헤더는 폐기되었으며 API는 이를 읽지 않는다.

@@ -18,6 +18,7 @@ const { AppModule } = require("../dist/app.module.js");
 const { MvpRepository, JsonMvpRepository } = require("../dist/mvp.repository.js");
 const { PrismaService } = require("../dist/prisma/prisma.service.js");
 const { Test } = require("@nestjs/testing");
+const { JwtService } = require("@nestjs/jwt");
 
 // AppModule은 PrismaRepository(실 Postgres 필요)를 바인딩하므로,
 // 테스트에서는 파일 스토어 구현(JsonMvpRepository)으로 오버라이드하고
@@ -92,45 +93,61 @@ test("API serves overview and persists member app actions", async (t) => {
   const baseUrl = `http://127.0.0.1:${address.port}/api/v1`;
 
   const owner = await createOwnerSession(baseUrl);
+  const CLUB = owner.clubId;
   const AUTH = { Authorization: `Bearer ${owner.token}` };
 
   const health = await fetch(`${baseUrl}/health`);
   assert.equal(health.status, 200);
   assert.equal((await health.json()).data.status, "ok");
 
-  const deniedOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/admin/overview`, {
-    headers: AUTH,
+  // 클럽에 소속되지 않은 사용자의 토큰으로는 관리자 개요에 접근할 수 없다.
+  await fetch(`${baseUrl}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "외부인", phoneNumber: "010-8000-0001", password: "pw-outsider" }),
+  });
+  const outsiderLoginRes = await fetch(`${baseUrl}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phoneNumber: "010-8000-0001", password: "pw-outsider" }),
+  });
+  const outsider = (await outsiderLoginRes.json()).data;
+
+  const deniedOverview = await fetch(`${baseUrl}/clubs/${CLUB}/admin/overview`, {
+    headers: { Authorization: `Bearer ${outsider.accessToken}` },
   });
   assert.equal(deniedOverview.status, 403);
 
+  // 존재하지 않는 clubId는 역할 조회 단계에서 곧바로 403(권한 없음)을 반환한다 —
+  // ClubRolesGuard가 컨트롤러/저장소보다 먼저 실행되므로 404가 아니다.
   const unknownClubOverview = await fetch(`${baseUrl}/clubs/unknown-club/admin/overview`, {
-    headers: { ...AUTH, "x-crewith-role": "operator" },
+    headers: AUTH,
   });
-  assert.equal(unknownClubOverview.status, 404);
+  assert.equal(unknownClubOverview.status, 403);
 
   // Empty store: admin overview must not crash
-  const emptyOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/admin/overview`, {
-    headers: { ...AUTH, "x-crewith-role": "operator" },
+  const emptyOverview = await fetch(`${baseUrl}/clubs/${CLUB}/admin/overview`, {
+    headers: AUTH,
   });
   assert.equal(emptyOverview.status, 200);
   const emptyOverviewJson = (await emptyOverview.json()).data;
-  assert.equal(emptyOverviewJson.club.name, "서울 러너스");
+  assert.equal(emptyOverviewJson.club.name, "테스트클럽");
   assert.equal(emptyOverviewJson.feeSettings.dueDay, 25);
   assert.equal(emptyOverviewJson.privacySettings.showPhoneNumberToMembers, false);
   assert.equal(emptyOverviewJson.notificationSettings.feeReminderEnabled, true);
 
   // Create members one at a time so each gets a unique Date.now() ID
-  const createMemberA = await fetch(`${baseUrl}/clubs/club-seoul-runners/members`, {
+  const createMemberA = await fetch(`${baseUrl}/clubs/${CLUB}/members`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({ name: "이회원", phoneNumber: "010-2222-0002", role: "member" }),
   });
   assert.equal(createMemberA.status, 201);
   const memberA = (await createMemberA.json()).data;
 
-  const createMemberB = await fetch(`${baseUrl}/clubs/club-seoul-runners/members`, {
+  const createMemberB = await fetch(`${baseUrl}/clubs/${CLUB}/members`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({ name: "박회원", phoneNumber: "010-3333-0003", role: "member" }),
   });
   assert.equal(createMemberB.status, 201);
@@ -140,10 +157,19 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.ok(memberB.id, "memberB should have an id");
   assert.notEqual(memberA.id, memberB.id, "members should have distinct ids");
 
-  // Import test: row 2 duplicates row 1's phone within the same batch
-  const importMembers = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/imports`, {
+  // memberA 본인 로그인 — createMember는 별도 비밀번호가 없으면 전화번호 뒤 4자리를 기본값으로 사용한다.
+  const memberALoginRes = await fetch(`${baseUrl}/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phoneNumber: "010-2222-0002", password: "0002" }),
+  });
+  const memberASession = (await memberALoginRes.json()).data;
+  const MEMBER_A_AUTH = { Authorization: `Bearer ${memberASession.accessToken}` };
+
+  // Import test: row 2 duplicates row 1's phone within the same batch
+  const importMembers = await fetch(`${baseUrl}/clubs/${CLUB}/members/imports`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({
       rows: "테스트회원,010-7777-0001,member\n중복회원,010-7777-0001,member\n운영테스트\t010-7777-0002\toperator",
     }),
@@ -154,19 +180,19 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(importResult.skippedCount, 1);
   assert.equal(importResult.errors[0].row, 2);
 
-  const adminOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/admin/overview`, {
-    headers: { ...AUTH, "x-crewith-role": "operator" },
+  const adminOverview = await fetch(`${baseUrl}/clubs/${CLUB}/admin/overview`, {
+    headers: AUTH,
   });
   assert.equal(adminOverview.status, 200);
   const adminOverviewJson = (await adminOverview.json()).data;
-  assert.equal(adminOverviewJson.club.name, "서울 러너스");
+  assert.equal(adminOverviewJson.club.name, "테스트클럽");
   assert.equal(adminOverviewJson.feeSettings.dueDay, 25);
   assert.equal(adminOverviewJson.privacySettings.showPhoneNumberToMembers, false);
   assert.equal(adminOverviewJson.notificationSettings.feeReminderEnabled, true);
 
   // Phone hidden by default for other members; own phone always visible
-  const privateDirectory = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/${memberA.id}/members`, {
-    headers: AUTH,
+  const privateDirectory = await fetch(`${baseUrl}/clubs/${CLUB}/member-app/${memberA.id}/members`, {
+    headers: MEMBER_A_AUTH,
   });
   assert.equal(privateDirectory.status, 200);
   const privateDirectoryJson = (await privateDirectory.json()).data;
@@ -175,9 +201,9 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(privateSelf.phoneNumber, "010-2222-0002");
   assert.equal(privateOther.phoneNumber, undefined);
 
-  const feeSettingsUpdate = await fetch(`${baseUrl}/clubs/club-seoul-runners/fee-settings`, {
+  const feeSettingsUpdate = await fetch(`${baseUrl}/clubs/${CLUB}/fee-settings`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({
       amount: 35000,
       dueDay: 10,
@@ -193,9 +219,9 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(feeSettings.dueDay, 10);
   assert.deepEqual(feeSettings.reminderDaysAfterDue, [1, 3]);
 
-  const privacySettingsUpdate = await fetch(`${baseUrl}/clubs/club-seoul-runners/privacy-settings`, {
+  const privacySettingsUpdate = await fetch(`${baseUrl}/clubs/${CLUB}/privacy-settings`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({
       showPhoneNumberToMembers: true,
       showBirthDateToMembers: false,
@@ -207,9 +233,9 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(privacySettings.showPhoneNumberToMembers, true);
   assert.equal(privacySettings.showGenderToMembers, true);
 
-  const notificationSettingsUpdate = await fetch(`${baseUrl}/clubs/club-seoul-runners/notification-settings`, {
+  const notificationSettingsUpdate = await fetch(`${baseUrl}/clubs/${CLUB}/notification-settings`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({
       eventReminderEnabled: true,
       eventReminderHoursBefore: [24, 2],
@@ -224,7 +250,7 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(notificationSettings.feeReminderEnabled, false);
   assert.deepEqual(notificationSettings.eventReminderHoursBefore, [24, 2]);
 
-  const remindersAfterFeeDisabled = await fetch(`${baseUrl}/clubs/club-seoul-runners/reminders`, {
+  const remindersAfterFeeDisabled = await fetch(`${baseUrl}/clubs/${CLUB}/reminders`, {
     headers: AUTH,
   });
   assert.equal(remindersAfterFeeDisabled.status, 200);
@@ -233,16 +259,16 @@ test("API serves overview and persists member app actions", async (t) => {
     false,
   );
 
-  const notificationSettingsReenabled = await fetch(`${baseUrl}/clubs/club-seoul-runners/notification-settings`, {
+  const notificationSettingsReenabled = await fetch(`${baseUrl}/clubs/${CLUB}/notification-settings`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({ feeReminderEnabled: true, feeReminderDaysAfterDue: [1, 3] }),
   });
   assert.equal(notificationSettingsReenabled.status, 200);
 
   // Public directory after privacy settings updated — other members' phones now visible
-  const publicDirectory = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/${memberA.id}/members`, {
-    headers: AUTH,
+  const publicDirectory = await fetch(`${baseUrl}/clubs/${CLUB}/member-app/${memberA.id}/members`, {
+    headers: MEMBER_A_AUTH,
   });
   assert.equal(publicDirectory.status, 200);
   const publicDirectoryJson = (await publicDirectory.json()).data;
@@ -250,32 +276,32 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(publicOther.phoneNumber, "010-3333-0003");
   assert.equal(publicOther.birthDate, undefined);
 
-  const createdInvite = await fetch(`${baseUrl}/clubs/club-seoul-runners/invite-links`, {
+  const createdInvite = await fetch(`${baseUrl}/clubs/${CLUB}/invite-links`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({ expiresInDays: 30 }),
   });
   assert.equal(createdInvite.status, 201);
   const invite = (await createdInvite.json()).data;
   assert.equal(invite.disabled, false);
 
-  const disabledInvite = await fetch(`${baseUrl}/clubs/club-seoul-runners/invite-links/${invite.id}/disable`, {
+  const disabledInvite = await fetch(`${baseUrl}/clubs/${CLUB}/invite-links/${invite.id}/disable`, {
     method: "PATCH",
-    headers: { ...AUTH, "x-crewith-role": "operator" },
+    headers: { ...AUTH },
   });
   assert.equal(disabledInvite.status, 200);
   assert.equal((await disabledInvite.json()).data.disabled, true);
 
-  const disabledInviteAccept = await fetch(`${baseUrl}/clubs/club-seoul-runners/invite-links/${invite.token}/accept`, {
+  const disabledInviteAccept = await fetch(`${baseUrl}/clubs/${CLUB}/invite-links/${invite.token}/accept`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ applicantName: "Invite Blocked", applicantPhone: "010-9999-0001" }),
   });
   assert.equal(disabledInviteAccept.status, 404);
 
-  const dormantMember = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/${memberB.id}`, {
+  const dormantMember = await fetch(`${baseUrl}/clubs/${CLUB}/members/${memberB.id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({ memberStatus: "dormant" }),
   });
   assert.equal(dormantMember.status, 200);
@@ -283,9 +309,9 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(dormantMemberJson.memberStatus, "dormant");
   assert.equal(typeof dormantMemberJson.personalDataDeleteAt, "string");
 
-  const reactivatedMember = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/${memberB.id}`, {
+  const reactivatedMember = await fetch(`${baseUrl}/clubs/${CLUB}/members/${memberB.id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({ memberStatus: "active" }),
   });
   assert.equal(reactivatedMember.status, 200);
@@ -293,8 +319,8 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(reactivatedMemberJson.memberStatus, "active");
   assert.equal(reactivatedMemberJson.personalDataDeleteAt, undefined);
 
-  const memberOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/${memberA.id}`, {
-    headers: AUTH,
+  const memberOverview = await fetch(`${baseUrl}/clubs/${CLUB}/member-app/${memberA.id}`, {
+    headers: MEMBER_A_AUTH,
   });
   assert.equal(memberOverview.status, 200);
   assert.equal((await memberOverview.json()).data.member.name, "이회원");
@@ -317,12 +343,13 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(session.memberId, memberA.id);
   assert.deepEqual(
     session.clubs.map((c) => c.clubId),
-    ["club-seoul-runners"],
+    [CLUB],
   );
 
+  const SESSION_AUTH = { Authorization: `Bearer ${session.accessToken}` };
   const deviceRegistration = await fetch(`${baseUrl}/me/devices`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...AUTH },
+    headers: { "Content-Type": "application/json", ...SESSION_AUTH },
     body: JSON.stringify({
       memberId: session.memberId,
       platform: "android",
@@ -333,9 +360,9 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal((await deviceRegistration.json()).data.memberId, session.memberId);
 
   // Password reset
-  const passwordReset = await fetch(`${baseUrl}/clubs/club-seoul-runners/members/${memberA.id}/password`, {
+  const passwordReset = await fetch(`${baseUrl}/clubs/${CLUB}/members/${memberA.id}/password`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({ password: "newpass123" }),
   });
   assert.equal(passwordReset.status, 200);
@@ -355,25 +382,33 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(loginWithOldPassword.status, 400);
 
   const unknownClubMemberOverview = await fetch(`${baseUrl}/clubs/unknown-club/member-app/${memberA.id}`, {
-    headers: AUTH,
+    headers: MEMBER_A_AUTH,
   });
   assert.equal(unknownClubMemberOverview.status, 404);
 
-  const unknownMemberOverview = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/unknown-member`, {
-    headers: AUTH,
+  // 존재하지 않는 memberId 자체를 자기 자신인 것처럼 요청해야 assertSelf를 통과해
+  // 저장소 조회 단계(404)까지 도달한다 — 실제 로그인으로는 만들 수 없는 sub이므로
+  // 앱의 JwtService로 직접 서명한 토큰을 사용한다.
+  const jwtService = app.get(JwtService);
+  const unknownMemberToken = await jwtService.signAsync({
+    sub: "unknown-member",
+    phoneNumber: "010-0000-0000",
+  });
+  const unknownMemberOverview = await fetch(`${baseUrl}/clubs/${CLUB}/member-app/unknown-member`, {
+    headers: { Authorization: `Bearer ${unknownMemberToken}` },
   });
   assert.equal(unknownMemberOverview.status, 404);
 
   // No reminders sent yet — notifications should be empty
   const memberNotifications = await fetch(`${baseUrl}/me/notifications?memberId=${session.memberId}`, {
-    headers: AUTH,
+    headers: SESSION_AUTH,
   });
   assert.equal(memberNotifications.status, 200);
   assert.equal(Array.isArray((await memberNotifications.json()).data), true);
 
-  const createdEvent = await fetch(`${baseUrl}/clubs/club-seoul-runners/events`, {
+  const createdEvent = await fetch(`${baseUrl}/clubs/${CLUB}/events`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({
       title: "테스트 일정",
       startsAt: "2026-06-01T19:00:00+09:00",
@@ -386,16 +421,16 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(createdEvent.status, 201);
   const createdEventJson = (await createdEvent.json()).data;
 
-  const responseUpdate = await fetch(`${baseUrl}/clubs/club-seoul-runners/events/${createdEventJson.id}/responses`, {
+  const responseUpdate = await fetch(`${baseUrl}/clubs/${CLUB}/events/${createdEventJson.id}/responses`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...AUTH },
+    headers: { "Content-Type": "application/json", ...MEMBER_A_AUTH },
     body: JSON.stringify({ memberId: memberA.id, response: "attending" }),
   });
   assert.equal(responseUpdate.status, 200);
 
-  const updatedEvent = await fetch(`${baseUrl}/clubs/club-seoul-runners/events/${createdEventJson.id}`, {
+  const updatedEvent = await fetch(`${baseUrl}/clubs/${CLUB}/events/${createdEventJson.id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({ title: "수정된 테스트 일정", visibility: "operators_only" }),
   });
   assert.equal(updatedEvent.status, 200);
@@ -403,16 +438,16 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(updatedEventJson.title, "수정된 테스트 일정");
   assert.equal(updatedEventJson.visibility, "operators_only");
 
-  const deletedEvent = await fetch(`${baseUrl}/clubs/club-seoul-runners/events/${createdEventJson.id}`, {
+  const deletedEvent = await fetch(`${baseUrl}/clubs/${CLUB}/events/${createdEventJson.id}`, {
     method: "DELETE",
-    headers: { ...AUTH, "x-crewith-role": "operator" },
+    headers: { ...AUTH },
   });
   assert.equal(deletedEvent.status, 200);
   assert.equal((await deletedEvent.json()).data.deleted, true);
 
-  const createdNotice = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices`, {
+  const createdNotice = await fetch(`${baseUrl}/clubs/${CLUB}/notices`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({
       title: "테스트 공지",
       body: "테스트 공지 본문",
@@ -422,33 +457,33 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(createdNotice.status, 201);
   const createdNoticeJson = (await createdNotice.json()).data;
 
-  const noticeRead = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/${createdNoticeJson.id}/read`, {
+  const noticeRead = await fetch(`${baseUrl}/clubs/${CLUB}/notices/${createdNoticeJson.id}/read`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...AUTH },
+    headers: { "Content-Type": "application/json", ...MEMBER_A_AUTH },
     body: JSON.stringify({ memberId: memberA.id }),
   });
   assert.equal(noticeRead.status, 200);
 
-  const noticeReaction = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/${createdNoticeJson.id}/reactions`, {
+  const noticeReaction = await fetch(`${baseUrl}/clubs/${CLUB}/notices/${createdNoticeJson.id}/reactions`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...AUTH },
+    headers: { "Content-Type": "application/json", ...MEMBER_A_AUTH },
     body: JSON.stringify({ memberId: memberA.id }),
   });
   assert.equal(noticeReaction.status, 200);
   assert.equal((await noticeReaction.json()).data.likeCount, 1);
 
   const commentBody = "앱에서 확인했습니다.";
-  const noticeComment = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/${createdNoticeJson.id}/comments`, {
+  const noticeComment = await fetch(`${baseUrl}/clubs/${CLUB}/notices/${createdNoticeJson.id}/comments`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...AUTH },
+    headers: { "Content-Type": "application/json", ...MEMBER_A_AUTH },
     body: JSON.stringify({ memberId: memberA.id, body: commentBody }),
   });
   assert.equal(noticeComment.status, 201);
   const noticeCommentJson = (await noticeComment.json()).data;
   assert.equal(noticeCommentJson.commentCount, 1);
 
-  const memberOverviewAfterNoticeActions = await fetch(`${baseUrl}/clubs/club-seoul-runners/member-app/${memberA.id}`, {
-    headers: AUTH,
+  const memberOverviewAfterNoticeActions = await fetch(`${baseUrl}/clubs/${CLUB}/member-app/${memberA.id}`, {
+    headers: MEMBER_A_AUTH,
   });
   assert.equal(memberOverviewAfterNoticeActions.status, 200);
   const noticeSummary = (await memberOverviewAfterNoticeActions.json()).data.notices[0];
@@ -456,9 +491,9 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(noticeSummary.liked, true);
   assert.equal(noticeSummary.comments.at(-1).body, commentBody);
 
-  const updatedNotice = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/${createdNoticeJson.id}`, {
+  const updatedNotice = await fetch(`${baseUrl}/clubs/${CLUB}/notices/${createdNoticeJson.id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "Content-Type": "application/json", ...AUTH },
     body: JSON.stringify({
       title: "수정된 테스트 공지",
       body: "수정된 공지 본문",
@@ -470,9 +505,9 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(updatedNoticeJson.title, "수정된 테스트 공지");
   assert.equal(updatedNoticeJson.visibility, "operators_only");
 
-  const deletedNotice = await fetch(`${baseUrl}/clubs/club-seoul-runners/notices/${createdNoticeJson.id}`, {
+  const deletedNotice = await fetch(`${baseUrl}/clubs/${CLUB}/notices/${createdNoticeJson.id}`, {
     method: "DELETE",
-    headers: { ...AUTH, "x-crewith-role": "operator" },
+    headers: { ...AUTH },
   });
   assert.equal(deletedNotice.status, 200);
   assert.equal((await deletedNotice.json()).data.deleted, true);
@@ -517,16 +552,16 @@ test("API serves overview and persists member app actions", async (t) => {
 
   // acceptInvite — 이미 가입된 전화번호이면 기존 계정에 clubMembership만 추가
   // 먼저 초대 링크 생성
-  const createInviteForReuse = await fetch(`${baseUrl}/clubs/club-seoul-runners/invite-links`, {
+  const createInviteForReuse = await fetch(`${baseUrl}/clubs/${CLUB}/invite-links`, {
     method: "POST",
-    headers: { "content-type": "application/json", ...AUTH, "x-crewith-role": "operator" },
+    headers: { "content-type": "application/json", ...AUTH },
     body: JSON.stringify({ expiresInDays: 7 }),
   });
   assert.equal(createInviteForReuse.status, 201);
   const reuseToken = (await createInviteForReuse.json()).data.token;
 
   const acceptWithExisting = await fetch(
-    `${baseUrl}/clubs/club-seoul-runners/invite-links/${reuseToken}/accept`,
+    `${baseUrl}/clubs/${CLUB}/invite-links/${reuseToken}/accept`,
     {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -549,5 +584,5 @@ test("API serves overview and persists member app actions", async (t) => {
   assert.equal(afterInviteLogin.status, 201);
   const afterSession = (await afterInviteLogin.json()).data;
   assert.equal(afterSession.clubs.length, 1);
-  assert.equal(afterSession.clubs[0].clubId, "club-seoul-runners");
+  assert.equal(afterSession.clubs[0].clubId, CLUB);
 });

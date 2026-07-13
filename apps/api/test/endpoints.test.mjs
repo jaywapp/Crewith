@@ -70,10 +70,7 @@ test("endpoint success/failure characterization", async (t) => {
 
   const owner = await createOwnerSession(baseUrl);
   const CLUB = owner.clubId;
-  const OPERATOR = {
-    Authorization: `Bearer ${owner.token}`,
-    "x-crewith-role": "operator", // Task 7에서 제거 예정
-  };
+  const OPERATOR = { Authorization: `Bearer ${owner.token}` };
 
   // 공용 픽스처: 회원 1명 생성 (회비/일정/공지 대상)
   const createdMember = await fetch(`${baseUrl}/clubs/${CLUB}/members`, {
@@ -83,6 +80,15 @@ test("endpoint success/failure characterization", async (t) => {
   });
   assert.equal(createdMember.status, 201);
   const member = (await createdMember.json()).data;
+
+  // 회원 본인 로그인 — createMember는 별도 비밀번호가 없으면 전화번호 뒤 4자리를 기본값으로 사용한다.
+  const memberLoginRes = await fetch(`${baseUrl}/auth/login`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ phoneNumber: "010-5555-0001", password: "0001" }),
+  });
+  const memberSession = (await memberLoginRes.json()).data;
+  const MEMBER_AUTH = { Authorization: `Bearer ${memberSession.accessToken}` };
 
   // ───────────────────────── [회비] ─────────────────────────
 
@@ -95,10 +101,10 @@ test("endpoint success/failure characterization", async (t) => {
     assert.equal(res.status, 404);
   });
 
-  await t.test("POST fees — operator 역할 없이 호출하면 403", async () => {
+  await t.test("POST fees — 비운영진 토큰으로 호출하면 403", async () => {
     const res = await fetch(`${baseUrl}/clubs/${CLUB}/fees`, {
       method: "POST",
-      headers: { ...JSON_HEADERS, Authorization: `Bearer ${owner.token}` },
+      headers: { ...JSON_HEADERS, ...MEMBER_AUTH },
       body: JSON.stringify({ title: "6월 회비", amount: 30000, dueDate: "2026-06-25" }),
     });
     assert.equal(res.status, 403);
@@ -137,7 +143,7 @@ test("endpoint success/failure characterization", async (t) => {
 
     const res = await fetch(`${baseUrl}/clubs/${CLUB}/events/${event.id}/responses`, {
       method: "PATCH",
-      headers: { ...JSON_HEADERS, Authorization: `Bearer ${owner.token}` },
+      headers: { ...JSON_HEADERS, ...MEMBER_AUTH },
       body: JSON.stringify({ memberId: member.id, response: "definitely-not-a-valid-response" }),
     });
     // 기대는 400이지만 현재 구현은 response 값을 검증하지 않고 그대로 저장 → 200.
@@ -177,7 +183,7 @@ test("endpoint success/failure characterization", async (t) => {
     );
   });
 
-  await t.test("PATCH notices read — 비회원 memberId는 4xx", async () => {
+  await t.test("PATCH notices read — 본인이 아닌 memberId는 403", async () => {
     const created = await fetch(`${baseUrl}/clubs/${CLUB}/notices`, {
       method: "POST",
       headers: { ...JSON_HEADERS, ...OPERATOR },
@@ -186,12 +192,14 @@ test("endpoint success/failure characterization", async (t) => {
     assert.equal(created.status, 201);
     const notice = (await created.json()).data;
 
+    // 본인 확인(assertSelf)이 저장소 조회보다 먼저 수행되므로, 존재하지 않는
+    // memberId를 자신의 토큰으로 요청하면 404가 아니라 403을 반환한다.
     const res = await fetch(`${baseUrl}/clubs/${CLUB}/notices/${notice.id}/read`, {
       method: "PATCH",
       headers: { ...JSON_HEADERS, Authorization: `Bearer ${owner.token}` },
       body: JSON.stringify({ memberId: "unknown-member" }),
     });
-    assert.equal(res.status, 404);
+    assert.equal(res.status, 403);
   });
 
   // ───────────────────────── [인증] ─────────────────────────
@@ -279,6 +287,45 @@ test("endpoint success/failure characterization", async (t) => {
     assert.notEqual(first.token, second.token);
   });
 
+  // ───────────────────────── [권한] ─────────────────────────
+
+  await t.test("forged x-crewith-role header no longer grants operator access", async () => {
+    // 클럽 소속이 없는 신규 사용자
+    await fetch(`${baseUrl}/auth/register`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ name: "외부인", phoneNumber: "010-8888-0001", password: "pw-outsider" }),
+    });
+    const loginRes = await fetch(`${baseUrl}/auth/login`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ phoneNumber: "010-8888-0001", password: "pw-outsider" }),
+    });
+    const outsider = (await loginRes.json()).data;
+
+    const res = await fetch(`${baseUrl}/clubs/${CLUB}/members`, {
+      headers: {
+        Authorization: `Bearer ${outsider.accessToken}`,
+        "x-crewith-role": "owner", // 위조 시도
+      },
+    });
+    assert.equal(res.status, 403);
+  });
+
+  await t.test("member cannot read another member's profile", async () => {
+    const loginRes = await fetch(`${baseUrl}/auth/login`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ phoneNumber: "010-8888-0001", password: "pw-outsider" }),
+    });
+    const outsider = (await loginRes.json()).data;
+
+    const res = await fetch(`${baseUrl}/members/${member.id}/profile`, {
+      headers: { Authorization: `Bearer ${outsider.accessToken}` },
+    });
+    assert.equal(res.status, 403);
+  });
+
   // ───────────────────────── [JWT 인증] ─────────────────────────
 
   await t.test("login issues a JWT access token", async () => {
@@ -298,7 +345,7 @@ test("endpoint success/failure characterization", async (t) => {
     // Bearer token after the Step 8 migration) so this test actually exercises the
     // no-token rejection path.
     const res = await fetch(`${baseUrl}/clubs/${CLUB}/members`, {
-      headers: { "x-crewith-role": "operator" },
+      headers: {},
     });
     assert.equal(res.status, 401);
   });

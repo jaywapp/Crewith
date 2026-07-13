@@ -17,6 +17,7 @@ import {
   type MemberNotificationItem,
   type MemberDirectoryItem,
   type AuthLoginInput,
+  type ClubRole,
   type ResetMemberPasswordInput,
   type SelfResetPasswordInput,
   type CreateAdminEventInput,
@@ -105,6 +106,7 @@ import {
   registerMemberDevice,
   sanitizeMember,
   visibleMembers,
+  club,
   clubs,
 } from "./mvp.store";
 
@@ -119,6 +121,7 @@ export abstract class MvpRepository {
   abstract login(input: AuthLoginInput): AuthSessionResult | Promise<AuthSessionResult>;
   abstract register(input: RegisterInput): { memberId: string } | Promise<{ memberId: string }>;
   abstract createClub(input: CreateClubInput): { clubId: string; name: string; sportType: string } | Promise<{ clubId: string; name: string; sportType: string }>;
+  abstract getClubRole(clubId: string, memberId: string): ClubRole | null | Promise<ClubRole | null>;
   abstract resetMemberPassword(memberId: string, input: ResetMemberPasswordInput): unknown;
   abstract selfResetPassword(input: SelfResetPasswordInput): { success: true } | Promise<{ success: true }>;
   abstract registerDevice(input: RegisterDeviceInput): ReturnType<typeof registerMemberDevice> | Promise<ReturnType<typeof registerMemberDevice>>;
@@ -249,6 +252,9 @@ export class JsonMvpRepository implements MvpRepository {
       throw new BadRequestException("모임명과 종목을 입력하세요.");
     }
 
+    if (!input.ownerMemberId) {
+      throw new BadRequestException("모임 생성자 정보가 없습니다.");
+    }
     const owner = findMember(input.ownerMemberId);
 
     const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -272,6 +278,25 @@ export class JsonMvpRepository implements MvpRepository {
     persistStore();
 
     return { clubId: newClub.id, name: newClub.name, sportType: newClub.sportType };
+  }
+
+  getClubRole(clubId: string, memberId: string): ClubRole | null {
+    const membership = clubMemberships.find(
+      (item) => item.clubId === clubId && item.memberId === memberId && item.memberStatus !== "removed",
+    );
+
+    if (membership) {
+      return membership.role;
+    }
+
+    // Legacy fallback: members created directly in the seeded club carry
+    // their role on the member record without a membership row.
+    if (clubId === club.id) {
+      const member = members.find((m) => m.id === memberId && m.memberStatus !== "removed");
+      return member?.role ?? null;
+    }
+
+    return null;
   }
 
   resetMemberPassword(memberId: string, input: ResetMemberPasswordInput) {
