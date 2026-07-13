@@ -8,7 +8,7 @@
     "packages/shared-types"
   ],
   "scripts": {
-    "postinstall": "node -e \"if(require('fs').existsSync('apps/api/prisma/schema.prisma'))require('child_process').execSync('npx prisma generate --schema apps/api/prisma/schema.prisma',{stdio:'inherit'})\"",
+    "postinstall": "node -e \"const{existsSync}=require('fs');if(existsSync('apps/api/prisma/schema.prisma')&&existsSync('node_modules/.bin/prisma'))require('child_process').execSync('npx --no-install prisma generate --schema apps/api/prisma/schema.prisma',{stdio:'inherit'})\"",
     "dev:api": "npm run dev -w @crewith/api",
     "dev:admin": "npm run dev -w @crewith/admin-web",
     "build": "npm run build --workspaces --if-present",
