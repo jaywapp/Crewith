@@ -183,6 +183,7 @@ export async function switchClubAction(formData: FormData) {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
+    secure: process.env.NODE_ENV === "production",
   });
 
   revalidateAdmin();
@@ -653,6 +654,7 @@ export async function createClubAction(formData: FormData) {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
+    secure: process.env.NODE_ENV === "production",
   });
 
   redirect("/");

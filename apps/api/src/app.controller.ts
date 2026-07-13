@@ -502,8 +502,11 @@ export class AppController {
   }
 
   @Post("feedback")
-  createFeedback(@Body() input: CreateFeedbackInput) {
-    return this.repository.createFeedback(input);
+  createFeedback(
+    @Body() input: CreateFeedbackInput,
+    @CurrentUser() user: CurrentUserPayload | undefined,
+  ) {
+    return this.repository.createFeedback({ ...input, memberId: user?.sub });
   }
 
   @Post("clubs/:clubId/notices/:noticeId/comments")

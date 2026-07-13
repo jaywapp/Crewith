@@ -54,6 +54,7 @@ async function loginAction(formData: FormData) {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
+    secure: process.env.NODE_ENV === "production",
   });
 
   if (!adminClubs.length) {
