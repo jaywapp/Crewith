@@ -34,6 +34,7 @@ import {
   type UpdateAdminAttendanceInput,
   type UpdateAdminEventInput,
   type UpdateAdminEventResponseInput,
+  type UpdateAdminFeeInput,
   type UpdateAdminFeePaymentInput,
   type UpdateClubFeeSettingsInput,
   type UpdateClubNotificationSettingsInput,
@@ -388,6 +389,25 @@ export class AppController {
     @Body() input: UpdateAdminFeePaymentInput,
   ) {
     return { data: this.repository.updateFeePayment(clubId, feeId, input) };
+  }
+
+  @RequireClubRole()
+  @Patch("clubs/:clubId/fees/:feeId")
+  updateFee(
+    @Param("clubId") clubId: string,
+    @Param("feeId") feeId: string,
+    @Body() input: UpdateAdminFeeInput,
+  ) {
+    return { data: this.repository.updateFee(clubId, feeId, input) };
+  }
+
+  @RequireClubRole()
+  @Delete("clubs/:clubId/fees/:feeId")
+  deleteFee(
+    @Param("clubId") clubId: string,
+    @Param("feeId") feeId: string,
+  ) {
+    return { data: this.repository.deleteFee(clubId, feeId) };
   }
 
   @RequireClubRole()

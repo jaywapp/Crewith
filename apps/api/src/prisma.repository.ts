@@ -42,6 +42,7 @@ import {
   type UpdateAdminAttendanceInput,
   type UpdateAdminEventInput,
   type UpdateAdminEventResponseInput,
+  type UpdateAdminFeeInput,
   type UpdateAdminFeePaymentInput,
   type UpdateAdminMemberInput,
   type UpdateAdminNoticeInput,
@@ -760,6 +761,46 @@ export class PrismaRepository extends MvpRepository {
     });
 
     return toAdminFee(fee, activeMembers.map((m) => m.userId));
+  }
+
+  async updateFee(
+    clubId: string,
+    feeId: string,
+    input: UpdateAdminFeeInput,
+  ): Promise<AdminFeeListItem> {
+    const fee = await this.prisma.feeItem.update({
+      where: { id: feeId },
+      data: {
+        ...(input.title && { title: input.title.trim() }),
+        ...(["recurring", "one_time"].includes(input.feeType ?? "") && {
+          feeType: input.feeType as any,
+        }),
+        ...(input.amount !== undefined && { amount: Number(input.amount) || 0 }),
+        ...(input.dueDate && { dueDate: new Date(input.dueDate) }),
+      },
+      include: {
+        payments: { include: { clubMember: { include: { user: true } } } },
+      },
+    });
+
+    const activeMembers = await this.prisma.clubMember.findMany({
+      where: { clubId, memberStatus: { not: "removed" } },
+      select: { userId: true },
+    });
+
+    return toAdminFee(fee, activeMembers.map((m) => m.userId));
+  }
+
+  async deleteFee(
+    clubId: string,
+    feeId: string,
+  ): Promise<{ id: string; deleted: true }> {
+    await this.prisma.$transaction([
+      this.prisma.feePayment.deleteMany({ where: { feeItemId: feeId } }),
+      this.prisma.feeItemTarget.deleteMany({ where: { feeItemId: feeId } }),
+      this.prisma.feeItem.delete({ where: { id: feeId } }),
+    ]);
+    return { id: feeId, deleted: true };
   }
 
   // ── TASK 6: 일정 메서드 ────────────────────────────────────────────────────

@@ -40,6 +40,7 @@ import {
   type UpdateAdminAttendanceInput,
   type UpdateAdminEventInput,
   type UpdateAdminEventResponseInput,
+  type UpdateAdminFeeInput,
   type UpdateAdminFeePaymentInput,
   type UpdateAdminMemberInput,
   type UpdateAdminNoticeReadInput,
@@ -161,6 +162,8 @@ export abstract class MvpRepository {
   abstract removeMember(clubId: string, memberId: string): AdminMemberListItem | Promise<AdminMemberListItem>;
   abstract getFees(clubId: string): AdminFeeListItem[] | Promise<AdminFeeListItem[]>;
   abstract createFee(clubId: string, input: CreateAdminFeeInput): AdminFeeListItem | Promise<AdminFeeListItem>;
+  abstract updateFee(clubId: string, feeId: string, input: UpdateAdminFeeInput): AdminFeeListItem | Promise<AdminFeeListItem>;
+  abstract deleteFee(clubId: string, feeId: string): { id: string; deleted: true } | Promise<{ id: string; deleted: true }>;
   abstract updateFeePayment(clubId: string, feeId: string, input: UpdateAdminFeePaymentInput): AdminFeeListItem | Promise<AdminFeeListItem>;
   abstract updateEventAttendance(clubId: string, eventId: string, input: UpdateAdminAttendanceInput): AdminEventListItem | Promise<AdminEventListItem>;
   abstract getEvents(clubId: string): AdminEventListItem[] | Promise<AdminEventListItem[]>;
@@ -864,6 +867,47 @@ export class JsonMvpRepository implements MvpRepository {
     ensureFeeTargets(nextFee.id, clubId);
     persistStore();
     return buildFeeItem(nextFee, clubId);
+  }
+
+  updateFee(clubId: string, feeId: string, input: UpdateAdminFeeInput) {
+    ensureClub(clubId);
+    const fee = findFee(feeId);
+
+    if (typeof input.title === "string" && input.title.trim()) {
+      fee.title = input.title.trim();
+    }
+
+    if (isFeeType(input.feeType)) {
+      fee.feeType = input.feeType;
+    }
+
+    if (input.amount !== undefined) {
+      const amount = Number(input.amount);
+      if (Number.isFinite(amount)) {
+        fee.amount = amount;
+      }
+    }
+
+    if (typeof input.dueDate === "string" && input.dueDate.trim()) {
+      fee.dueDate = input.dueDate;
+    }
+
+    persistStore();
+    return buildFeeItem(fee, clubId);
+  }
+
+  deleteFee(clubId: string, feeId: string) {
+    ensureClub(clubId);
+    const feeIndex = fees.findIndex((item) => item.id === feeId);
+
+    if (feeIndex < 0) {
+      throw new NotFoundException("Fee not found");
+    }
+
+    fees.splice(feeIndex, 1);
+    delete feePayments[feeId];
+    persistStore();
+    return { id: feeId, deleted: true as const };
   }
 
   updateFeePayment(clubId: string, feeId: string, input: UpdateAdminFeePaymentInput) {

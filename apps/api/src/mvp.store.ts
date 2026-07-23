@@ -405,6 +405,13 @@ export interface CreateAdminFeeInput {
   dueDate: string;
 }
 
+export interface UpdateAdminFeeInput {
+  title?: string;
+  feeType?: FeeType;
+  amount?: number;
+  dueDate?: string;
+}
+
 export interface UpdateAdminFeePaymentInput {
   memberId: string;
   status: FeePaymentStatus;

@@ -480,6 +480,28 @@ class MemberApiClient {
         'status': status,
       }, role);
 
+  Future<bool> adminUpdateFee({
+    required String clubId,
+    required String role,
+    required String feeId,
+    required String title,
+    required int amount,
+    required String dueDate,
+  }) =>
+      _sendJsonAdmin(
+          'PATCH', Uri.parse('$apiBaseUrl/clubs/$clubId/fees/$feeId'), {
+        'title': title,
+        'amount': amount,
+        'dueDate': dueDate,
+      }, role);
+
+  Future<bool> adminDeleteFee({
+    required String clubId,
+    required String role,
+    required String feeId,
+  }) =>
+      _deleteAdmin(Uri.parse('$apiBaseUrl/clubs/$clubId/fees/$feeId'), role);
+
   Future<bool> adminCreateEvent({
     required String clubId,
     required String role,

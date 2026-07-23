@@ -41,6 +41,60 @@ class FeesPage extends StatelessWidget {
     );
   }
 
+  void _showEditSheet(BuildContext context, MemberFee fee) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _FeeFormSheet(
+        clubId: clubId!,
+        role: role!,
+        api: api!,
+        initialFee: fee,
+        onSuccess: () {
+          Navigator.of(context).pop();
+          onRefresh?.call();
+        },
+      ),
+    );
+  }
+
+  Future<void> _deleteFee(BuildContext context, MemberFee fee) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('회비 삭제'),
+        content: Text('"${fee.title}" 회비를 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final ok = await api!.adminDeleteFee(
+      clubId: clubId!,
+      role: role!,
+      feeId: fee.id,
+    );
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? '회비를 삭제했습니다.' : '삭제에 실패했습니다.')),
+    );
+    if (ok) onRefresh?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final feeCards = overview.fees.map((fee) {
@@ -71,6 +125,24 @@ class FeesPage extends StatelessWidget {
               ),
             ),
             StatusPill(label: feeLabel(fee.status), status: fee.status),
+            if (isAdmin)
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                onSelected: (action) {
+                  if (action == 'edit') _showEditSheet(context, fee);
+                  if (action == 'delete') _deleteFee(context, fee);
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('수정')),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Text(
+                      '삭제',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       );
@@ -115,23 +187,36 @@ class _FeeFormSheet extends StatefulWidget {
     required this.role,
     required this.api,
     required this.onSuccess,
+    this.initialFee,
   });
 
   final String clubId;
   final String role;
   final MemberApiClient api;
   final VoidCallback onSuccess;
+  final MemberFee? initialFee;
 
   @override
   State<_FeeFormSheet> createState() => _FeeFormSheetState();
 }
 
 class _FeeFormSheetState extends State<_FeeFormSheet> {
-  final _titleCtrl = TextEditingController();
-  final _amountCtrl = TextEditingController();
-  final _dueDateCtrl = TextEditingController();
+  late final TextEditingController _titleCtrl;
+  late final TextEditingController _amountCtrl;
+  late final TextEditingController _dueDateCtrl;
   String _feeType = 'recurring';
   bool _saving = false;
+
+  bool get _isEdit => widget.initialFee != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final fee = widget.initialFee;
+    _titleCtrl = TextEditingController(text: fee?.title ?? '');
+    _amountCtrl = TextEditingController(text: fee != null ? '${fee.amount}' : '');
+    _dueDateCtrl = TextEditingController(text: fee?.dueDate ?? '');
+  }
 
   @override
   void dispose() {
@@ -159,14 +244,26 @@ class _FeeFormSheetState extends State<_FeeFormSheet> {
     }
 
     setState(() => _saving = true);
-    final ok = await widget.api.adminCreateFee(
-      clubId: widget.clubId,
-      role: widget.role,
-      title: _titleCtrl.text.trim(),
-      feeType: _feeType,
-      amount: amount,
-      dueDate: _dueDateCtrl.text.trim(),
-    );
+    final bool ok;
+    if (_isEdit) {
+      ok = await widget.api.adminUpdateFee(
+        clubId: widget.clubId,
+        role: widget.role,
+        feeId: widget.initialFee!.id,
+        title: _titleCtrl.text.trim(),
+        amount: amount,
+        dueDate: _dueDateCtrl.text.trim(),
+      );
+    } else {
+      ok = await widget.api.adminCreateFee(
+        clubId: widget.clubId,
+        role: widget.role,
+        title: _titleCtrl.text.trim(),
+        feeType: _feeType,
+        amount: amount,
+        dueDate: _dueDateCtrl.text.trim(),
+      );
+    }
 
     if (!mounted) return;
     setState(() => _saving = false);
@@ -175,7 +272,7 @@ class _FeeFormSheetState extends State<_FeeFormSheet> {
       widget.onSuccess();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('회비 추가에 실패했습니다.')),
+        SnackBar(content: Text(_isEdit ? '수정에 실패했습니다.' : '회비 추가에 실패했습니다.')),
       );
     }
   }
@@ -195,7 +292,7 @@ class _FeeFormSheetState extends State<_FeeFormSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              '💰 회비 추가',
+              _isEdit ? '✏️ 회비 수정' : '💰 회비 추가',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: houseGreen,
                     fontWeight: FontWeight.w700,
@@ -213,26 +310,28 @@ class _FeeFormSheetState extends State<_FeeFormSheet> {
               label: '납부일 (YYYY-MM-DD)',
               hint: '2026-06-30',
             ),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: DropdownButtonFormField<String>(
-                value: _feeType,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: '유형',
+            if (!_isEdit)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: DropdownButtonFormField<String>(
+                  value: _feeType,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: '유형',
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'recurring', child: Text('월회비')),
+                    DropdownMenuItem(value: 'one_time', child: Text('일회성')),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setState(() => _feeType = v);
+                  },
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'recurring', child: Text('월회비')),
-                  DropdownMenuItem(value: 'one_time', child: Text('일회성')),
-                ],
-                onChanged: (v) {
-                  if (v != null) setState(() => _feeType = v);
-                },
               ),
-            ),
+            if (_isEdit) const SizedBox(height: 4),
             FilledButton(
               onPressed: _saving ? null : _save,
-              child: const Text('회비 추가'),
+              child: Text(_isEdit ? '수정 저장' : '회비 추가'),
             ),
             const SizedBox(height: 8),
           ],
