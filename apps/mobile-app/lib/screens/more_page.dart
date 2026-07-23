@@ -34,6 +34,7 @@ class MorePage extends StatefulWidget {
     required String title,
     required String body,
     required String category,
+    required String contact,
   }) onFeedbackSubmitted;
   final VoidCallback? onAdminMode;
 
@@ -52,6 +53,7 @@ class _MorePageState extends State<MorePage> {
   final _inviteCodeController = TextEditingController(text: 'CREWITH-RUN-30');
   final _feedbackTitleController = TextEditingController();
   final _feedbackBodyController = TextEditingController();
+  final _feedbackContactController = TextEditingController();
   String _feedbackCategory = 'bug';
   String? _resultMessage;
   bool _profileSaving = false;
@@ -78,6 +80,7 @@ class _MorePageState extends State<MorePage> {
     _inviteCodeController.dispose();
     _feedbackTitleController.dispose();
     _feedbackBodyController.dispose();
+    _feedbackContactController.dispose();
     super.dispose();
   }
 
@@ -255,11 +258,16 @@ class _MorePageState extends State<MorePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const CardHeader(label: '💬 피드백', title: '✉️ 개발팀에 의견 보내기'),
+              const CardHeader(label: '도움말', title: '제보'),
               TextInput(
                 controller: _feedbackTitleController,
                 label: '제목',
               ),
+              TextInput(
+                controller: _feedbackContactController,
+                label: '회신 연락처 (선택)',
+              ),
+              const Text('앱 버전과 Android 플랫폼 정보가 전송됩니다. 로그나 기기 식별자는 전송하지 않습니다.'),
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: TextField(
@@ -302,16 +310,20 @@ class _MorePageState extends State<MorePage> {
                             title: _feedbackTitleController.text,
                             body: _feedbackBodyController.text,
                             category: _feedbackCategory,
+                            contact: _feedbackContactController.text,
                           );
                           if (!mounted) return;
-                          _feedbackTitleController.clear();
-                          _feedbackBodyController.clear();
+                          if (message.startsWith('제보 #')) {
+                            _feedbackTitleController.clear();
+                            _feedbackBodyController.clear();
+                            _feedbackContactController.clear();
+                          }
                           messenger.showSnackBar(
                             SnackBar(content: Text(message)),
                           );
                           setState(() => _feedbackSaving = false);
                         },
-                  child: const Text('📨 피드백 보내기'),
+                  child: const Text('제보하기'),
                 ),
               ),
             ],

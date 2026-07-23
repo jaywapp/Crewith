@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect, unstable_rethrow } from "next/navigation";
 import Link from "next/link";
+import adminPackage from "../package.json";
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://127.0.0.1:4000/api/v1";
 const adminSessionCookieName = "crewith-admin-session";
@@ -608,17 +609,33 @@ export async function sendFeedbackAction(formData: FormData) {
 
   const title = `${formData.get("title") ?? ""}`.trim();
   const body = `${formData.get("body") ?? ""}`.trim();
+  const contact = `${formData.get("contact") ?? ""}`.trim();
   const category = `${formData.get("category") ?? "other"}`;
 
-  if (!title || !body) return;
+  if (!title || !body || title.length > 120 || body.length > 5000 || contact.length > 200) {
+    redirect("/feedback?error=invalid");
+  }
 
-  await fetch(`${apiBaseUrl}/feedback`, {
+  const response = await fetch(`${apiBaseUrl}/feedback`, {
     method: "POST",
     headers: await jsonAuthHeaders(),
-    body: JSON.stringify({ title, body, category, memberId: session.memberId, source: "admin-web" }),
+    body: JSON.stringify({
+      title,
+      body,
+      contact: contact || undefined,
+      category,
+      memberId: session.memberId,
+      source: "admin-web",
+      appVersion: adminPackage.version,
+    }),
   });
 
-  redirect("/feedback?sent=1");
+  if (!response.ok) {
+    redirect("/feedback?error=failed");
+  }
+
+  const result = (await response.json()) as { issueNumber?: number };
+  redirect(`/feedback?sent=${result.issueNumber ?? "1"}`);
 }
 
 export async function createClubAction(formData: FormData) {
@@ -685,7 +702,7 @@ export async function AdminShell({
         </nav>
         <div className="sidebarBottom">
           <Link className="sidebarFeedback" href="/feedback">
-            의견 보내기
+            제보
           </Link>
           <form action={logoutAction}>
             <button className="secondary compact" type="submit">

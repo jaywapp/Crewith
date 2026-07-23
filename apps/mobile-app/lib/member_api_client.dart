@@ -8,6 +8,10 @@ const _defaultApiBaseUrl = String.fromEnvironment(
   'CREWITH_API_BASE_URL',
   defaultValue: 'https://crewith-api-production.up.railway.app/api/v1',
 );
+const _appVersion = String.fromEnvironment(
+  'CREWITH_APP_VERSION',
+  defaultValue: '0.2.4',
+);
 
 class MemberApiClient {
   MemberApiClient({
@@ -278,23 +282,37 @@ class MemberApiClient {
     );
   }
 
-  Future<bool> submitFeedback({
+  Future<int?> submitFeedback({
     required String title,
     required String body,
     required String category,
+    required String contact,
     String? memberId,
-  }) {
-    return _sendJson(
-      'POST',
-      Uri.parse('$apiBaseUrl/feedback'),
-      {
+  }) async {
+    final client = _client();
+    try {
+      final request = await client.postUrl(Uri.parse('$apiBaseUrl/feedback'));
+      _applyAuth(request);
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode({
         'title': title,
         'body': body,
         'category': category,
+        if (contact.isNotEmpty) 'contact': contact,
         if (memberId != null) 'memberId': memberId,
         'source': 'mobile-app',
-      },
-    );
+        'appVersion': _appVersion,
+      }));
+      final response = await request.close().timeout(const Duration(seconds: 15));
+      final responseBody = await response.transform(utf8.decoder).join();
+      if (response.statusCode != HttpStatus.created) return null;
+      final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+      return decoded['issueNumber'] as int?;
+    } catch (_) {
+      return null;
+    } finally {
+      client.close();
+    }
   }
 
   Future<Map<String, String>?> createClub({
