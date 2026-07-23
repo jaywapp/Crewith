@@ -332,6 +332,13 @@ export interface CreateAdminFeeInput {
   dueDate: string;
 }
 
+export interface UpdateAdminFeeInput {
+  title?: string;
+  feeType?: FeeType;
+  amount?: number;
+  dueDate?: string;
+}
+
 export interface UpdateClubFeeSettingsInput {
   amount?: number;
   dueDay?: number;

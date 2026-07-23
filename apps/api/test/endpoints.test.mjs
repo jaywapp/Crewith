@@ -110,6 +110,69 @@ test("endpoint success/failure characterization", async (t) => {
     assert.equal(res.status, 403);
   });
 
+  await t.test("PATCH/DELETE fees — operator로 생성한 회비를 수정 후 삭제한다", async () => {
+    const created = await fetch(`${baseUrl}/clubs/${CLUB}/fees`, {
+      method: "POST",
+      headers: { ...JSON_HEADERS, ...OPERATOR },
+      body: JSON.stringify({
+        title: "7월 회비",
+        feeType: "recurring",
+        amount: 30000,
+        dueDate: "2026-07-25",
+      }),
+    });
+    assert.equal(created.status, 201);
+    const fee = (await created.json()).data;
+
+    const updated = await fetch(`${baseUrl}/clubs/${CLUB}/fees/${fee.id}`, {
+      method: "PATCH",
+      headers: { ...JSON_HEADERS, ...OPERATOR },
+      body: JSON.stringify({ title: "7월 정기 회비", amount: 35000 }),
+    });
+    assert.equal(updated.status, 200);
+    const updatedFee = (await updated.json()).data;
+    assert.equal(updatedFee.title, "7월 정기 회비");
+    assert.equal(updatedFee.amount, 35000);
+
+    const deleted = await fetch(`${baseUrl}/clubs/${CLUB}/fees/${fee.id}`, {
+      method: "DELETE",
+      headers: OPERATOR,
+    });
+    assert.equal(deleted.status, 200);
+
+    const list = await fetch(`${baseUrl}/clubs/${CLUB}/fees`, {
+      method: "GET",
+      headers: OPERATOR,
+    });
+    const fees = (await list.json()).data;
+    assert.ok(!fees.some((item) => item.id === fee.id));
+  });
+
+  await t.test("PATCH fees — 존재하지 않는 feeId는 404", async () => {
+    const res = await fetch(`${baseUrl}/clubs/${CLUB}/fees/unknown-fee`, {
+      method: "PATCH",
+      headers: { ...JSON_HEADERS, ...OPERATOR },
+      body: JSON.stringify({ title: "없는 회비" }),
+    });
+    assert.equal(res.status, 404);
+  });
+
+  await t.test("DELETE fees — 존재하지 않는 feeId는 404", async () => {
+    const res = await fetch(`${baseUrl}/clubs/${CLUB}/fees/unknown-fee`, {
+      method: "DELETE",
+      headers: OPERATOR,
+    });
+    assert.equal(res.status, 404);
+  });
+
+  await t.test("DELETE fees — 비운영진 토큰으로 호출하면 403", async () => {
+    const res = await fetch(`${baseUrl}/clubs/${CLUB}/fees/any-fee`, {
+      method: "DELETE",
+      headers: MEMBER_AUTH,
+    });
+    assert.equal(res.status, 403);
+  });
+
   // ───────────────────────── [일정] ─────────────────────────
 
   await t.test("POST events — 필수 필드(title) 누락 시 현재 500 반환 (특성화)", async () => {
