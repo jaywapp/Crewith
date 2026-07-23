@@ -4,7 +4,7 @@
 
 | Component | MVP target | Later option |
 |---|---|---|
-| Admin web | Firebase Hosting or Vercel | Cloud Run if server-side requirements grow |
+| Admin web | Vercel | Vercel |
 | API | Cloud Run | Firebase Functions for smaller callable endpoints |
 | Database | Local JSON for development | Cloud Firestore |
 | Auth | Development OTP for local MVP | Firebase Auth phone authentication |
@@ -13,13 +13,13 @@
 
 ## Recommended Production Shape
 
-Use Cloud Run for the NestJS API and Firebase Hosting for the admin web.
+Use Railway for the NestJS API and Vercel for the admin web.
 
 Reasons:
 
 - The current API is already a NestJS HTTP server.
-- Cloud Run keeps the migration simple while Firebase Auth, Firestore, Storage, and FCM are added.
-- Firebase Hosting can route admin web traffic cleanly and keep environment-specific config separate.
+- The existing Railway API remains the trusted backend for database access and GitHub Issue creation.
+- Vercel builds and deploys the Next.js admin web from a prebuilt production output on each `main` push.
 - Moving selected server logic to Cloud Functions can happen later for scheduled reminders and cleanup jobs.
 
 ## Environments
@@ -50,7 +50,10 @@ NAVER_MAP_CLIENT_SECRET=
 
 1. Build with `npm run build -w @crewith/admin-web`.
 2. Set `API_BASE_URL` to the deployed API URL.
-3. Deploy to Firebase Hosting or Vercel.
+3. Configure the Vercel project Root Directory as `apps/admin-web`.
+4. Add `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` to the GitHub `production` environment.
+5. Disable duplicate production deploys from Vercel Git Integration.
+6. Push to `main`; GitHub Actions runs a pinned Vercel CLI prebuilt deployment.
 4. Verify routes:
    - `/`
    - `/members`

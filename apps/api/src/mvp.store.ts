@@ -544,6 +544,8 @@ export interface CreateFeedbackInput {
   category: FeedbackCategory;
   memberId?: string;
   source?: 'mobile-app' | 'admin-web';
+  contact?: string;
+  appVersion: string;
 }
 
 export interface FeedbackResult {

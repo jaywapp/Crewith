@@ -101,13 +101,14 @@ class _FakeMemberApiClient extends MemberApiClient {
       true;
 
   @override
-  Future<bool> submitFeedback({
+  Future<int?> submitFeedback({
     required String title,
     required String body,
     required String category,
+    required String contact,
     String? memberId,
   }) async =>
-      true;
+      42;
 
   @override
   Future<bool> createJoinRequest({

@@ -109,6 +109,7 @@ import {
   club,
   clubs,
 } from "./mvp.store";
+import { createGitHubFeedbackIssue } from "./feedback";
 
 function cleanNonNegativeIntegerList(values: unknown[]) {
   return values
@@ -1101,45 +1102,6 @@ export class JsonMvpRepository implements MvpRepository {
   }
 
   async createFeedback(input: CreateFeedbackInput): Promise<FeedbackResult> {
-    const token = process.env.GITHUB_TOKEN;
-    const repo = process.env.GITHUB_REPO ?? "jaywapp/Crewith";
-
-    if (!token) {
-      throw new BadRequestException("GitHub integration is not configured");
-    }
-
-    const categoryLabel = { bug: "버그", improvement: "개선 제안", other: "기타" }[input.category] ?? input.category;
-    const sourceLabel = input.source ? { "mobile-app": "모바일 앱", "admin-web": "관리자 페이지" }[input.source] : null;
-    const issueBody = [
-      `**카테고리**: ${categoryLabel}`,
-      ...(sourceLabel ? [`**출처**: ${sourceLabel}`] : []),
-      "",
-      input.body,
-      ...(input.memberId ? ["", "---", `_제출자 ID: ${input.memberId}_`] : []),
-    ].join("\n");
-
-    const labels = ["feedback", "pending-ai", ...(input.source ? [input.source] : [])];
-
-    const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
-      method: "POST",
-      headers: {
-        Authorization: `token ${token}`,
-        "Content-Type": "application/json",
-        Accept: "application/vnd.github.v3+json",
-      },
-      body: JSON.stringify({
-        title: `[피드백] ${input.title}`,
-        body: issueBody,
-        labels,
-      }),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new BadRequestException(`GitHub API ${res.status}: ${err}`);
-    }
-
-    const data = (await res.json()) as { number: number; html_url: string };
-    return { issueNumber: data.number, issueUrl: data.html_url };
+    return createGitHubFeedbackIssue(input);
   }
 }

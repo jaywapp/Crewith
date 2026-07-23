@@ -348,19 +348,23 @@ class _HomeShellState extends State<HomeShell> {
     required String title,
     required String body,
     required String category,
+    required String contact,
   }) async {
     if (title.trim().isEmpty || body.trim().isEmpty) {
       return '제목과 내용을 모두 입력하세요.';
     }
 
-    final sent = await _api.submitFeedback(
+    final issueNumber = await _api.submitFeedback(
       title: title.trim(),
       body: body.trim(),
       category: category,
+      contact: contact.trim(),
       memberId: _activeMemberId,
     );
 
-    return sent ? '피드백이 접수되었습니다. 감사합니다!' : '피드백 전송에 실패했습니다.';
+    return issueNumber != null
+        ? '제보 #$issueNumber이(가) 접수되었습니다.'
+        : '제보 전송에 실패했습니다. 입력 내용을 유지한 채 다시 시도해 주세요.';
   }
 
   Future<String> _acceptInvite(
