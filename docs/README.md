@@ -4,6 +4,8 @@ Crewith 웹/앱 솔루션의 기획, 요구사항, 디자인, 개발 산출물�
 
 ## 문서 목록
 
+- 웹·API 통합 검증: [분석](integration-verification-analysis.md), [설계](integration-verification-design.md), [작업·실행 결과](integration-verification-tasks.md)
+
 ### 기획·요구사항
 
 - [프로젝트 브리프](PROJECT_BRIEF.md): 서비스 정의, 사용자, 해결 문제, 핵심 가치

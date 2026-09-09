@@ -351,11 +351,15 @@ export class AppController {
 
   @RequireClubRole()
   @Patch("clubs/:clubId/members/:memberId/password")
-  resetMemberPassword(
+  async resetMemberPassword(
+    @Param("clubId") clubId: string,
     @Param("memberId") memberId: string,
     @Body() input: ResetMemberPasswordInput,
   ) {
-    return { data: this.repository.resetMemberPassword(memberId, input) };
+    if (!(await this.repository.getClubRole(clubId, memberId))) {
+      throw new ForbiddenException("해당 모임의 회원만 비밀번호를 변경할 수 있습니다.");
+    }
+    return { data: await this.repository.resetMemberPassword(memberId, input) };
   }
 
   @RequireClubRole()
