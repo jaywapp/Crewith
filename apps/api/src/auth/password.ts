@@ -16,7 +16,7 @@ export function verifyPassword(
   plain: string,
   stored: string | undefined,
 ): { ok: boolean; needsRehash: boolean } {
-  if (!plain || !stored) {
+  if (typeof plain !== "string" || typeof stored !== "string" || !plain || !stored) {
     return { ok: false, needsRehash: false };
   }
 

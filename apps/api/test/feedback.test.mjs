@@ -2,6 +2,25 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createRequire } from "node:module";
 
+test("feedback removes controls while preserving tabs, newlines and Unicode", async () => {
+  process.env.GITHUB_TOKEN = "test-token";
+  resetFeedbackRateLimitsForTest();
+  const controls = Array.from({ length: 32 }, (_, code) => String.fromCharCode(code)).join("");
+  let payload;
+  await createGitHubFeedbackIssue({
+    title: "fixture",
+    body: `start${controls}\u007f한글😀\r\nend`,
+    category: "bug",
+    source: "admin-web",
+    memberId: "control-fixture",
+    appVersion: "1.0.0",
+  }, async (_url, init) => {
+    payload = JSON.parse(init.body);
+    return Response.json({ number: 1, html_url: "https://example.test/1" });
+  });
+  assert.ok(payload.body.endsWith("start\t\n\n한글😀\nend"));
+});
+
 const require = createRequire(import.meta.url);
 const {
   createGitHubFeedbackIssue,

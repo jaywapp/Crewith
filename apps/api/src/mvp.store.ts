@@ -1033,9 +1033,13 @@ export function isResourceVisibility(value: unknown): value is ResourceVisibilit
 export function buildFeeItem(fee: AdminFeeListItem, clubId = club.id): AdminFeeListItem {
   const payments = feePayments[fee.id] ?? {};
   const targetMembers = activeMembers(clubId);
-  const paidCount = targetMembers.filter((member) => payments[member.id] === "paid").length;
-  const exemptCount = targetMembers.filter((member) => payments[member.id] === "exempt").length;
-  const unpaidCount = targetMembers.filter((member) => payments[member.id] !== "paid" && payments[member.id] !== "exempt").length;
+  let paidCount = 0;
+  let exemptCount = 0;
+  for (const member of targetMembers) {
+    if (payments[member.id] === "paid") paidCount += 1;
+    else if (payments[member.id] === "exempt") exemptCount += 1;
+  }
+  const unpaidCount = targetMembers.length - paidCount - exemptCount;
   const payableCount = Math.max(targetMembers.length - exemptCount, 0);
 
   return {

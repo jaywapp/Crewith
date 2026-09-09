@@ -175,7 +175,7 @@ test("endpoint success/failure characterization", async (t) => {
 
   // ───────────────────────── [일정] ─────────────────────────
 
-  await t.test("POST events — 필수 필드(title) 누락 시 현재 500 반환 (특성화)", async () => {
+  await t.test("POST events rejects a missing title with 400", async () => {
     const res = await fetch(`${baseUrl}/clubs/${CLUB}/events`, {
       method: "POST",
       headers: { ...JSON_HEADERS, ...OPERATOR },
@@ -185,12 +185,10 @@ test("endpoint success/failure characterization", async (t) => {
         visibility: "all_members",
       }),
     });
-    // 기대는 400이지만 현재 구현은 title.trim()에서 TypeError → 500.
-    // 에러 처리 개선 필요(별도 트랙): 입력 검증을 추가해 400을 반환해야 한다.
-    assert.equal(res.status, 500);
+    assert.equal(res.status, 400);
   });
 
-  await t.test("PATCH event responses — 잘못된 response 값도 현재 200 반환 (특성화)", async () => {
+  await t.test("PATCH event responses rejects an invalid response with 400", async () => {
     const created = await fetch(`${baseUrl}/clubs/${CLUB}/events`, {
       method: "POST",
       headers: { ...JSON_HEADERS, ...OPERATOR },
@@ -209,9 +207,7 @@ test("endpoint success/failure characterization", async (t) => {
       headers: { ...JSON_HEADERS, ...MEMBER_AUTH },
       body: JSON.stringify({ memberId: member.id, response: "definitely-not-a-valid-response" }),
     });
-    // 기대는 400이지만 현재 구현은 response 값을 검증하지 않고 그대로 저장 → 200.
-    // 에러 처리 개선 필요(별도 트랙): 허용 값(attending/absent 등) 검증을 추가해야 한다.
-    assert.equal(res.status, 200);
+    assert.equal(res.status, 400);
   });
 
   await t.test("DELETE events — 존재하지 않는 eventId는 404", async () => {

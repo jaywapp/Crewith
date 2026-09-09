@@ -11,6 +11,7 @@ import {
   Query,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { requireEnumField, requireTextFields } from "./input-validation";
 import { CurrentUser, type CurrentUserPayload } from "./auth/current-user";
 import { Public } from "./auth/public.decorator";
 import { RequireClubRole } from "./auth/require-club-role.decorator";
@@ -350,11 +351,15 @@ export class AppController {
 
   @RequireClubRole()
   @Patch("clubs/:clubId/members/:memberId/password")
-  resetMemberPassword(
+  async resetMemberPassword(
+    @Param("clubId") clubId: string,
     @Param("memberId") memberId: string,
     @Body() input: ResetMemberPasswordInput,
   ) {
-    return { data: this.repository.resetMemberPassword(memberId, input) };
+    if (!(await this.repository.getClubRole(clubId, memberId))) {
+      throw new ForbiddenException("해당 모임의 회원만 비밀번호를 변경할 수 있습니다.");
+    }
+    return { data: await this.repository.resetMemberPassword(memberId, input) };
   }
 
   @RequireClubRole()
@@ -378,6 +383,7 @@ export class AppController {
     @Param("clubId") clubId: string,
     @Body() input: CreateAdminFeeInput,
   ) {
+    requireTextFields(input, ["title"], "createFee");
     return { data: this.repository.createFee(clubId, input) };
   }
 
@@ -417,6 +423,8 @@ export class AppController {
     @Param("eventId") eventId: string,
     @Body() input: UpdateAdminAttendanceInput,
   ) {
+    requireTextFields(input, ["memberId"], "updateEventAttendance");
+    requireEnumField(input, "status", ["present", "late", "absent"], "updateEventAttendance");
     return { data: this.repository.updateEventAttendance(clubId, eventId, input) };
   }
 
@@ -432,6 +440,7 @@ export class AppController {
     @Param("clubId") clubId: string,
     @Body() input: CreateAdminEventInput,
   ) {
+    requireTextFields(input, ["title", "locationName"], "createEvent");
     return { data: this.repository.createEvent(clubId, input) };
   }
 
@@ -461,7 +470,8 @@ export class AppController {
     @Body() input: UpdateAdminEventResponseInput,
     @CurrentUser() user: CurrentUserPayload | undefined,
   ) {
-    assertSelf(user, input.memberId);
+    assertSelf(user, input?.memberId);
+    requireEnumField(input, "response", ["attending", "not_attending"], "updateEventResponse");
     return { data: this.repository.updateEventResponse(clubId, eventId, input) };
   }
 
@@ -477,6 +487,7 @@ export class AppController {
     @Param("clubId") clubId: string,
     @Body() input: CreateAdminNoticeInput,
   ) {
+    requireTextFields(input, ["title", "body"], "createNotice");
     return { data: this.repository.createNotice(clubId, input) };
   }
 

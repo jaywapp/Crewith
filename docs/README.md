@@ -4,6 +4,8 @@ Crewith 웹/앱 솔루션의 기획, 요구사항, 디자인, 개발 산출물�
 
 ## 문서 목록
 
+- 웹·API 통합 검증: [분석](integration-verification-analysis.md), [설계](integration-verification-design.md), [작업·실행 결과](integration-verification-tasks.md)
+
 ### 기획·요구사항
 
 - [프로젝트 브리프](PROJECT_BRIEF.md): 서비스 정의, 사용자, 해결 문제, 핵심 가치
@@ -52,3 +54,7 @@ Crewith 웹/앱 솔루션의 기획, 요구사항, 디자인, 개발 산출물�
 2. `product-manager`와 `business-analyst`로 범위와 요구사항을 정리합니다.
 3. `api-designer`와 `database-administrator`로 API/DB 설계를 구체화합니다.
 4. `ui-designer`, `nextjs-developer`, `mobile-developer`, `backend-developer`로 설계와 구현을 진행합니다.
+
+- 2026-09-09 성능·안정성: [분석](runtime-resilience-20260909-analysis.md), [설계](runtime-resilience-20260909-design.md), [작업](runtime-resilience-20260909-tasks.md)
+
+- PR CI 수정: [분석](pr-ci-repair-analysis.md), [설계](pr-ci-repair-design.md), [결과](pr-ci-repair-tasks.md)

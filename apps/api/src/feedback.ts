@@ -35,6 +35,7 @@ function normalizeText(value: unknown, maxLength: number, fieldName: string) {
 
   const normalized = value
     .replace(/\r\n?/g, "\n")
+    // eslint-disable-next-line no-control-regex -- Intentionally remove control characters from user feedback.
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
     .trim();
 
