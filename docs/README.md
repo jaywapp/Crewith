@@ -4,6 +4,8 @@ Crewith 웹/앱 솔루션의 기획, 요구사항, 디자인, 개발 산출물�
 
 ## 문서 목록
 
+- 운영 연결 검증: [분석](live-integration-analysis.md), [설계](live-integration-design.md), [결과](live-integration-tasks.md)
+
 - 웹·API 통합 검증: [분석](integration-verification-analysis.md), [설계](integration-verification-design.md), [작업·실행 결과](integration-verification-tasks.md)
 
 ### 기획·요구사항
