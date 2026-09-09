@@ -56,3 +56,5 @@ Crewith 웹/앱 솔루션의 기획, 요구사항, 디자인, 개발 산출물�
 4. `ui-designer`, `nextjs-developer`, `mobile-developer`, `backend-developer`로 설계와 구현을 진행합니다.
 
 - 2026-09-09 성능·안정성: [분석](runtime-resilience-20260909-analysis.md), [설계](runtime-resilience-20260909-design.md), [작업](runtime-resilience-20260909-tasks.md)
+
+- PR CI 수정: [분석](pr-ci-repair-analysis.md), [설계](pr-ci-repair-design.md), [결과](pr-ci-repair-tasks.md)
